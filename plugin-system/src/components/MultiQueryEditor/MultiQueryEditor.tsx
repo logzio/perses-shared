@@ -16,6 +16,7 @@ import { produce } from 'immer';
 import { Button, Stack } from '@mui/material';
 import AddIcon from 'mdi-material-ui/Plus';
 import { QueryDefinition, QueryPluginType } from '@perses-dev/core';
+import { OnChangeOptions } from '../../model';
 import { QueryData, useListPluginMetadata, usePlugin, usePluginRegistry } from '../../runtime';
 import { PluginEditorRef } from '../PluginEditor';
 import { QueryEditorContainer } from './QueryEditorContainer';
@@ -55,7 +56,7 @@ function useDefaultQueryDefinition(
   }
 
   const { data: defaultQueryPlugin } = usePlugin(defaultQueryType, defaultQueryKind, {
-    throwOnError: true, // LOGZIO CHANGE: `useErrorBoundary` was changed to `throwOnError` for tanstack query v4 -> v5 support
+    throwOnError: true, // LOGZ.IO CHANGE: `useErrorBoundary` was changed to `throwOnError` for tanstack query v4 -> v5 support
     enabled: true,
   });
 
@@ -87,17 +88,25 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
   const [queriesCollapsed, setQueriesCollapsed] = useState(queries.map(() => false));
 
   // Query handlers
-  const handleQueryChange = (index: number, queryDef: QueryDefinition): void => {
-    onChange(
-      produce(queries, (draft) => {
-        if (draft) {
-          draft[index] = queryDef;
-        } else {
-          draft = [queryDef];
-        }
-      })
-    );
-  };
+  const handleQueryChange = useCallback(
+    (index: number, queryDef: QueryDefinition, options?: OnChangeOptions): void => {
+      onChange(
+        produce(queries, (draft) => {
+          if (draft) {
+            draft[index] = queryDef;
+          } else {
+            draft = [queryDef];
+          }
+        })
+      );
+      // LOGZ.IO CHANGE START:: APPZ-1234 support forceUpdate to trigger query run on change
+      if (options?.forceUpdate) {
+        onQueryRun(index, queryDef);
+      }
+      // LOGZ.IO CHANGE END:: APPZ-1234 support forceUpdate to trigger query run on change
+    },
+    [onChange, onQueryRun, queries]
+  );
 
   const handleQueryRun = (index: number, queryDef: QueryDefinition): void => {
     onQueryRun(index, queryDef);
@@ -134,16 +143,16 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
   // LOGZ.IO CHANGE START:: APPZ-955-math-on-queries-formulas
   const handleVisibilityToggle = useCallback(
     (index: number, isHidden: boolean) => {
-      onChange(
-        produce(queries, (draft) => {
-          const entry = draft?.[index];
-          if (entry) {
-            entry.spec.hidden = !isHidden;
-          }
-        })
-      );
+      const updatedQueries = produce(queries, (draft) => {
+        const entry = draft?.[index];
+        if (entry) {
+          entry.spec.hidden = !isHidden;
+        }
+      });
+
+      handleQueryChange(index, updatedQueries[index]!, { forceUpdate: true });
     },
-    [onChange, queries]
+    [handleQueryChange, queries]
   );
   // LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas
 

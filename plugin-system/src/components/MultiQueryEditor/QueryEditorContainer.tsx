@@ -22,6 +22,7 @@ import EyeOffIcon from 'mdi-material-ui/EyeOff';
 import { forwardRef, ReactElement } from 'react';
 import AlertIcon from 'mdi-material-ui/Alert';
 import { InfoTooltip } from '@perses-dev/components';
+import { OnChangeOptions } from '../../model';
 import { QueryData } from '../../runtime';
 import { PluginEditor, PluginEditorProps, PluginEditorRef } from '../PluginEditor';
 
@@ -34,7 +35,7 @@ interface QueryEditorContainerProps {
   query: QueryDefinition;
   queryResult?: QueryData;
   filteredQueryPlugins?: string[];
-  onChange: (index: number, query: QueryDefinition) => void;
+  onChange: (index: number, query: QueryDefinition, options?: OnChangeOptions) => void; // LOGZ.IO CHANGE:: APPZ-1234 support forceUpdate to trigger query run on change
   onQueryRun: (index: number, query: QueryDefinition) => void;
   onCollapseExpand: (index: number) => void;
   isCollapsed?: boolean;
@@ -159,7 +160,7 @@ export const QueryEditorContainer = forwardRef<PluginEditorRef, QueryEditorConta
             queryTypes={queryTypes}
             value={query}
             filteredQueryPlugins={filteredQueryPlugins}
-            onChange={(next) => onChange(index, next)}
+            onChange={(next, opts) => onChange(index, next, opts)}
             onQueryRun={() => onQueryRun(index, query)}
             index={index} // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
           />
@@ -178,7 +179,7 @@ interface QueryEditorProps extends Omit<BoxProps, OmittedMuiProps> {
   queryTypes: QueryPluginType[];
   value: QueryDefinition;
   filteredQueryPlugins?: string[];
-  onChange: (next: QueryDefinition) => void;
+  onChange: (next: QueryDefinition, options?: OnChangeOptions) => void; // LOGZ.IO CHANGE:: APPZ-1234 support forceUpdate to trigger query run on change
   onQueryRun: () => void;
   index: number; // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
 }
@@ -194,13 +195,14 @@ interface QueryEditorProps extends Omit<BoxProps, OmittedMuiProps> {
 const QueryEditor = forwardRef<PluginEditorRef, QueryEditorProps>((props, ref): ReactElement => {
   const { queryTypes, value, filteredQueryPlugins, onChange, onQueryRun, index, ...others } = props;
 
-  const handlePluginChange: PluginEditorProps['onChange'] = (next) => {
+  const handlePluginChange: PluginEditorProps['onChange'] = (next, options) => {
     onChange(
       produce(value, (draft) => {
         draft.kind = next.selection.type;
         draft.spec.plugin.kind = next.selection.kind;
         draft.spec.plugin.spec = next.spec;
-      })
+      }),
+      options // LOGZ.IO CHANGE:: APPZ-1234 support forceUpdate to trigger query run on change
     );
   };
 

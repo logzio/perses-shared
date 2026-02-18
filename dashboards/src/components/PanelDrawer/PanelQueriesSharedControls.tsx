@@ -57,6 +57,7 @@ export function PanelQueriesSharedControls({
         return {
           kind: query.spec.plugin.kind,
           spec: query.spec.plugin.spec,
+          hidden: query.spec.hidden ?? false, // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
         };
       }) ?? []
   );
@@ -67,6 +68,7 @@ export function PanelQueriesSharedControls({
       newDefinitions[index] = {
         kind: newDef.spec.plugin.kind,
         spec: newDef.spec.plugin.spec,
+        hidden: newDef.spec.hidden ?? false, // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
       };
       return newDefinitions;
     });

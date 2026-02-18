@@ -16,6 +16,7 @@ import Reload from 'mdi-material-ui/Reload';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
 import { ReactElement, useCallback } from 'react';
 import { UnknownSpec } from '@perses-dev/core';
+import { OnChangeOptions } from '../../model';
 import { PluginKindSelect } from '../PluginKindSelect';
 import { PluginSpecEditor } from '../PluginSpecEditor';
 import { PluginEditorProps, usePluginEditor } from './plugin-editor-api';
@@ -46,8 +47,8 @@ export function PluginEditor(props: PluginEditorProps): ReactElement {
   const { pendingSelection, isLoading, error, onSelectionChange, onSpecChange } = usePluginEditor(props);
 
   const handleSpecChange = useCallback(
-    (nextSpec: UnknownSpec) => {
-      onSpecChange(nextSpec);
+    (nextSpec: UnknownSpec, options?: OnChangeOptions) => {
+      onSpecChange(nextSpec, options); // LOGZ.IO CHANGE:: APPZ-1234 support forceUpdate to trigger query run on change
     },
     [onSpecChange]
   );
