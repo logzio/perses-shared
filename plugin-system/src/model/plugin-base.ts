@@ -38,6 +38,7 @@ export interface OptionsEditorProps<Spec> {
   value: Spec;
   onChange: (next: Spec) => void;
   isReadonly?: boolean;
+  index?: number; // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
 }
 
 /**

@@ -44,6 +44,7 @@ export interface PluginEditorProps extends Omit<BoxProps, OmittedMuiProps> {
   filteredQueryPlugins?: string[];
   onChange: (next: PluginEditorValue) => void;
   onRunQuery?: () => void;
+  index?: number; // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
 }
 
 export interface PluginEditorRef {

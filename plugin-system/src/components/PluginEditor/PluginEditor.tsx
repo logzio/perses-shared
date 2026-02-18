@@ -1,4 +1,4 @@
-// Copyright The Perses Authors
+// Copyright 2023 The Perses Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -39,6 +39,7 @@ export function PluginEditor(props: PluginEditorProps): ReactElement {
     isReadonly,
     onRunQuery,
     filteredQueryPlugins,
+    index, // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
     ...others
   } = props;
 
@@ -97,6 +98,7 @@ export function PluginEditor(props: PluginEditorProps): ReactElement {
           value={value.spec}
           onChange={handleSpecChange}
           isReadonly={isReadonly}
+          index={index} // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
         />
       </ErrorBoundary>
     </Box>
