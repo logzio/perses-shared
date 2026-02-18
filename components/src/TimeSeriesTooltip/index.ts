@@ -20,3 +20,4 @@ export * from './TooltipHeader';
 export * from './nearby-series';
 export * from './tooltip-model';
 export * from './utils';
+export * from './types';
