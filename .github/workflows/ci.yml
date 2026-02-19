@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - main-logzio
   pull_request:
   merge_group:
   release:
