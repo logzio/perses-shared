@@ -169,7 +169,8 @@ export function createPanelEditorSlice(): StateCreator<
       });
     },
 
-    openAddPanel(panelGroupId, panelDefinition): void { // LOGZ.IO CHANGE:: APPZ-1234 add panelDefinition parameter
+    openAddPanel(panelGroupId, panelDefinition): void {
+      // LOGZ.IO CHANGE:: APPZ-1234 add panelDefinition parameter
       // If a panel group isn't supplied, add to the first group or create a group if there aren't any
       let newGroup: PanelGroupDefinition | undefined = undefined;
       panelGroupId ??= get().panelGroupOrder[0];

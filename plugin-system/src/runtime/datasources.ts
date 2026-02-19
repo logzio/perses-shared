@@ -115,7 +115,8 @@ export function useDatasource<PluginSpec = UnknownSpec>(
   selector: DatasourceSelector
 ): UseQueryResult<DatasourceSpec<PluginSpec>> {
   const store = useDatasourceStore();
-  return useQuery<DatasourceSpec<PluginSpec>>({ // LOGZ.IO CHANGE START:: APPZ-1234 add PluginSpec type
+  return useQuery<DatasourceSpec<PluginSpec>>({
+    // LOGZ.IO CHANGE START:: APPZ-1234 add PluginSpec type
     queryKey: ['getDatasource', selector],
     queryFn: () => store.getDatasource<PluginSpec>(selector),
   });
