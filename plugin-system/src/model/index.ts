@@ -21,3 +21,6 @@ export * from './time-series-queries';
 export * from './trace-queries';
 export * from './profile-queries';
 export * from './variables';
+// LOGZ.IO CHANGE START:: Export log query types [APPZ-1695]
+export * from './log-queries';
+// LOGZ.IO CHANGE END:: Export log query types [APPZ-1695]

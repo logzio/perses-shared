@@ -62,11 +62,12 @@ export function PanelQueriesSharedControls({
       }) ?? []
   );
 
-  // LOGZ.IO CHANGE START:: clear deleted query from preview (only on delete, not every change)
+  // LOGZ.IO CHANGE START:: sync preview when queries are added or removed [APPZ-1695]
   const prevQueryCountRef = useRef(panelDefinition.spec.queries?.length ?? 0);
   useEffect(() => {
     const currentCount = panelDefinition.spec.queries?.length ?? 0;
-    if (currentCount < prevQueryCountRef.current) {
+
+    if (currentCount !== prevQueryCountRef.current) {
       setPreviewDefinition(
         panelDefinition.spec.queries?.map((query) => ({
           kind: query.spec.plugin.kind,
@@ -77,7 +78,7 @@ export function PanelQueriesSharedControls({
     }
     prevQueryCountRef.current = currentCount;
   }, [panelDefinition.spec.queries]);
-  // LOGZ.IO CHANGE END:: clear deleted query from preview (only on delete, not every change)
+  // LOGZ.IO CHANGE END:: sync preview when queries are added or removed [APPZ-1695]
 
   const handleRunQuery = useCallback((index: number, newDef: QueryDefinition) => {
     setPreviewDefinition((prev) => {
