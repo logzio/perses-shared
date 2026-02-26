@@ -27,3 +27,6 @@ export * from './UsageMetricsProvider';
 // LOGZ.IO CHANGE START:: Export log query runtime [APPZ-1695]
 export * from './log-queries';
 // LOGZ.IO CHANGE END:: Export log query runtime [APPZ-1695]
+// LOGZ.IO CHANGE START:: Export PanelSpecChangeProvider for bidirectional panel-settings sync [APPZ-1695]
+export * from './PanelSpecChangeProvider';
+// LOGZ.IO CHANGE END:: Export PanelSpecChangeProvider for bidirectional panel-settings sync [APPZ-1695]
