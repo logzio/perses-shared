@@ -76,9 +76,11 @@ export const TooltipActions: React.FC<TooltipActionProps> = ({ actions, selected
         </Box>
       ) : (
         <Stack my={0.5}>
-          {actions.map((action) => {
-            return (
-              <MenuItem
+          {actions
+            .filter((action) => (selectedSeries && action.isVisible ? action.isVisible(selectedSeries) : true))
+            .map((action) => {
+              return (
+                <MenuItem
                 disabled={selectedSeries === undefined}
                 key={action.label}
                 sx={{ padding: 0, borderRadius: 1 }}

@@ -95,6 +95,32 @@ describe('PluginEditor', () => {
     // LOGZ.IO CHANGE END:: APPZ-1695 account for forceUpdate in onChange
   });
 
+  // LOGZ.IO CHANGE START:: Preserve panel-level settings across viz switches [APPZ-2424]
+  it('preserves dataLinks when switching to a never-before-seen plugin kind', async () => {
+    const priorDataLinks = { logs: { accounts: [], query: 'foo', executedQuery: 'foo' } };
+    const { onChange } = renderComponent({
+      value: {
+        selection: { type: 'Variable', kind: 'ErnieVariable1' },
+        spec: { variableOption: 'Option1Value', dataLinks: priorDataLinks },
+      },
+    });
+
+    await openPluginKind();
+    const newPluginKind = screen.getByRole('option', { name: 'Ernie Variable 2' });
+    userEvent.click(newPluginKind);
+
+    await screen.findByLabelText('ErnieVariable2 editor');
+
+    expect(onChange).toHaveBeenCalledWith(
+      {
+        selection: { type: 'Variable', kind: 'ErnieVariable2' },
+        spec: { variableOption2: '', dataLinks: priorDataLinks },
+      },
+      { forceUpdate: true }
+    );
+  });
+  // LOGZ.IO CHANGE END
+
   it('remembers previous spec values', async () => {
     renderComponent();
 

@@ -135,6 +135,9 @@ export type PointAction = {
   label: string;
   onClick: (point: NearbySeriesInfo) => void;
   icon?: React.JSX.Element;
+  // Optional per-point visibility check. When provided and returns false, the
+  // action is hidden from the menu for that point.
+  isVisible?: (point: NearbySeriesInfo) => boolean;
 };
 // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
 
