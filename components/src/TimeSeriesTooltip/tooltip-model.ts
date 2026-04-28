@@ -139,6 +139,18 @@ export type PointAction = {
   isVisible?: (point: NearbySeriesInfo) => boolean;
   // LOGZ.IO CHANGE END:: Per-point action visibility [APPZ-2424]
 };
+
+// LOGZ.IO CHANGE START:: Per-point action visibility [APPZ-2424]
+export const isActionVisible = (action: PointAction, point: NearbySeriesInfo): boolean => {
+  if (typeof action.isVisible !== 'function') return true;
+
+  try {
+    return action.isVisible(point);
+  } catch {
+    return true;
+  }
+};
+// LOGZ.IO CHANGE END:: Per-point action visibility [APPZ-2424]
 // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
 
 export type TooltipConfig = {
