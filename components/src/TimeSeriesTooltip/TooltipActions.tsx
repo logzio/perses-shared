@@ -30,6 +30,12 @@ export interface TooltipActionProps {
   onUnpinClick?: () => void;
 }
 export const TooltipActions: React.FC<TooltipActionProps> = ({ actions, selectedSeries, onUnpinClick, isPinned }) => {
+  // LOGZ.IO CHANGE START:: Per-point action visibility [APPZ-2424]
+  const visibleActions = selectedSeries
+    ? actions.filter((action) => (action.isVisible ? action.isVisible(selectedSeries) : true))
+    : actions;
+  // LOGZ.IO CHANGE END:: Per-point action visibility [APPZ-2424]
+
   return (
     <Box
       sx={(theme) => ({
@@ -76,11 +82,9 @@ export const TooltipActions: React.FC<TooltipActionProps> = ({ actions, selected
         </Box>
       ) : (
         <Stack my={0.5}>
-          {actions
-            .filter((action) => (selectedSeries && action.isVisible ? action.isVisible(selectedSeries) : true))
-            .map((action) => {
-              return (
-                <MenuItem
+          {visibleActions.map((action) => {
+            return (
+              <MenuItem
                 disabled={selectedSeries === undefined}
                 key={action.label}
                 sx={{ padding: 0, borderRadius: 1 }}
