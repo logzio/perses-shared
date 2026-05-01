@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { parseVariables, replaceVariable, replaceVariables } from './variable-interpolation';
+import { parseVariables, replaceVariable, replaceVariables, VariableStateMap } from './variable-interpolation';
 
 describe('parseVariables()', () => {
   const tests = [
@@ -270,7 +270,9 @@ describe('replaceVariables() with custom formats', () => {
 
 // LOGZ.IO CHANGE START:: Tests for fixed-point variable interpolation [APPZ-2474]
 describe('replaceVariables() with recursive interpolation', () => {
-  const tests = [
+  // Annotate as VariableStateMap[] so TS doesn't widen heterogeneous shapes into a union with
+  // optional fields (which conflicts with VariableStateMap's required-VariableState index sig).
+  const tests: Array<{ name: string; text: string; state: VariableStateMap; expected: string }> = [
     {
       name: 'two-step recursion: $a -> "world-$b" -> "world-foo"',
       text: '$a',
