@@ -80,9 +80,7 @@ export function VariablePreview(props: VariablePreviewProps): ReactElement {
           {values
             ?.slice(0, maxValues)
             .filter((val) => val)
-            .map((val, index) => (
-              <Chip size="small" key={index} label={val} />
-            ))}
+            .map((val, index) => <Chip size="small" key={index} label={val} />)}
           {notShown > 0 && <Chip onClick={showAll} variant="outlined" size="small" label={`+${notShown} more`} />}
         </Box>
       </Card>
