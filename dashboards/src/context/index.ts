@@ -16,3 +16,6 @@ export * from './DatasourceStoreProvider';
 export * from './VariableProvider';
 export * from './useDashboard';
 export * from './PanelEditorProvider';
+// LOGZ.IO CHANGE START:: Panel-level time range override [APPZ-2474]
+export * from './PanelTimeRangeOverride';
+// LOGZ.IO CHANGE END:: Panel-level time range override [APPZ-2474]
