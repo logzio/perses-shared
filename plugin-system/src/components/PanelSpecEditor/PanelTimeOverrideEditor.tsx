@@ -55,11 +55,14 @@ export function PanelTimeOverrideEditor({ control }: PanelTimeOverrideEditorProp
         sx={{ cursor: 'pointer', userSelect: 'none' }}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <IconButton size="small" aria-label={isOpen ? 'Collapse panel time range' : 'Expand panel time range'}>
+        <IconButton
+          size="small"
+          aria-label={isOpen ? 'Collapse override time range' : 'Expand override time range'}
+        >
           {isOpen ? <ChevronDownIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
         </IconButton>
         <Typography variant="overline" component="h4">
-          Panel time range
+          Override Time Range (Optional)
         </Typography>
       </Stack>
       <Collapse in={isOpen} unmountOnExit>
