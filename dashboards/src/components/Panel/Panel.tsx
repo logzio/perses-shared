@@ -20,10 +20,11 @@ import {
   combineSx,
   useId,
 } from '@perses-dev/components';
-import { PanelDefinition, PanelGroupItemId } from '@perses-dev/core';
+import { PanelDefinition } from '@perses-dev/spec';
 import { ActionOptions, useDataQueriesContext, usePluginRegistry } from '@perses-dev/plugin-system';
 import { ReactNode, memo, useEffect, useMemo, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
+import { PanelGroupItemId } from '../../model';
 import { PanelContent } from './PanelContent';
 import { PanelHeader, PanelHeaderProps } from './PanelHeader';
 
@@ -128,7 +129,7 @@ export const Panel = memo(function Panel(props: PanelProps) {
       }
 
       try {
-        const plugin = await getPlugin('Panel', panelPluginKind);
+        const plugin = await getPlugin({ kind: 'Panel', name: panelPluginKind });
 
         // More defensive checking for plugin and actions
         if (
@@ -194,7 +195,9 @@ export const Panel = memo(function Panel(props: PanelProps) {
               height: '100%',
               display: 'flex',
               flexFlow: 'column nowrap',
-              ':hover': { '--panel-hover': 'block' },
+              // LOGZ.IO CHANGE START
+              ':hover': { '--panel-hover': 'flex' },
+              // LOGZ.IO CHANGE END
             },
             sx
           )}
