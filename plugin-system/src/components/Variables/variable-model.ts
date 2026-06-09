@@ -161,10 +161,19 @@ export function useResolveListVariableValues(variableDefinitions: VariableDefini
   }, [outerVariableValues, resolvedVariables]);
 
   const onFetched = useCallback((name: string, options: VariableOption[], definition: ListVariableDefinition) => {
-    setResolvedVariables((prev) => ({
-      ...prev,
-      [name]: { value: resolveDefaultValue(definition, options), loading: false, options },
-    }));
+    setResolvedVariables((prev) => {
+      const value = resolveDefaultValue(definition, options);
+      const existing = prev[name];
+      // LOGZ.IO CHANGE START
+      if (existing && JSON.stringify(existing.value) === JSON.stringify(value)) {
+        return prev;
+      }
+      // LOGZ.IO CHANGE END
+      return {
+        ...prev,
+        [name]: { value, loading: false, options },
+      };
+    });
   }, []);
 
   const queryResults = useQueries({

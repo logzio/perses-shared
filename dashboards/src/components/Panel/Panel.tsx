@@ -195,7 +195,9 @@ export const Panel = memo(function Panel(props: PanelProps) {
               height: '100%',
               display: 'flex',
               flexFlow: 'column nowrap',
-              ':hover': { '--panel-hover': 'block' },
+              // LOGZ.IO CHANGE START
+              ':hover': { '--panel-hover': 'flex' },
+              // LOGZ.IO CHANGE END
             },
             sx
           )}

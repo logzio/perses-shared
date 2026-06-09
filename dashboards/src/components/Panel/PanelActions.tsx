@@ -257,8 +257,14 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
   const divider = <Box sx={{ flexGrow: 1 }}></Box>;
 
   // By default, the panel header shows certain icons only on hover if the panel is in non-editing, non-fullscreen mode
+  // LOGZ.IO CHANGE START
   const OnHover = ({ children }: PropsWithChildren): ReactNode =>
-    showIcons === 'hover' ? <Box sx={{ display: 'var(--panel-hover, none)' }}>{children}</Box> : <>{children}</>;
+    showIcons === 'hover' ? (
+      <Box sx={{ display: 'var(--panel-hover, none)', alignItems: 'center', flexShrink: 0 }}>{children}</Box>
+    ) : (
+      <>{children}</>
+    );
+  // LOGZ.IO CHANGE END
 
   return (
     <>

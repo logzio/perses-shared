@@ -14,7 +14,7 @@
 import { Box, useForkRef } from '@mui/material';
 import { useInView } from 'react-intersection-observer';
 import { DataQueriesProvider, usePlugin, useSuggestedStepMs } from '@perses-dev/plugin-system';
-import React, { ReactElement, useMemo, useState } from 'react';
+import React, { ReactElement, useCallback, useMemo, useState } from 'react';
 import { PanelDefinition } from '@perses-dev/spec';
 import { isPanelGroupItemIdEqual, PanelGroupItemId } from '../../model'; // TODO
 import { useEditMode, usePanel, usePanelActions, useViewPanelGroup } from '../../context';
@@ -51,19 +51,44 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
     `${panelGroupItemId.panelGroupId}-${panelGroupItemId.panelGroupItemLayoutId}`
   );
 
+  // LOGZ.IO CHANGE START
+  const [scrollRoot, setScrollRoot] = useState<Element | null>(null);
+
+  const findScrollRootRef = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    let el: HTMLElement | null = node.parentElement;
+    while (el && el !== document.body) {
+      const { overflowY } = getComputedStyle(el);
+      if (
+        (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') &&
+        el.scrollHeight > el.clientHeight
+      ) {
+        setScrollRoot(el);
+        return;
+      }
+      el = el.parentElement;
+    }
+    setScrollRoot(null);
+  }, []);
+
   const { ref: queryRef, inView: shouldQuery } = useInView({
     threshold: 0,
     initialInView: false,
     triggerOnce: true,
+    root: scrollRoot,
+    rootMargin: '600px 0px',
   });
 
   const { ref: renderRef, inView: shouldRender } = useInView({
     threshold: 0.2,
     initialInView: false,
     triggerOnce: false,
+    root: scrollRoot,
+    rootMargin: '600px 0px',
   });
 
-  const mergedRef = useForkRef(renderRef, queryRef);
+  const mergedRef = useForkRef(renderRef, queryRef, findScrollRootRef);
+  // LOGZ.IO CHANGE END
 
   const [openQueryViewer, setOpenQueryViewer] = useState(false);
 
