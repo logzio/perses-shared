@@ -52,11 +52,14 @@ interface ValidationProviderProps {
  * Provide validation schemas for forms handling plugins (datasources, variables, panels).
  */
 export function ValidationProvider({ children }: ValidationProviderProps): ReactElement {
-  const [datasourceEditorSchema, setDatasourceEditorSchema] =
-    useState<z.Schema<DatasourceDefinition>>(datasourceDefinitionSchema);
-  const [panelEditorSchema, setPanelEditorSchema] = useState<z.Schema<PanelEditorValues>>(defaultPanelEditorSchema); // TODO I don't get why this does not compile
-  const [variableEditorSchema, setVariableEditorSchema] =
-    useState<z.Schema<VariableDefinition>>(variableDefinitionSchema);
+  // LOGZ.IO CHANGE START
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- LOGZ.IO CHANGE
+  const [datasourceEditorSchema, setDatasourceEditorSchema] = useState<any>(datasourceDefinitionSchema);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- LOGZ.IO CHANGE
+  const [panelEditorSchema, setPanelEditorSchema] = useState<any>(defaultPanelEditorSchema);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- LOGZ.IO CHANGE
+  const [variableEditorSchema, setVariableEditorSchema] = useState<any>(variableDefinitionSchema);
+  // LOGZ.IO CHANGE END
 
   function setDatasourceEditorSchemaPlugin(pluginSchema: PluginSchema): void {
     setDatasourceEditorSchema(buildDatasourceDefinitionSchema(pluginSchema));
