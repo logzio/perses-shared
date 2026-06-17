@@ -40,7 +40,14 @@ function extractCapturedValue(text: string, regexp: RegExp): string {
 }
 // LOGZ.IO CHANGE END:: Apply capturing regex to label as fallback for datasource variables
 
-export function filterVariableList(data: VariableOption[], capturedRegexp: RegExp): VariableOption[] {
+export function filterVariableList(
+  data: VariableOption[],
+  capturedRegexp: RegExp,
+  // LOGZ.IO CHANGE:: when true, the regex only filters the list and each original value is kept.
+  // Datasource variables must keep the real datasource name as their value, otherwise panels can no
+  // longer reference them (the captured fragment is not a known datasource name and is silently dropped).
+  preserveOriginalValue = false
+): VariableOption[] {
   const result: VariableOption[] = [];
   const filteredSet = new Set<string>();
   for (const variableValue of data) {
@@ -50,10 +57,15 @@ export function filterVariableList(data: VariableOption[], capturedRegexp: RegEx
       concat = extractCapturedValue(variableValue.label, capturedRegexp);
     }
     // LOGZ.IO CHANGE END:: Apply capturing regex to label as fallback for datasource variables
-    if (concat !== '' && !filteredSet.has(concat)) {
-      // like that we are avoiding to have duplicating variable value
-      filteredSet.add(concat);
-      result.push({ label: variableValue.label, value: concat });
+    if (concat !== '') {
+      // LOGZ.IO CHANGE START:: keep the original value for datasource variables (regex is filter-only)
+      const value = preserveOriginalValue ? variableValue.value : concat;
+      if (!filteredSet.has(value)) {
+        // like that we are avoiding to have duplicating variable value
+        filteredSet.add(value);
+        result.push({ label: variableValue.label, value });
+      }
+      // LOGZ.IO CHANGE END:: keep the original value for datasource variables (regex is filter-only)
     }
   }
   return result;
@@ -74,8 +86,11 @@ const getVariableQueryConfig = (
   enabled: boolean,
   onFetched?: (name: string, options: VariableOption[], definition: ListVariableDefinition) => void
 ): UseQueryOptions<VariableOption[]> => {
-  const capturingRegexp =
-    definition.spec.capturingRegexp !== undefined ? new RegExp(definition.spec.capturingRegexp, 'g') : undefined;
+  // LOGZ.IO CHANGE START:: treat an empty capturing regex as "no filter" so clearing the field shows all values
+  const capturingRegexp = definition.spec.capturingRegexp
+    ? new RegExp(definition.spec.capturingRegexp, 'g')
+    : undefined;
+  // LOGZ.IO CHANGE END:: treat an empty capturing regex as "no filter" so clearing the field shows all values
   const variablesValueKey = getVariableValuesKey(variablePluginCtx.variables);
   return {
     queryKey: ['variable', definition, variablePluginCtx.timeRange, variablesValueKey],
@@ -85,7 +100,12 @@ const getVariableQueryConfig = (
         onFetched?.(definition.spec.name, [], definition);
         return [];
       }
-      const options = capturingRegexp ? filterVariableList(resp.data, capturingRegexp) : resp.data;
+      // LOGZ.IO CHANGE START:: datasource variables filter by regex but keep the real datasource name as value
+      const isDatasourceVariable = definition.spec.plugin.kind.endsWith('DatasourceVariable');
+      const options = capturingRegexp
+        ? filterVariableList(resp.data, capturingRegexp, isDatasourceVariable)
+        : resp.data;
+      // LOGZ.IO CHANGE END:: datasource variables filter by regex but keep the real datasource name as value
       onFetched?.(definition.spec.name, options, definition);
       return options;
     },

@@ -63,6 +63,30 @@ describe('filterVariableList', () => {
       expect(filterVariableList(originalValues, capturingRegexp)).toEqual(result);
     });
   });
+
+  // LOGZ.IO CHANGE START:: datasource variables filter by regex but must keep the real datasource name as value
+  it('keeps each original value (filter-only) when preserveOriginalValue is true', () => {
+    const data: VariableOption[] = [
+      { label: 'Logz K8s Metrics', value: 'Logz K8s Metrics' },
+      { label: 'Opensearch Prod', value: 'Opensearch Prod' },
+      { label: 'Thanos', value: 'Thanos' },
+    ];
+    // a "partial" capturing regex: the capture does not span the whole datasource name
+    const regex = /(.+K8s|Opensearch)/g;
+
+    expect(filterVariableList(data, regex, true)).toEqual([
+      { label: 'Logz K8s Metrics', value: 'Logz K8s Metrics' },
+      { label: 'Opensearch Prod', value: 'Opensearch Prod' },
+    ]);
+  });
+
+  it('still rewrites the value to the captured fragment by default (unchanged behavior)', () => {
+    const data: VariableOption[] = [{ label: 'Opensearch Prod', value: 'Opensearch Prod' }];
+    const regex = /(Opensearch)/g;
+
+    expect(filterVariableList(data, regex)).toEqual([{ label: 'Opensearch Prod', value: 'Opensearch' }]);
+  });
+  // LOGZ.IO CHANGE END:: datasource variables filter by regex but must keep the real datasource name as value
 });
 
 jest.mock('../../runtime', () => ({
@@ -409,4 +433,40 @@ describe('useResolveListVariableValues', () => {
     expect(getOptionsB).toHaveBeenCalled();
     expect(getOptionsC).toHaveBeenCalled();
   });
+
+  // LOGZ.IO CHANGE START:: regressions for datasource variable capturing regex (empty regex + value preservation)
+  it('should not filter out values when capturingRegexp is an empty string', async () => {
+    const def = makeDefinition('VarDs', 'DatasourceVariable');
+    def.spec.capturingRegexp = '';
+
+    const getOptions = jest.fn().mockResolvedValue({ data: [{ label: 'ds1', value: 'ds1' }] });
+    (usePlugins as jest.Mock).mockReturnValue([{ data: { getVariableOptions: getOptions }, isLoading: false }]);
+
+    mockOuterVariables({});
+
+    const { result } = renderHookWithContext(() => useResolveListVariableValues([def]));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.initialVariableValues).toEqual({ VarDs: 'ds1' });
+  });
+
+  it('should keep the real datasource name for datasource variables with a partial capturing regex', async () => {
+    const def = makeDefinition('VarDs', 'DatasourceVariable');
+    def.spec.capturingRegexp = '(.+K8s)';
+
+    const getOptions = jest
+      .fn()
+      .mockResolvedValue({ data: [{ label: 'Logz K8s Metrics', value: 'Logz K8s Metrics' }] });
+    (usePlugins as jest.Mock).mockReturnValue([{ data: { getVariableOptions: getOptions }, isLoading: false }]);
+
+    mockOuterVariables({});
+
+    const { result } = renderHookWithContext(() => useResolveListVariableValues([def]));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.initialVariableValues).toEqual({ VarDs: 'Logz K8s Metrics' });
+  });
+  // LOGZ.IO CHANGE END:: regressions for datasource variable capturing regex (empty regex + value preservation)
 });
