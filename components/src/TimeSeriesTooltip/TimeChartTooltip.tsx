@@ -42,6 +42,10 @@ export interface TimeChartTooltipProps {
    */
   seriesFormatMap?: Map<string, FormatOptions>;
   wrapLabels?: boolean;
+  // LOGZ.IO CHANGE START:: Persisted tooltip series mode (single/nearby/all)
+  /** Initial series-selection behavior, persisted via the panel's tooltip mode. */
+  defaultSeriesMode?: 'single' | 'nearby' | 'all';
+  // LOGZ.IO CHANGE END:: Persisted tooltip series mode (single/nearby/all)
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
   pointActions?: PointAction[];
   seriesMetadata?: TimeSeriesMetadata[];
@@ -55,6 +59,7 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   seriesMapping,
   enablePinning = true,
   wrapLabels,
+  defaultSeriesMode = 'nearby', // LOGZ.IO CHANGE:: Persisted tooltip series mode (single/nearby/all)
   format,
   seriesFormatMap,
   onUnpinClick,
@@ -64,7 +69,13 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   seriesMetadata,
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
 }: TimeChartTooltipProps) {
-  const [showAllSeries, setShowAllSeries] = useState(false);
+  // LOGZ.IO CHANGE START:: Tooltip series mode — "Show All" toggle overrides the panel's base mode
+  // The in-tooltip toggle is binary (All vs base mode). A panel defaulting to "all" seeds it on;
+  // toggling off reverts to the panel's base mode (single or nearby).
+  const [showAllSeries, setShowAllSeries] = useState(defaultSeriesMode === 'all');
+  const baseSeriesMode = defaultSeriesMode === 'all' ? 'nearby' : defaultSeriesMode;
+  const seriesMode = showAllSeries ? 'all' : baseSeriesMode;
+  // LOGZ.IO CHANGE END:: Tooltip series mode — "Show All" toggle overrides the panel's base mode
   const [selectedSeriesIdx, setSelectedSeriesIdx] = useState<number | null>(null); // LOGZ.IO CHANGE:: Drilldown panel [APPZ-377]
   const transform = useRef<string | undefined>();
 
@@ -95,7 +106,7 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
     chart,
     format,
     seriesFormatMap,
-    showAllSeries,
+    seriesMode, // LOGZ.IO CHANGE:: tooltip series mode (single/nearby/all) replaces showAllSeries
     // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
     seriesMetadata,
     selectedSeriesIdx,
@@ -146,6 +157,7 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
             enablePinning={enablePinning}
             isTooltipPinned={isTooltipPinned}
             showAllSeries={showAllSeries}
+            isSingleMode={baseSeriesMode === 'single'} // LOGZ.IO CHANGE:: Single tooltip mode toggle visibility
             onShowAllClick={(checked) => setShowAllSeries(checked)}
             onUnpinClick={onUnpinClick}
           />

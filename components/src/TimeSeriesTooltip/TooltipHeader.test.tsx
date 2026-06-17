@@ -51,15 +51,56 @@ describe('TooltipHeader', () => {
     expect(screen.getByText('13:53:00')).toBeInTheDocument();
   });
 
-  it('should not display show all toggle when only 1 total series', () => {
+  // LOGZ.IO CHANGE START:: Show All toggle visibility across tooltip series modes
+  it('should not display show all toggle in nearby mode when few series and not showing all', () => {
+    const tooltipContent: TooltipHeaderProps = {
+      nearbySeries: testNearbySeries,
+      isTooltipPinned: false,
+      totalSeries: 3,
+      showAllSeries: false,
+      enablePinning: true,
+    };
+    renderComponent(tooltipContent);
+    expect(screen.queryByText('Show All')).not.toBeInTheDocument();
+  });
+
+  it('should display show all toggle when defaulted to show all even with few series', () => {
+    const tooltipContent: TooltipHeaderProps = {
+      nearbySeries: testNearbySeries,
+      isTooltipPinned: false,
+      totalSeries: 3,
+      showAllSeries: true,
+      enablePinning: true,
+    };
+    renderComponent(tooltipContent);
+    expect(screen.getByText('Show All')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox')).toBeChecked();
+  });
+
+  it('should display show all toggle in single mode when more than one series exists', () => {
+    const tooltipContent: TooltipHeaderProps = {
+      nearbySeries: testNearbySeries,
+      isTooltipPinned: false,
+      totalSeries: 3,
+      showAllSeries: false,
+      enablePinning: true,
+      isSingleMode: true,
+    };
+    renderComponent(tooltipContent);
+    expect(screen.getByText('Show All')).toBeInTheDocument();
+  });
+
+  it('should not display show all toggle in single mode when only one series exists', () => {
     const tooltipContent: TooltipHeaderProps = {
       nearbySeries: testNearbySeries,
       isTooltipPinned: false,
       totalSeries: 1,
       showAllSeries: false,
       enablePinning: true,
+      isSingleMode: true,
     };
     renderComponent(tooltipContent);
-    expect(screen.queryByText('Show All?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Show All')).not.toBeInTheDocument();
   });
+  // LOGZ.IO CHANGE END:: Show All toggle visibility across tooltip series modes
 });

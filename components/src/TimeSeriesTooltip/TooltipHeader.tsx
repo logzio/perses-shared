@@ -24,6 +24,7 @@ export interface TooltipHeaderProps {
   isTooltipPinned: boolean;
   showAllSeries: boolean;
   enablePinning?: boolean;
+  isSingleMode?: boolean; // LOGZ.IO CHANGE:: Single tooltip mode shows the toggle whenever >1 series is hidden
   onShowAllClick?: (checked: boolean) => void;
   onUnpinClick?: () => void;
 }
@@ -34,6 +35,7 @@ export const TooltipHeader = memo(function TooltipHeader({
   isTooltipPinned,
   showAllSeries,
   enablePinning = true,
+  isSingleMode = false, // LOGZ.IO CHANGE:: Single tooltip mode toggle visibility
   onShowAllClick,
   onUnpinClick,
 }: TooltipHeaderProps) {
@@ -65,7 +67,10 @@ export const TooltipHeader = memo(function TooltipHeader({
   };
 
   // TODO: accurately calc whether more series are outside scrollable region using yBuffer, avg series name length, TOOLTIP_MAX_HEIGHT
-  const showAllSeriesToggle = enablePinning && totalSeries > 5;
+  // LOGZ.IO CHANGE START:: Show All toggle visibility — single hides all but one line (useful at >1 series), nearby only when crowded (>5)
+  const hasHiddenSeries = isSingleMode ? totalSeries > 1 : totalSeries > 5;
+  const showAllSeriesToggle = enablePinning && (hasHiddenSeries || showAllSeries);
+  // LOGZ.IO CHANGE END:: Show All toggle visibility — single hides all but one line (useful at >1 series), nearby only when crowded (>5)
 
   return (
     <Box
