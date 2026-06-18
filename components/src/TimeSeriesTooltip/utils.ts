@@ -124,7 +124,10 @@ export function getTooltipStyles(
     top: 0,
     left: 0,
     borderRadius: '6px',
-    fontSize: '11px',
+    // LOGZ.IO CHANGE START:: Increase tooltip font readability
+    fontSize: '12px',
+    letterSpacing: '0.01em',
+    // LOGZ.IO CHANGE END:: Increase tooltip font readability
     visibility: 'visible',
     opacity: 1,
     transition: 'all 0.1s ease-out',
