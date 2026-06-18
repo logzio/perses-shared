@@ -42,10 +42,10 @@ export interface TimeChartTooltipProps {
    */
   seriesFormatMap?: Map<string, FormatOptions>;
   wrapLabels?: boolean;
-  // LOGZ.IO CHANGE START:: Persisted tooltip series mode (single/nearby/all)
+  // LOGZ.IO CHANGE START:: Persisted tooltip series mode
   /** Initial series-selection behavior, persisted via the panel's tooltip mode. */
   defaultSeriesMode?: 'single' | 'nearby' | 'all';
-  // LOGZ.IO CHANGE END:: Persisted tooltip series mode (single/nearby/all)
+  // LOGZ.IO CHANGE END:: Persisted tooltip series mode
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
   pointActions?: PointAction[];
   seriesMetadata?: TimeSeriesMetadata[];

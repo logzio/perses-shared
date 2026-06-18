@@ -157,7 +157,7 @@ export type TooltipConfig = {
   wrapLabels: boolean;
   hidden?: boolean;
   enablePinning?: boolean;
-  defaultSeriesMode?: 'single' | 'nearby' | 'all'; // LOGZ.IO CHANGE:: Persisted tooltip series mode (single/nearby/all)
+  defaultSeriesMode?: 'single' | 'nearby' | 'all'; // LOGZ.IO CHANGE:: Persisted tooltip series mode
 };
 
 export const DEFAULT_TOOLTIP_CONFIG: TooltipConfig = {
