@@ -23,11 +23,11 @@ export interface SeriesInfoProps {
   formattedY: string;
   markerColor: string;
   totalSeries: number;
-  // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+  // LOGZ.IO CHANGE START:: Drilldown panel
   isSelected?: boolean;
   isSelectable?: boolean;
   onSelected?: () => void;
-  // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+  // LOGZ.IO CHANGE END:: Drilldown panel
   emphasizeText?: boolean;
   wrapLabels?: boolean;
 }
@@ -40,11 +40,11 @@ export function SeriesInfo(props: SeriesInfoProps): ReactElement {
     totalSeries,
     emphasizeText = false,
     wrapLabels = true,
-    // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+    // LOGZ.IO CHANGE START:: Drilldown panel
     isSelected,
     isSelectable,
     onSelected,
-    // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+    // LOGZ.IO CHANGE END:: Drilldown panel
   } = props;
 
   // metric __name__ comes before opening curly brace, ignore if not populated
@@ -74,7 +74,7 @@ export function SeriesInfo(props: SeriesInfoProps): ReactElement {
   const formattedSeriesInfo = seriesName.replace(/[,]/g, ', ');
 
   return (
-    // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+    // LOGZ.IO CHANGE START:: Drilldown panel
     <Box
       onClick={isSelectable ? onSelected : undefined}
       sx={(theme) => ({
@@ -92,18 +92,16 @@ export function SeriesInfo(props: SeriesInfoProps): ReactElement {
         },
       })}
     >
-      <Box sx={{ maxWidth: '520px' }}>
-        <SeriesMarker markerColor={markerColor} sx={{ marginTop: 0.25 }} />
-        {/* LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377] */}
+      {/* LOGZ.IO CHANGE END:: Drilldown panel */}
+      {/* LOGZ.IO CHANGE START:: Tooltip column sizing */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, maxWidth: TOOLTIP_LABELS_MAX_WIDTH }}>
+        <SeriesMarker markerColor={markerColor} sx={{ marginTop: 0.25, flexShrink: 0 }} />
         <Box
           component="span"
           sx={(theme) => ({
-            display: 'inline-block',
-            width: 'calc(100% - 20px)',
-            minWidth: 150,
-            maxWidth: TOOLTIP_LABELS_MAX_WIDTH,
+            minWidth: 0,
             overflow: 'hidden',
-            color: theme.palette.text.primary, // LOGZ.IO CHANGE:: Drilldown panel [APPZ-377]
+            color: theme.palette.text.primary, // LOGZ.IO CHANGE:: Drilldown panel
             fontWeight: emphasizeText ? theme.typography.fontWeightBold : theme.typography.fontWeightRegular,
             textOverflow: 'ellipsis',
             whiteSpace: wrapLabels ? 'normal' : 'nowrap',
@@ -113,11 +111,13 @@ export function SeriesInfo(props: SeriesInfoProps): ReactElement {
           {formattedSeriesInfo}
         </Box>
       </Box>
+      {/* LOGZ.IO CHANGE END:: Tooltip column sizing */}
       <Box
         sx={(theme) => ({
           paddingLeft: 1.5,
           textAlign: 'right',
           verticalAlign: 'top',
+          flexShrink: 0, // LOGZ.IO CHANGE:: keep the value column at full width so a long name can't crush it
           fontWeight: emphasizeText ? theme.typography.fontWeightBold : theme.typography.fontWeightRegular,
         })}
       >

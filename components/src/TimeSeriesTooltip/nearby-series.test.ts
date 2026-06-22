@@ -12,7 +12,9 @@
 // limitations under the License.
 
 import { EChartsDataFormat, FormatOptions } from '../model';
-import { legacyCheckforNearbySeries, getYBuffer, isWithinPercentageRange } from './nearby-series';
+// LOGZ.IO CHANGE:: pickClosestSeries (+ NearbySeriesArray) imported for the Single-mode tests below
+import { legacyCheckforNearbySeries, getYBuffer, isWithinPercentageRange, pickClosestSeries } from './nearby-series';
+import { NearbySeriesArray } from './types';
 
 describe('legacyCheckforNearbySeries', () => {
   const chartData: EChartsDataFormat = {
@@ -124,3 +126,40 @@ describe('isWithinPercentageRange', () => {
     expect(result).toBe(false);
   });
 });
+
+// LOGZ.IO CHANGE START:: Single tooltip mode — pickClosestSeries reduces nearby series to the closest one
+describe('pickClosestSeries', () => {
+  const makeSeries = (seriesIdx: number, y: number, isClosestToCursor = false): NearbySeriesArray[number] => ({
+    seriesIdx,
+    datumIdx: 0,
+    seriesName: `series-${seriesIdx}`,
+    date: 0,
+    markerColor: '#000',
+    x: 0,
+    y,
+    formattedY: `${y}`,
+    isClosestToCursor,
+    isSelected: false,
+  });
+
+  it('should keep only the series whose value is nearest the cursor Y when none is flagged', () => {
+    const result = pickClosestSeries([makeSeries(0, 10), makeSeries(1, 50), makeSeries(2, 12)], 11);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.seriesIdx).toBe(0);
+  });
+
+  it('should prefer the series flagged isClosestToCursor even if another is numerically closer', () => {
+    // series 0 has the smaller raw distance to cursorY=10, but series 1 is the pipeline's flagged winner
+    const result = pickClosestSeries([makeSeries(0, 10, false), makeSeries(1, 11, true)], 10);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.seriesIdx).toBe(1);
+    expect(result[0]?.isClosestToCursor).toBe(true);
+  });
+
+  it('should return the input unchanged when it has one or zero entries', () => {
+    expect(pickClosestSeries([], 5)).toHaveLength(0);
+    const single = [makeSeries(0, 3)];
+    expect(pickClosestSeries(single, 100)).toBe(single);
+  });
+});
+// LOGZ.IO CHANGE END:: Single tooltip mode — pickClosestSeries reduces nearby series to the closest one

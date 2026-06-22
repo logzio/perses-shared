@@ -233,7 +233,7 @@ export function getNearbySeriesData({
   chart,
   format,
   seriesFormatMap,
-  showAllSeries = false,
+  seriesMode = 'nearby', // LOGZ.IO CHANGE:: series mode (single/nearby/all) replaces showAllSeries
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
   seriesMetadata,
   selectedSeriesIdx,
@@ -246,7 +246,7 @@ export function getNearbySeriesData({
   chart?: EChartsInstance;
   format?: FormatOptions;
   seriesFormatMap?: Map<string, FormatOptions>;
-  showAllSeries?: boolean;
+  seriesMode?: 'single' | 'nearby' | 'all'; // LOGZ.IO CHANGE:: series mode replaces showAllSeries
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
   seriesMetadata?: TimeSeriesMetadata[];
   selectedSeriesIdx?: number | null;
@@ -299,12 +299,13 @@ export function getNearbySeriesData({
       yInterval = (actualMax - actualMin) / 100;
     }
     const totalSeries = data.length;
-    const yBuffer = getYBuffer({ yInterval, totalSeries, showAllSeries });
+    // LOGZ.IO CHANGE:: only "all" mode widens the buffer to the whole canvas
+    const yBuffer = getYBuffer({ yInterval, totalSeries, showAllSeries: seriesMode === 'all' });
 
     // Detect if chart has multiple Y-axes by checking if any series uses yAxisIndex > 0
     const hasMultipleYAxes = seriesMapping.some((series) => series.yAxisIndex !== undefined && series.yAxisIndex > 0);
 
-    return checkforNearbyTimeSeries(
+    const nearbySeries = checkforNearbyTimeSeries(
       data,
       seriesMapping,
       pointInGrid,
@@ -319,6 +320,10 @@ export function getNearbySeriesData({
       // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
       hasMultipleYAxes ? cursorPixelY : undefined
     );
+
+    // LOGZ.IO CHANGE START:: Single tooltip mode — show only the series closest to the cursor
+    return seriesMode === 'single' ? pickClosestSeries(nearbySeries, pointInGrid[1] ?? 0) : nearbySeries;
+    // LOGZ.IO CHANGE END:: Single tooltip mode — show only the series closest to the cursor
   }
 
   // no nearby series found
@@ -371,3 +376,24 @@ export function getYBuffer({
   // increase multiplier to expand nearby series range
   return Math.max(yBufferMin, yInterval * INCREASE_NEARBY_SERIES_MULTIPLIER);
 }
+
+// LOGZ.IO CHANGE START:: Single tooltip mode helper
+/**
+ * Reduce a set of nearby series to just the one whose value is closest to the cursor's Y.
+ * Used by the "Single" tooltip mode. Returns the input unchanged when it has 0 or 1 entries
+ * (so hovering far from every line shows nothing, matching the nearby-series result).
+ */
+export function pickClosestSeries(series: NearbySeriesArray, cursorY: number): NearbySeriesArray {
+  if (series.length <= 1) {
+    return series;
+  }
+
+  // Prefer the series the pipeline already marked closest (isClosestToCursor) so single mode stays
+  // consistent with the emphasized/bold series and with multi-axis/stacked handling. Fall back to
+  // the smallest data-space distance only when nothing is flagged (cursor between lines).
+  const flagged = series.filter((entry) => entry.isClosestToCursor);
+  const pool = flagged.length > 0 ? flagged : series;
+  const closest = pool.reduce((a, b) => (Math.abs(cursorY - a.y) <= Math.abs(cursorY - b.y) ? a : b));
+  return [closest];
+}
+// LOGZ.IO CHANGE END:: Single tooltip mode helper
