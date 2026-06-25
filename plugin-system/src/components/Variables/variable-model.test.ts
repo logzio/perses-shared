@@ -26,6 +26,8 @@ import { filterVariableList, useListVariablePluginValues, useResolveListVariable
 describe('filterVariableList', () => {
   const testSuite = [
     {
+      // LOGZ.IO CHANGE:: the captured fragment now drives the label too, so the dropdown shows the
+      // captured value (matches Grafana) rather than the original option label.
       title: 'basic case',
       capturingRegexp: /([^-]*)-host-([^-]*)/g,
       originalValues: [
@@ -35,9 +37,9 @@ describe('filterVariableList', () => {
         { label: 'l4', value: 'bar' },
       ] as VariableOption[],
       result: [
-        { label: 'l1', value: 'us1ahdix' },
-        { label: 'l2', value: 'us1diua' },
-        { label: 'l3', value: 'eu1adf' },
+        { label: 'us1ahdix', value: 'us1ahdix' },
+        { label: 'us1diua', value: 'us1diua' },
+        { label: 'eu1adf', value: 'eu1adf' },
       ],
     },
     {
@@ -51,10 +53,24 @@ describe('filterVariableList', () => {
         { label: 'l5', value: 'prometheus-perses:9091' },
       ] as VariableOption[],
       result: [
-        { label: 'l1', value: 'app' },
-        { label: 'l3', value: 'platform' },
-        { label: 'l4', value: 'database' },
-        { label: 'l5', value: 'perses' },
+        { label: 'app', value: 'app' },
+        { label: 'platform', value: 'platform' },
+        { label: 'database', value: 'database' },
+        { label: 'perses', value: 'perses' },
+      ],
+    },
+    {
+      // LOGZ.IO CHANGE:: the headline case — a Grafana extraction regex on `cluster-<n>` shows the
+      // captured number in the dropdown, not the full `cluster-<n>` label.
+      title: 'extracts and displays the captured group (cluster-103 -> 103)',
+      capturingRegexp: /-([0-9]{0,3}$)/g,
+      originalValues: [
+        { label: 'cluster-103', value: 'cluster-103' },
+        { label: 'cluster-204', value: 'cluster-204' },
+      ] as VariableOption[],
+      result: [
+        { label: '103', value: '103' },
+        { label: '204', value: '204' },
       ],
     },
   ];
@@ -80,11 +96,11 @@ describe('filterVariableList', () => {
     ]);
   });
 
-  it('still rewrites the value to the captured fragment by default (unchanged behavior)', () => {
+  it('rewrites both the label and the value to the captured fragment by default', () => {
     const data: VariableOption[] = [{ label: 'Opensearch Prod', value: 'Opensearch Prod' }];
     const regex = /(Opensearch)/g;
 
-    expect(filterVariableList(data, regex)).toEqual([{ label: 'Opensearch Prod', value: 'Opensearch' }]);
+    expect(filterVariableList(data, regex)).toEqual([{ label: 'Opensearch', value: 'Opensearch' }]);
   });
   // LOGZ.IO CHANGE END:: datasource variables filter by regex but must keep the real datasource name as value
 });
