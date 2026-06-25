@@ -21,7 +21,12 @@ import {
 import { ListVariableDefinition, VariableDefinition } from '@perses-dev/spec';
 import { waitFor } from '@testing-library/react';
 import { renderHookWithContext } from '../../test/render-hook';
-import { filterVariableList, useListVariablePluginValues, useResolveListVariableValues } from './variable-model';
+import {
+  filterVariableList,
+  safeParseCapturingRegexp,
+  useListVariablePluginValues,
+  useResolveListVariableValues,
+} from './variable-model';
 
 describe('filterVariableList', () => {
   const testSuite = [
@@ -88,6 +93,29 @@ describe('filterVariableList', () => {
   });
   // LOGZ.IO CHANGE END:: datasource variables filter by regex but must keep the real datasource name as value
 });
+
+// LOGZ.IO CHANGE START:: an invalid capturingRegexp must never throw (it used to crash the variable editor)
+describe('safeParseCapturingRegexp', () => {
+  it('should return a global RegExp for a valid pattern', () => {
+    const result = safeParseCapturingRegexp('-([0-9]{0,3}$)');
+
+    expect(result).toBeInstanceOf(RegExp);
+    expect(result?.source).toBe('-([0-9]{0,3}$)');
+    expect(result?.global).toBe(true);
+  });
+
+  it('should return undefined (no filter) for an empty or missing pattern', () => {
+    expect(safeParseCapturingRegexp(undefined)).toBeUndefined();
+    expect(safeParseCapturingRegexp('')).toBeUndefined();
+  });
+
+  it('should return undefined instead of throwing for a malformed pattern', () => {
+    // The exact pattern from the customer report: an unterminated group ("-([0-1]{0,3}$").
+    expect(() => safeParseCapturingRegexp('-([0-1]{0,3}$')).not.toThrow();
+    expect(safeParseCapturingRegexp('-([0-1]{0,3}$')).toBeUndefined();
+  });
+});
+// LOGZ.IO CHANGE END:: an invalid capturingRegexp must never throw (it used to crash the variable editor)
 
 jest.mock('../../runtime', () => ({
   ...jest.requireActual('../../runtime'),
