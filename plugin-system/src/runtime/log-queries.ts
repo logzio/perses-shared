@@ -14,6 +14,7 @@
 import { QueryDefinition, UnknownSpec } from '@perses-dev/spec';
 import { useQueries, UseQueryResult } from '@tanstack/react-query';
 import { LogQueryResult } from '../model/log-queries';
+import { useRetainPreviousData } from '../hooks';
 import { useDatasourceStore } from './datasources';
 import { usePluginRegistry } from './plugin-registry';
 import { useTimeRange } from './TimeRangeProvider';
@@ -35,7 +36,7 @@ export function useLogQueries(definitions: LogQueryDefinition[]): Array<UseQuery
     refreshKey: '',
   };
 
-  return useQueries({
+  const results = useQueries({
     queries: definitions.map((definition) => {
       const queryKey = ['query', LOG_QUERY_KEY, definition, absoluteTimeRange, variableValues] as const;
       const logQueryKind = definition?.spec?.plugin?.kind;
@@ -55,4 +56,7 @@ export function useLogQueries(definitions: LogQueryDefinition[]): Array<UseQuery
       };
     }),
   });
+
+  // LOGZ.IO CHANGE:: keep previous data across refresh/time-range change (useQueries + keepPreviousData does not)
+  return useRetainPreviousData(results);
 }
