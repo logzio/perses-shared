@@ -36,7 +36,7 @@ export function useRetainPreviousData<T>(results: Array<UseQueryResult<T>>): Arr
 
   const merged = useMemo(() => {
     let changed = false;
-    const next = results.map((result) => result);
+    const next = [...results];
 
     results.forEach((result, index) => {
       if (result.data !== undefined) return;
