@@ -25,7 +25,7 @@ export interface VirtualizedSeriesProps {
   sortedFocusedSeries: NonNullable<TooltipContentProps['series']>;
 }
 
-// LOGZ.IO CHANGE FILE:: Performance optimization [APPZ-359]
+// LOGZ.IO CHANGE FILE:: Performance optimization
 
 export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
   allowActions,
@@ -37,11 +37,11 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
   return (
     <Box
       sx={(theme) => ({
-        padding: theme.spacing(0.5, 2),
+        padding: theme.spacing(0.5, 1), // LOGZ.IO CHANGE:: Tighter horizontal padding for a more compact tooltip
         width: 500,
-        // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+        // LOGZ.IO CHANGE START:: Drilldown panel
         borderBottom: allowActions ? `1px solid ${theme.palette.divider}` : undefined,
-        // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+        // LOGZ.IO CHANGE END:: Drilldown panel
       })}
     >
       <Virtuoso
@@ -65,11 +65,11 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
               totalSeries={sortedFocusedSeries.length}
               wrapLabels={wrapLabels}
               emphasizeText={data.isClosestToCursor}
-              // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+              // LOGZ.IO CHANGE START:: Drilldown panel
               isSelected={data.isSelected}
               isSelectable={!!data.metadata?.isSelectable ?? true}
               onSelected={onSelected ? (): void => onSelected(data.seriesIdx!) : undefined}
-              // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+              // LOGZ.IO CHANGE END:: Drilldown panel
             />
           );
         }}

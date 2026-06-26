@@ -58,7 +58,7 @@ export function GridTitle(props: GridTitleProps): ReactElement {
         justifyContent: 'start',
         alignItems: 'center',
         cursor: collapse ? 'pointer' : 'auto',
-        backgroundColor: ({ palette }) => palette.background.paper,
+        backgroundColor: ({ palette }) => palette.background.default, // LOGZ.IO CHANGE:: blend the group header into the dashboard background
       }}
       data-testid="panel-group-header"
     >

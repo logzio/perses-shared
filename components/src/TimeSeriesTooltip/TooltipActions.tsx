@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+// LOGZ.IO CHANGE START:: Drilldown panel
 import { Box, Icon, MenuItem, Stack, Typography } from '@mui/material';
 import Magnify from 'mdi-material-ui/Magnify';
 import {
@@ -31,9 +31,9 @@ export interface TooltipActionProps {
   onUnpinClick?: () => void;
 }
 export const TooltipActions: React.FC<TooltipActionProps> = ({ actions, selectedSeries, onUnpinClick, isPinned }) => {
-  // LOGZ.IO CHANGE START:: Per-point action visibility [APPZ-2424]
+  // LOGZ.IO CHANGE START:: Per-point action visibility
   const visibleActions = selectedSeries ? actions.filter((action) => isActionVisible(action, selectedSeries)) : actions;
-  // LOGZ.IO CHANGE END:: Per-point action visibility [APPZ-2424]
+  // LOGZ.IO CHANGE END:: Per-point action visibility
 
   return (
     <Box
@@ -102,6 +102,7 @@ export const TooltipActions: React.FC<TooltipActionProps> = ({ actions, selected
                     padding: theme.spacing(0.5, 1),
                     gap: 1,
                     height: 32,
+                    color: theme.palette.text.primary, // LOGZ.IO CHANGE:: Match the softened tooltip text color (MenuItem theme color is brighter)
                   })}
                 >
                   {action.icon && action.icon}
@@ -115,4 +116,4 @@ export const TooltipActions: React.FC<TooltipActionProps> = ({ actions, selected
     </Box>
   );
 };
-// LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+// LOGZ.IO CHANGE END:: Drilldown panel
