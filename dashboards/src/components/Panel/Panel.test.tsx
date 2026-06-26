@@ -296,6 +296,32 @@ describe('Panel', () => {
     expect(screen.queryAllByLabelText('loading').length).toBeGreaterThan(0);
   });
 
+  // Regression: while a refresh refetches, keepPreviousData keeps the previous data on the query,
+  // so the panel must keep rendering the chart with only the header spinner — never swap to the
+  // full-panel loading skeleton.
+  it('keeps the chart visible (no skeleton) and shows only the header spinner while refetching with previous data', async () => {
+    (useDataQueriesContext as jest.Mock).mockReturnValue({
+      queryResults: [
+        {
+          definition: { kind: 'TimeSeriesQuery', spec: { plugin: { kind: 'PrometheusTimeSeriesQuery', spec: {} } } },
+          data: { series: [{ name: 'test', values: [[1, 2]] }] },
+          isFetching: true,
+        },
+      ],
+    });
+
+    await renderPanel();
+
+    const content = screen.getByRole('figure');
+    await waitFor(() => {
+      expect(content).toHaveTextContent('TimeSeriesChart panel');
+    });
+    // The full-panel skeleton (LoadingOverlay / plugin skeleton) uses aria-label "Loading..."
+    expect(screen.queryByLabelText('Loading...')).not.toBeInTheDocument();
+    // The small header spinner uses aria-label "loading"
+    expect(screen.queryAllByLabelText('loading').length).toBeGreaterThan(0);
+  });
+
   it('does not show a loading indicator if 2/2 queries are loading', async () => {
     (useDataQueriesContext as jest.Mock).mockReturnValue({
       queryResults: [],

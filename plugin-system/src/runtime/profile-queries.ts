@@ -13,6 +13,7 @@
 
 import { QueryDefinition, UnknownSpec, ProfileData } from '@perses-dev/spec';
 import { useQueries, UseQueryResult } from '@tanstack/react-query';
+import { useRetainPreviousData } from '../hooks';
 import { useDatasourceStore } from './datasources';
 import { usePluginRegistry } from './plugin-registry';
 import { useTimeRange } from './TimeRangeProvider';
@@ -35,7 +36,7 @@ export function useProfileQueries(definitions: ProfileQueryDefinition[]): Array<
 
   // useQueries() handles data fetching from query plugins (e.g. traceQL queries, promQL queries)
   // https://tanstack.com/query/v4/docs/react/reference/useQuery
-  return useQueries({
+  const results = useQueries({
     queries: definitions.map((definition) => {
       const queryKey = ['query', PROFILE_QUERY_KEY, definition, absoluteTimeRange] as const; // `queryKey` watches and reruns `queryFn` if keys in the array change
       const profileQueryKind = definition?.spec?.plugin?.kind;
@@ -55,4 +56,7 @@ export function useProfileQueries(definitions: ProfileQueryDefinition[]): Array<
       };
     }),
   });
+
+  // LOGZ.IO CHANGE:: keep previous data across refresh/time-range change (useQueries + keepPreviousData does not)
+  return useRetainPreviousData(results);
 }

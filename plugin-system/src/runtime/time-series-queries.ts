@@ -13,6 +13,7 @@
 
 import { TimeSeriesData, TimeSeriesQueryDefinition, UnknownSpec } from '@perses-dev/spec';
 import {
+  keepPreviousData,
   Query,
   QueryCache,
   QueryKey,
@@ -23,7 +24,7 @@ import {
 } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import { TimeSeriesDataQuery, TimeSeriesQueryContext, TimeSeriesQueryMode } from '../model';
-import { useStableQueries } from '../hooks';
+import { useStableQueries, useRetainPreviousData } from '../hooks';
 import { useTimeRange } from './TimeRangeProvider';
 import { useDatasourceStore } from './datasources';
 import { usePlugin, usePluginRegistry, usePlugins } from './plugin-registry';
@@ -60,6 +61,8 @@ export const useTimeSeriesQuery = (
 
   return useQuery({
     enabled: (queryOptions?.enabled ?? true) || queryEnabled,
+    // LOGZ.IO CHANGE:: keep previous data on refresh/time-range change to avoid skeleton flicker
+    placeholderData: keepPreviousData,
     queryKey: queryKey,
     queryFn: ({ signal }) => {
       // The 'enabled' option should prevent this from happening, but make TypeScript happy by checking
@@ -127,8 +130,13 @@ export function useTimeSeriesQueries(
   // LOGZ.IO CHANGE:: Performance optimization [APPZ-359] useStableQueries()
   const results = useStableQueries({ queries }) as Array<UseQueryResult<TimeSeriesData>>;
 
+  // LOGZ.IO CHANGE:: keep the previous data while a refresh / time-range change refetches, so panels
+  // show only the header spinner instead of swapping to the full skeleton. keepPreviousData cannot do
+  // this for useQueries (its observer is recreated on key change), so retain the data manually.
+  const retainedResults = useRetainPreviousData(results);
+
   // Memoize resolved results computation to avoid rebuilding in every effect run
-  const newResolved = useMemo(() => buildResolvedResults(results), [results]);
+  const newResolved = useMemo(() => buildResolvedResults(retainedResults), [retainedResults]);
 
   // Sync resolved results when data references change
   useEffect(() => {
@@ -137,7 +145,7 @@ export function useTimeSeriesQueries(
     }
   }, [newResolved, resolvedResults]);
 
-  return results;
+  return retainedResults;
   // LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas
 }
 

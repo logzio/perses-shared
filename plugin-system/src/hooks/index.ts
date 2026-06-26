@@ -15,3 +15,4 @@
 
 export * from './array-memo';
 export * from './stable-queries';
+export * from './retain-previous-data';
