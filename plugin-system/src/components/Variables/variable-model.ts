@@ -60,10 +60,17 @@ export function filterVariableList(
     if (concat !== '') {
       // LOGZ.IO CHANGE START:: keep the original value for datasource variables (regex is filter-only)
       const value = preserveOriginalValue ? variableValue.value : concat;
+      // LOGZ.IO CHANGE START:: show the captured fragment in the dropdown. Grafana sets both the
+      // displayed text and the value to the captured group, so a regex like `-([0-9]+$)` turns
+      // `cluster-103` into `103` in the dropdown — not just in the submitted value. Datasource
+      // variables keep their original label because their value is preserved (the captured fragment
+      // is not a real datasource name).
+      const label = preserveOriginalValue ? variableValue.label : concat;
+      // LOGZ.IO CHANGE END:: show the captured fragment in the dropdown
       if (!filteredSet.has(value)) {
         // like that we are avoiding to have duplicating variable value
         filteredSet.add(value);
-        result.push({ label: variableValue.label, value });
+        result.push({ label, value });
       }
       // LOGZ.IO CHANGE END:: keep the original value for datasource variables (regex is filter-only)
     }
@@ -79,6 +86,22 @@ function useVariablePluginContext(): GetVariableOptionsContext {
   return { timeRange, datasourceStore, variables: allVariables };
 }
 
+// LOGZ.IO CHANGE START:: an invalid capturingRegexp must never crash the variable editor or dashboard.
+// `new RegExp` throws on a malformed pattern (e.g. `-([0-1]{0,3}$` — unterminated group). Because the
+// regex was built during render, a single bad or half-typed pattern crashed the whole variable editor
+// and left it stuck returning no values until a full save + reload — even after the regex was removed.
+// Grafana simply ignores an unparseable regex; we do the same and fall back to "no filter" (and an empty
+// field is "no filter" too) so the raw values keep flowing and the user can fix or clear the field.
+export function safeParseCapturingRegexp(pattern: string | undefined): RegExp | undefined {
+  if (!pattern) return undefined;
+  try {
+    return new RegExp(pattern, 'g');
+  } catch {
+    return undefined;
+  }
+}
+// LOGZ.IO CHANGE END:: an invalid capturingRegexp must never crash the variable editor or dashboard
+
 const getVariableQueryConfig = (
   definition: ListVariableDefinition,
   variablePluginCtx: GetVariableOptionsContext,
@@ -86,11 +109,8 @@ const getVariableQueryConfig = (
   enabled: boolean,
   onFetched?: (name: string, options: VariableOption[], definition: ListVariableDefinition) => void
 ): UseQueryOptions<VariableOption[]> => {
-  // LOGZ.IO CHANGE START:: treat an empty capturing regex as "no filter" so clearing the field shows all values
-  const capturingRegexp = definition.spec.capturingRegexp
-    ? new RegExp(definition.spec.capturingRegexp, 'g')
-    : undefined;
-  // LOGZ.IO CHANGE END:: treat an empty capturing regex as "no filter" so clearing the field shows all values
+  // LOGZ.IO CHANGE:: empty OR invalid capturing regex is treated as "no filter" (see safeParseCapturingRegexp)
+  const capturingRegexp = safeParseCapturingRegexp(definition.spec.capturingRegexp);
   const variablesValueKey = getVariableValuesKey(variablePluginCtx.variables);
   return {
     queryKey: ['variable', definition, variablePluginCtx.timeRange, variablesValueKey],
