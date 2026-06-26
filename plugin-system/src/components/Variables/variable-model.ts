@@ -60,10 +60,17 @@ export function filterVariableList(
     if (concat !== '') {
       // LOGZ.IO CHANGE START:: keep the original value for datasource variables (regex is filter-only)
       const value = preserveOriginalValue ? variableValue.value : concat;
+      // LOGZ.IO CHANGE START:: show the captured fragment in the dropdown. Grafana sets both the
+      // displayed text and the value to the captured group, so a regex like `-([0-9]+$)` turns
+      // `cluster-103` into `103` in the dropdown — not just in the submitted value. Datasource
+      // variables keep their original label because their value is preserved (the captured fragment
+      // is not a real datasource name).
+      const label = preserveOriginalValue ? variableValue.label : concat;
+      // LOGZ.IO CHANGE END:: show the captured fragment in the dropdown
       if (!filteredSet.has(value)) {
         // like that we are avoiding to have duplicating variable value
         filteredSet.add(value);
-        result.push({ label: variableValue.label, value });
+        result.push({ label, value });
       }
       // LOGZ.IO CHANGE END:: keep the original value for datasource variables (regex is filter-only)
     }
