@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Grid, Typography } from '@mui/material';
+import { Box, Grid, Typography } from '@mui/material';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
 import { PanelEditorContext, PanelPreview } from '@perses-dev/dashboards';
-// LOGZ.IO CHANGE START:: Import PanelSpecChangeProvider for bidirectional panel-settings sync [APPZ-1695]
+// LOGZ.IO CHANGE START:: Import PanelSpecChangeProvider for bidirectional panel-settings sync
 import {
   DataQueriesProvider,
   PanelSpecChangeProvider,
@@ -22,13 +22,13 @@ import {
   usePlugin,
   useSuggestedStepMs,
 } from '@perses-dev/plugin-system';
-// LOGZ.IO CHANGE END:: Import PanelSpecChangeProvider for bidirectional panel-settings sync [APPZ-1695]
+// LOGZ.IO CHANGE END:: Import PanelSpecChangeProvider for bidirectional panel-settings sync
 import { Definition, PanelDefinition, PanelEditorValues, QueryDefinition, UnknownSpec } from '@perses-dev/spec';
 import { Control, FieldPath, useWatch } from 'react-hook-form';
 import { ReactElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-// LOGZ.IO CHANGE START:: Wrap editor preview in panel time range override [APPZ-2474]
+// LOGZ.IO CHANGE START:: Wrap editor preview in panel time range override
 import { PanelTimeRangeOverrideProvider } from '../../context/PanelTimeRangeOverride';
-// LOGZ.IO CHANGE END:: Wrap editor preview in panel time range override [APPZ-2474]
+// LOGZ.IO CHANGE END:: Wrap editor preview in panel time range override
 
 export interface PanelQueriesSharedControlsProps {
   control: Control<PanelEditorValues>;
@@ -41,7 +41,7 @@ export interface PanelQueriesSharedControlsProps {
 
 // Component of PanelEditor, it will share queries results to its children with DataQueriesProvider.
 // TODO: consider merging PanelEditorProvider, QueryCountProvider and DataQueriesProvider into a single provider to avoid multiple nested providers.
-// LOGZ.IO CHANGE START:: Wrap editor preview/queries in panel time range override so the preview matches the dashboard panel [APPZ-2474]
+// LOGZ.IO CHANGE START:: Wrap editor preview/queries in panel time range override so the preview matches the dashboard panel
 // The override needs to wrap useSuggestedStepMs + DataQueriesProvider + PanelPreview, mirroring
 // what GridItemContent does for the dashboard view. The body is split into an inner component so
 // the override-aware TimeRangeProvider sits above the time-range readers. The override values
@@ -91,7 +91,7 @@ function PanelQueriesSharedControlsBody({
   const panelEditorContext = useContext(PanelEditorContext);
 
   const suggestedStepMs = useSuggestedStepMs(panelEditorContext?.preview.previewPanelWidth);
-  // LOGZ.IO CHANGE END:: Wrap editor preview/queries in panel time range override [APPZ-2474]
+  // LOGZ.IO CHANGE END:: Wrap editor preview/queries in panel time range override
 
   const pluginQueryOptions = useMemo(
     () =>
@@ -107,12 +107,12 @@ function PanelQueriesSharedControlsBody({
         return {
           kind: query.spec.plugin.kind,
           spec: query.spec.plugin.spec,
-          hidden: (query.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
+          hidden: (query.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: Math on queries formulas
         };
       }) ?? []
   );
 
-  // LOGZ.IO CHANGE START:: sync preview when queries are added or removed [APPZ-1695]
+  // LOGZ.IO CHANGE START:: sync preview when queries are added or removed
   const prevQueryCountRef = useRef(panelDefinition.spec.queries?.length ?? 0);
   useEffect(() => {
     const currentCount = panelDefinition.spec.queries?.length ?? 0;
@@ -128,7 +128,7 @@ function PanelQueriesSharedControlsBody({
     }
     prevQueryCountRef.current = currentCount;
   }, [panelDefinition.spec.queries]);
-  // LOGZ.IO CHANGE END:: sync preview when queries are added or removed [APPZ-1695]
+  // LOGZ.IO CHANGE END:: sync preview when queries are added or removed
 
   const handleRunQuery = useCallback((index: number, newDef: QueryDefinition) => {
     setPreviewDefinition((prev) => {
@@ -136,13 +136,13 @@ function PanelQueriesSharedControlsBody({
       newDefinitions[index] = {
         kind: newDef.spec.plugin.kind,
         spec: newDef.spec.plugin.spec,
-        hidden: (newDef.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
+        hidden: (newDef.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: math-on-queries-formulas
       };
       return newDefinitions;
     });
   }, []);
 
-  // LOGZ.IO CHANGE START:: Wrap with PanelSpecChangeProvider for bidirectional panel-settings sync [APPZ-1695]
+  // LOGZ.IO CHANGE START:: Wrap with PanelSpecChangeProvider for bidirectional panel-settings sync
   return (
     <PanelSpecChangeProvider value={onPluginSpecChange}>
       <DataQueriesProvider definitions={previewDefinition} options={{ suggestedStepMs, ...pluginQueryOptions }}>
@@ -150,9 +150,21 @@ function PanelQueriesSharedControlsBody({
           <Typography variant="h4" marginBottom={1}>
             Preview
           </Typography>
-          <ErrorBoundary FallbackComponent={ErrorAlert}>
-            <PanelPreview panelDefinition={panelDefinition} />
-          </ErrorBoundary>
+          {/* LOGZ.IO CHANGE START:: Box shadow lifts the preview panel off the same-shade drawer (dark mode only) */}
+          <Box
+            sx={(theme) => ({
+              // Dark mode: panel and drawer share a shade, so lift the preview with a shadow.
+              // Light mode separates on its own (lighter panel on white drawer/inputs), so no shadow.
+              '& .MuiCard-root': {
+                boxShadow: theme.palette.mode === 'dark' ? '0 4px 16px rgba(0, 0, 0, 0.65)' : 'none',
+              },
+            })}
+          >
+            <ErrorBoundary FallbackComponent={ErrorAlert}>
+              <PanelPreview panelDefinition={panelDefinition} />
+            </ErrorBoundary>
+          </Box>
+          {/* LOGZ.IO CHANGE END:: Box shadow lifts the preview panel off the same-shade drawer */}
         </Grid>
         <Grid item xs={12}>
           <ErrorBoundary FallbackComponent={ErrorAlert}>
@@ -169,5 +181,5 @@ function PanelQueriesSharedControlsBody({
       </DataQueriesProvider>
     </PanelSpecChangeProvider>
   );
-  // LOGZ.IO CHANGE END:: Wrap with PanelSpecChangeProvider for bidirectional panel-settings sync [APPZ-1695]
+  // LOGZ.IO CHANGE END:: Wrap with PanelSpecChangeProvider for bidirectional panel-settings sync
 }

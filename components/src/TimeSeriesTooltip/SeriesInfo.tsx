@@ -118,6 +118,7 @@ export function SeriesInfo(props: SeriesInfoProps): ReactElement {
           textAlign: 'right',
           verticalAlign: 'top',
           flexShrink: 0, // LOGZ.IO CHANGE:: keep the value column at full width so a long name can't crush it
+          color: theme.palette.text.primary, // LOGZ.IO CHANGE:: match the softened tooltip text color
           fontWeight: emphasizeText ? theme.typography.fontWeightBold : theme.typography.fontWeightRegular,
         })}
       >
