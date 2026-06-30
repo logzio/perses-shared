@@ -178,7 +178,14 @@ export const EChart = memo(function EChart<T>({
   // Initialize chart, dispose on unmount
   useLayoutEffect(() => {
     if (containerRef.current === null || chartElement.current !== null) return;
-    chartElement.current = init(containerRef.current, theme, { renderer: renderer ?? 'canvas' });
+    // LOGZ.IO CHANGE START:: enable dirty-rectangle rendering so zrender only repaints the changed
+    // canvas regions (crosshair, hover, partial updates) instead of the whole canvas — cuts main-thread
+    // paint cost on dense panels. [unidash-perf]
+    chartElement.current = init(containerRef.current, theme, {
+      renderer: renderer ?? 'canvas',
+      useDirtyRect: true,
+    });
+    // LOGZ.IO CHANGE END:: enable dirty-rectangle rendering [unidash-perf]
     if (chartElement.current === undefined) return;
     chartElement.current.setOption(initialOption.current, true);
     onChartInitialized?.(chartElement.current);

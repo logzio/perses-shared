@@ -86,10 +86,19 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
 
   if (mousePos === null || mousePos.target === null || data === null) return null;
 
-  // Ensure user is hovering over a chart before checking for nearby series.
-  if (pinnedPos === null && (mousePos.target as HTMLElement).tagName !== 'CANVAS') return null;
-
   const chart = chartRef.current;
+
+  // Ensure user is hovering over a chart before checking for nearby series.
+  // LOGZ.IO CHANGE START:: only react to hovers over THIS panel's own canvas. Each panel mounts its
+  // own global mousemove listener, so without scoping to this chart's DOM a hover on one panel would
+  // run getNearbySeriesData (cost scales with series count) on every other panel's tooltip. [unidash-perf]
+  if (pinnedPos === null) {
+    const target = mousePos.target as HTMLElement;
+    if (target.tagName !== 'CANVAS') return null;
+    const chartDom = chart?.getDom();
+    if (chartDom && !chartDom.contains(target)) return null;
+  }
+  // LOGZ.IO CHANGE END:: only react to hovers over THIS panel's own canvas [unidash-perf]
 
   const containerElement = containerId ? document.querySelector(containerId) : undefined;
   // if tooltip is attached to a container, set max height to the height of the container so tooltip does not get cut off
