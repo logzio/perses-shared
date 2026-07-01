@@ -71,11 +71,15 @@ function definedInProject(props: { name: string; default: boolean }): Datasource
   };
 }
 
-function definedGlobally(props: { name: string; default: boolean }): GlobalDatasourceResource {
+function definedGlobally(props: { name: string; default: boolean; displayName?: string }): GlobalDatasourceResource {
   return {
     kind: 'GlobalDatasource',
     metadata: { name: props.name },
-    spec: { default: props.default, plugin: { kind: FAKE_PLUGIN_NAME, spec: {} } },
+    spec: {
+      default: props.default,
+      ...(props.displayName ? { display: { name: props.displayName } } : {}),
+      plugin: { kind: FAKE_PLUGIN_NAME, spec: {} },
+    },
   };
 }
 
@@ -202,6 +206,48 @@ describe('DatasourceStoreProvider::useListDatasourceSelectItems', () => {
                   group: 'global',
                   kind: FAKE_PLUGIN_NAME,
                   name: 'datasourceA',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      // LOGZ.IO regression test for the default-option label using the display name (not the prom-<id> slug)
+      title: 'default datasource label uses the display name when present',
+      input: {
+        datasources: {
+          local: {},
+          project: [],
+          global: [definedGlobally({ name: 'prom-12345', default: true, displayName: 'Kafka Lag Latency' })],
+        },
+      },
+      expected: {
+        result: [
+          {
+            editLink: undefined,
+            group: `Default Datasource Plugin for ${FAKE_PLUGIN_NAME}`,
+            items: [
+              {
+                name: 'Default (Kafka Lag Latency from global)',
+                selector: {
+                  kind: FAKE_PLUGIN_NAME,
+                },
+              },
+            ],
+          },
+          {
+            editLink: '/admin/datasources',
+            group: 'global',
+            items: [
+              {
+                name: 'Kafka Lag Latency',
+                overridden: false,
+                selector: {
+                  group: 'global',
+                  kind: FAKE_PLUGIN_NAME,
+                  name: 'prom-12345',
                 },
               },
             ],
