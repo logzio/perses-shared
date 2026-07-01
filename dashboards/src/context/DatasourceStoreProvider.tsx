@@ -312,8 +312,6 @@ function buildDatasourceSelectItemGroups(pluginDisplayName: string): {
 
     const isExplicitDefault = !isOverridden && spec.default && !explicitDefaultAdded;
     if (results[0] && (isFirst || isExplicitDefault)) {
-      console.log(`Default (${spec.display?.name ?? selectorName} from ${group})`);
-
       // If we haven't added a default yet and this is a default, add default option to the beginning of the results
       results[0].items = [
         {

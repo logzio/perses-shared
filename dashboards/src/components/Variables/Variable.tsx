@@ -194,7 +194,7 @@ export function useListVariableState(
     }
 
     return value;
-  }, [viewOptions, value, valueIsInOptions, allowMultiple, allowAllValue, loading]);
+  }, [viewOptions, value, valueIsInOptions, allowMultiple, allowAllValue, loading]); // LOGZ.IO CHANGE
 
   const selectedOptions = useMemo(() => {
     // In the case Autocomplete.multiple equals false, Autocomplete.value expects a single object, not

@@ -71,15 +71,18 @@ function definedInProject(props: { name: string; default: boolean }): Datasource
   };
 }
 
+// LOGZ.IO CHANGE
 function definedGlobally(props: { name: string; default: boolean; displayName?: string }): GlobalDatasourceResource {
   return {
     kind: 'GlobalDatasource',
     metadata: { name: props.name },
+    // LOGZ.IO CHANGE START
     spec: {
       default: props.default,
       ...(props.displayName ? { display: { name: props.displayName } } : {}),
       plugin: { kind: FAKE_PLUGIN_NAME, spec: {} },
     },
+    // LOGZ.IO CHANGE END
   };
 }
 
