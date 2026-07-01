@@ -97,6 +97,11 @@ export function useListDatasourceSelectItems(
   return useQuery<DatasourceSelectItemGroup[]>({
     queryKey: ['listDatasourceSelectItems', datasourcePluginName, project],
     queryFn: () => listDatasourceSelectItems(datasourcePluginName),
+    // LOGZ.IO CHANGE START:: keep the datasource list warm so labels don't fall back to the slug /
+    // generic plugin kind while the list (re)loads. Resolution flips to display names once and stays cached.
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 60 * 60 * 1000, // 1 hour
+    // LOGZ.IO CHANGE END
   });
 }
 

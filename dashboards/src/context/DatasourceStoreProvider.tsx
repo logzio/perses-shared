@@ -315,7 +315,9 @@ function buildDatasourceSelectItemGroups(pluginDisplayName: string): {
       // If we haven't added a default yet and this is a default, add default option to the beginning of the results
       results[0].items = [
         {
-          name: `Default (${selectorName} from ${group})`,
+          // LOGZ.IO CHANGE START:: show the datasource display name (not the prom-<id> slug) in the default option label
+          name: `Default (${spec.display?.name ?? selectorName} from ${group})`,
+          // LOGZ.IO CHANGE END
           selector: {
             kind: spec.plugin.kind,
           },

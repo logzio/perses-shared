@@ -184,14 +184,17 @@ export function useListVariableState(
     const firstOptionValue = viewOptions?.[allowAllValue ? 1 : 0]?.value;
 
     // If there is no value but there are options, or the value is not in options, we set the value to the first option.
-    if (firstOptionValue) {
+    // LOGZ.IO CHANGE START:: don't reset a saved value to the first option while the options query is still loading
+    // (a transient/loading options list would otherwise silently switch the selected datasource).
+    if (firstOptionValue && !loading) {
+      // LOGZ.IO CHANGE END
       if (!valueIsInOptions || !value || value.length === 0) {
         return allowMultiple ? [firstOptionValue] : firstOptionValue;
       }
     }
 
     return value;
-  }, [viewOptions, value, valueIsInOptions, allowMultiple, allowAllValue]);
+  }, [viewOptions, value, valueIsInOptions, allowMultiple, allowAllValue, loading]); // LOGZ.IO CHANGE
 
   const selectedOptions = useMemo(() => {
     // In the case Autocomplete.multiple equals false, Autocomplete.value expects a single object, not
