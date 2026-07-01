@@ -98,35 +98,67 @@ export type ZRRawMouseEvent = MouseEvent & ZREventProperties;
 export const useMousePosition = (): CursorData['coords'] => {
   const [coords, setCoords] = useState<CursorData['coords']>(null);
 
+  // LOGZ.IO CHANGE START:: coalesce mouse tracking to one update per animation frame, and skip
+  // updates while the cursor stays off any chart canvas. Previously this fired a React setState on
+  // EVERY native mousemove, and one listener is mounted per panel — so a single mouse move re-rendered
+  // every tooltip. Combined with large series counts that flooded the main thread and the
+  // GC/cycle-collector (see Firefox profile: ~76% CPU in cycle collection). [unidash-perf]
   useEffect(() => {
-    const setFromEvent = (e: ZRRawMouseEvent): void => {
-      return setCoords({
+    let rafId: number | null = null;
+    let latestEvent: ZRRawMouseEvent | null = null;
+    // Whether the last position we emitted was over a chart canvas. Lets us emit a single update
+    // when the cursor leaves a canvas (so the tooltip hides), then ignore further off-canvas moves
+    // until it returns — and most of the viewport (gaps, headers, the rest of the page) is not a chart.
+    let lastTargetWasCanvas = false;
+
+    const flush = (): void => {
+      rafId = null;
+      const event = latestEvent;
+      latestEvent = null;
+      if (event === null) return;
+
+      const targetIsCanvas = (event.target as HTMLElement | null)?.tagName === 'CANVAS';
+      if (!targetIsCanvas && !lastTargetWasCanvas) return;
+      lastTargetWasCanvas = targetIsCanvas;
+
+      setCoords({
         page: {
-          x: e.pageX,
-          y: e.pageY,
+          x: event.pageX,
+          y: event.pageY,
         },
         client: {
-          x: e.clientX,
-          y: e.clientY,
+          x: event.clientX,
+          y: event.clientY,
         },
         plotCanvas: {
           // Default to zrender mousemove coords since they handle browser inconsistencies for us
           // ex: Firefox and Chrome have slightly different implementations of offsetX and offsetY
           // more info: https://github.com/ecomfe/zrender/blob/5.5.0/src/core/event.ts#L46-L120
           // Fallback to offsetX and offsetY to ensure tooltip works correctly in Edge
-          x: e.zrX ?? e.offsetX,
-          y: e.zrY ?? e.offsetY,
+          x: event.zrX ?? event.offsetX,
+          y: event.zrY ?? event.offsetY,
         },
         // necessary to check whether cursor target matches correct chart canvas (since each chart has its own mousemove listener)
-        target: e.target,
+        target: event.target,
       });
     };
-    window.addEventListener('mousemove', setFromEvent);
+
+    const setFromEvent = (e: ZRRawMouseEvent): void => {
+      latestEvent = e;
+      if (rafId === null) {
+        rafId = requestAnimationFrame(flush);
+      }
+    };
+    window.addEventListener('mousemove', setFromEvent, { passive: true });
 
     return (): void => {
       window.removeEventListener('mousemove', setFromEvent);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
     };
   }, []);
+  // LOGZ.IO CHANGE END:: coalesce mouse tracking [unidash-perf]
 
   return coords;
 };
