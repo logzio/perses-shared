@@ -60,17 +60,145 @@ describe('useMousePosition', () => {
       dispatchMove(canvas, 30);
     });
 
-    // Three events in a burst, but only one frame is scheduled and no state update yet.
+    // The first move onto the canvas flushes synchronously (hover-enter latency); the rest of the
+    // burst coalesces into a single scheduled frame.
     expect(raf).toHaveBeenCalledTimes(1);
-    expect(result.current).toBeNull();
+    expect(result.current?.client.x).toBe(10);
 
     act(() => flush());
 
-    // One update, reflecting the most recent event.
+    // One update for the coalesced tail, reflecting the most recent event.
     expect(result.current?.client.x).toBe(30);
     expect((result.current?.target as HTMLElement).tagName).toBe('CANVAS');
 
     canvas.remove();
+    restore();
+  });
+
+  it('should update synchronously on the first move onto a canvas without waiting for a frame', () => {
+    const { raf, restore } = mockAnimationFrame();
+    const canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+
+    const { result } = renderHook(() => useMousePosition());
+
+    act(() => dispatchMove(canvas, 42));
+
+    expect(result.current?.client.x).toBe(42);
+    expect((result.current?.target as HTMLElement).tagName).toBe('CANVAS');
+    expect(raf).not.toHaveBeenCalled();
+
+    canvas.remove();
+    restore();
+  });
+
+  it('should scope the snapshot to the chart whose canvas is hovered when a chart ref is provided', () => {
+    const { flush, restore } = mockAnimationFrame();
+    const containerA = document.createElement('div');
+    const canvasA = document.createElement('canvas');
+    containerA.appendChild(canvasA);
+    const containerB = document.createElement('div');
+    const canvasB = document.createElement('canvas');
+    containerB.appendChild(canvasB);
+    document.body.append(containerA, containerB);
+
+    const chartRefA = { current: { getDom: (): HTMLElement => containerA } };
+    const chartRefB = { current: { getDom: (): HTMLElement => containerB } };
+    const hookA = renderHook(() => useMousePosition(chartRefA));
+    const hookB = renderHook(() => useMousePosition(chartRefB));
+
+    act(() => dispatchMove(canvasA, 10)); // canvas-enter flushes synchronously
+
+    expect(hookA.result.current?.client.x).toBe(10);
+    expect(hookB.result.current).toBeNull();
+
+    // Crossing straight from chart A onto chart B hands the coords over: A hides, B shows.
+    act(() => dispatchMove(canvasB, 20)); // canvas-to-canvas is frame-coalesced
+    act(() => flush());
+
+    expect(hookA.result.current).toBeNull();
+    expect(hookB.result.current?.client.x).toBe(20);
+
+    containerA.remove();
+    containerB.remove();
+    restore();
+  });
+
+  it('should not re-render subscribers scoped to other charts while one chart is hovered', () => {
+    const { flush, restore } = mockAnimationFrame();
+    const containerA = document.createElement('div');
+    const canvasA = document.createElement('canvas');
+    containerA.appendChild(canvasA);
+    const containerB = document.createElement('div');
+    const canvasB = document.createElement('canvas');
+    containerB.appendChild(canvasB);
+    document.body.append(containerA, containerB);
+
+    const chartRefA = { current: { getDom: (): HTMLElement => containerA } };
+    const chartRefB = { current: { getDom: (): HTMLElement => containerB } };
+    let rendersB = 0;
+    const hookA = renderHook(() => useMousePosition(chartRefA));
+    const hookB = renderHook(() => {
+      rendersB += 1;
+      return useMousePosition(chartRefB);
+    });
+    const initialRendersB = rendersB;
+
+    act(() => dispatchMove(canvasA, 10)); // enter: synchronous
+    act(() => dispatchMove(canvasA, 20)); // frame-coalesced
+    act(() => flush());
+
+    expect(hookA.result.current?.client.x).toBe(20);
+    expect(hookB.result.current).toBeNull();
+    // B's snapshot stayed null the whole time, so useSyncExternalStore never re-rendered it.
+    expect(rendersB).toBe(initialRendersB);
+
+    containerA.remove();
+    containerB.remove();
+    restore();
+  });
+
+  it('should share a single window mousemove listener across all subscribers', () => {
+    const addSpy = jest.spyOn(window, 'addEventListener');
+    const removeSpy = jest.spyOn(window, 'removeEventListener');
+    const chartRef = { current: { getDom: (): HTMLElement => document.body } };
+
+    const hookA = renderHook(() => useMousePosition());
+    const hookB = renderHook(() => useMousePosition(chartRef));
+
+    const addedMousemoveListeners = addSpy.mock.calls.filter(([type]) => type === 'mousemove');
+    expect(addedMousemoveListeners).toHaveLength(1);
+
+    hookA.unmount();
+    expect(removeSpy.mock.calls.filter(([type]) => type === 'mousemove')).toHaveLength(0);
+
+    hookB.unmount(); // last subscriber gone -> listener removed
+    expect(removeSpy.mock.calls.filter(([type]) => type === 'mousemove')).toHaveLength(1);
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
+
+  it('should flush synchronously again when re-entering a canvas after leaving', () => {
+    const { flush, restore } = mockAnimationFrame();
+    const canvas = document.createElement('canvas');
+    const div = document.createElement('div');
+    document.body.appendChild(canvas);
+    document.body.appendChild(div);
+
+    const { result } = renderHook(() => useMousePosition());
+
+    act(() => dispatchMove(canvas, 10)); // enter: synchronous
+    act(() => dispatchMove(div, 11)); // leave: frame-coalesced
+    act(() => flush());
+    expect((result.current?.target as HTMLElement).tagName).toBe('DIV');
+
+    act(() => dispatchMove(canvas, 12)); // re-enter: synchronous again
+    expect(result.current?.client.x).toBe(12);
+    expect((result.current?.target as HTMLElement).tagName).toBe('CANVAS');
+
+    canvas.remove();
+    div.remove();
     restore();
   });
 
@@ -99,7 +227,7 @@ describe('useMousePosition', () => {
 
     const { result } = renderHook(() => useMousePosition());
 
-    // Hovering the canvas emits canvas coords.
+    // Hovering the canvas emits canvas coords (synchronously on enter; flush is a no-op here).
     act(() => dispatchMove(canvas, 10));
     act(() => flush());
     expect((result.current?.target as HTMLElement).tagName).toBe('CANVAS');
