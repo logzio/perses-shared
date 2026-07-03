@@ -76,13 +76,22 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
     initialInView: false,
     triggerOnce: true,
     root: scrollRoot,
-    rootMargin: '600px 0px',
+    // LOGZ.IO CHANGE:: prefetch further ahead than we render — the query + transform is the expensive
+    // part of a panel scrolling into view, so give it a ~1.5-viewport head start over the scroll.
+    // Rendering (mounting ECharts) stays at the tighter margin below. [unidash-perf]
+    rootMargin: '1600px 0px',
   });
 
   const { ref: renderRef, inView: shouldRender } = useInView({
     threshold: 0.2,
     initialInView: false,
-    triggerOnce: false,
+    // LOGZ.IO CHANGE START:: keep panels mounted once rendered [unidash-perf]
+    // Un-mounting panels that scroll past the margin disposed their ECharts instance and re-created
+    // it on the way back (~200-300ms main-thread task per panel crossing), making scroll stutter.
+    // With the per-query Series Limit bounding chart memory, keeping panels alive is affordable —
+    // render lazily on first approach (initial-load benefit stays), then stay mounted.
+    triggerOnce: true,
+    // LOGZ.IO CHANGE END:: keep panels mounted once rendered [unidash-perf]
     root: scrollRoot,
     rootMargin: '600px 0px',
   });

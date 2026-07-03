@@ -120,6 +120,24 @@ let storeLatestEvent: ZRRawMouseEvent | null = null;
 let storeLastTargetWasCanvas = false;
 const storeListeners = new Set<() => void>();
 
+// LOGZ.IO CHANGE START:: ignore hover while the page scrolls [unidash-perf]
+// Scrolling moves charts under a stationary cursor; the browser then re-dispatches hover events as if
+// the mouse moved, which mounted tooltips onto panels the user merely scrolled past. Hide any open
+// tooltip when scrolling starts and ignore synthetic moves until scrolling has settled.
+const SCROLL_HOVER_COOLDOWN_MS = 250;
+let storeLastScrollTime = -Infinity;
+
+const handleMouseStoreScroll = (): void => {
+  storeLastScrollTime = performance.now();
+  storeLatestEvent = null;
+  if (storeCoords !== null || storeLastTargetWasCanvas) {
+    storeCoords = null;
+    storeLastTargetWasCanvas = false;
+    storeListeners.forEach((listener) => listener());
+  }
+};
+// LOGZ.IO CHANGE END:: ignore hover while the page scrolls [unidash-perf]
+
 const flushMouseStore = (): void => {
   storeRafId = null;
   const event = storeLatestEvent;
@@ -154,6 +172,10 @@ const flushMouseStore = (): void => {
 };
 
 const handleMouseStoreMove = (e: ZRRawMouseEvent): void => {
+  // LOGZ.IO CHANGE:: browser-synthesized moves right after a scroll are not user intent — ignore
+  // them until scrolling has settled. [unidash-perf]
+  if (performance.now() - storeLastScrollTime < SCROLL_HOVER_COOLDOWN_MS) return;
+
   storeLatestEvent = e;
 
   // Flush synchronously on the first move onto a canvas so the tooltip doesn't wait an extra
@@ -175,6 +197,8 @@ const handleMouseStoreMove = (e: ZRRawMouseEvent): void => {
 const subscribeToMouseStore = (onStoreChange: () => void): (() => void) => {
   if (storeListeners.size === 0) {
     window.addEventListener('mousemove', handleMouseStoreMove, { passive: true });
+    // LOGZ.IO CHANGE:: capture-phase so scrolls of any inner container (not just the window) are seen [unidash-perf]
+    window.addEventListener('scroll', handleMouseStoreScroll, { capture: true, passive: true });
   }
   storeListeners.add(onStoreChange);
 
@@ -182,6 +206,7 @@ const subscribeToMouseStore = (onStoreChange: () => void): (() => void) => {
     storeListeners.delete(onStoreChange);
     if (storeListeners.size === 0) {
       window.removeEventListener('mousemove', handleMouseStoreMove);
+      window.removeEventListener('scroll', handleMouseStoreScroll, true); // LOGZ.IO CHANGE:: [unidash-perf]
       if (storeRafId !== null) {
         cancelAnimationFrame(storeRafId);
         storeRafId = null;
@@ -189,6 +214,7 @@ const subscribeToMouseStore = (onStoreChange: () => void): (() => void) => {
       storeLatestEvent = null;
       storeLastTargetWasCanvas = false;
       storeCoords = null;
+      storeLastScrollTime = -Infinity; // LOGZ.IO CHANGE:: [unidash-perf]
     }
   };
 };

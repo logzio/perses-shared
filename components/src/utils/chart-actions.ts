@@ -122,6 +122,18 @@ export function getPointInGrid(cursorCoordX: number, cursorCoordY: number, chart
   return pointInGrid;
 }
 
+// LOGZ.IO CHANGE START:: skip re-dispatching an unchanged emphasis state [unidash-perf]
+// Every highlight/downplay/select dispatch forces ECharts to reprocess series states and repaint,
+// even when the payload is identical to the previous move (cursor traveling within one time bucket).
+// Remember the last dispatched payload per chart and skip exact repeats. The cache must be cleared
+// whenever the chart's option is replaced (setOption resets state), see clearNearbySeriesDispatchCache.
+const lastDispatchSignatures = new WeakMap<EChartsInstance, string>();
+
+export function clearNearbySeriesDispatchCache(chart: EChartsInstance): void {
+  lastDispatchSignatures.delete(chart);
+}
+// LOGZ.IO CHANGE END:: skip re-dispatching an unchanged emphasis state [unidash-perf]
+
 /*
  * TimeSeriesChart tooltip is built custom to support finding nearby series instead of single or all series.
  * This means ECharts actions need to be dispatched manually for series highlighting, datapoint select state, etc.
@@ -135,6 +147,19 @@ export function batchDispatchNearbySeriesActions(
   emphasizedDatapoints: DatapointInfo[],
   duplicateDatapoints: DatapointInfo[]
 ): void {
+  // LOGZ.IO CHANGE START:: skip re-dispatching an unchanged emphasis state [unidash-perf]
+  const signature = JSON.stringify([
+    nearbySeriesIndexes,
+    emphasizedSeriesIndexes,
+    nonEmphasizedSeriesIndexes,
+    emphasizedDatapoints.map((d) => [d.seriesIndex, d.dataIndex]),
+    duplicateDatapoints.map((d) => [d.seriesIndex, d.dataIndex]),
+  ]);
+  if (lastDispatchSignatures.get(chart) === signature) {
+    return;
+  }
+  lastDispatchSignatures.set(chart, signature);
+  // LOGZ.IO CHANGE END:: skip re-dispatching an unchanged emphasis state [unidash-perf]
   // Accounts for multiple series that are rendered direct on top of eachother.
   // Only applies select state to the datapoint that is visible to avoid color mismatch.
   const lastEmphasizedDatapoint =

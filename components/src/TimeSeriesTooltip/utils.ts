@@ -13,7 +13,7 @@
 
 import { ECharts as EChartsInstance } from 'echarts/core';
 import { Theme } from '@mui/material';
-import { formatValue, TimeSeries, TimeSeriesMetadata, FormatOptions } from '@perses-dev/core';
+import { formatValue, TimeSeries, TimeSeriesMetadata, TimeSeriesValueTuple, FormatOptions } from '@perses-dev/core';
 import { LineSeriesOption, BarSeriesOption } from 'echarts/charts';
 import { DatapointInfo, TimeChartSeriesMapping } from '../model';
 import {
@@ -241,6 +241,34 @@ export function calculateBarYBounds({ visualY, rawY, isStacked }: CalculateBarYB
   return { base, lower, upper };
 }
 
+// LOGZ.IO CHANGE START:: O(1) datum lookup for row-aligned series [unidash-perf]
+/**
+ * All series produced by the shared columnar build are row-aligned to one time column, so the
+ * row index found on the first series is valid for every other series. Try that index first and
+ * only fall back to a linear scan when the series is not aligned (e.g. mixed data sources).
+ * The linear find/findIndex pair this replaces walked to the hovered row from index 0 for every
+ * series on every mousemove — O(rows × series) per move at the right edge of a chart.
+ */
+function findDatumAtTimestamp(
+  values: TimeSeriesValueTuple[],
+  closestTimestamp: number,
+  alignedRowIdx: number
+): { datum: TimeSeriesValueTuple | undefined; datumIdx: number } {
+  if (alignedRowIdx >= 0) {
+    const aligned = values[alignedRowIdx];
+    if (aligned !== undefined && aligned[0] === closestTimestamp) {
+      return { datum: aligned, datumIdx: alignedRowIdx };
+    }
+  }
+  const datumIdx = values.findIndex(([ts]) => ts === closestTimestamp);
+  return { datum: datumIdx >= 0 ? values[datumIdx] : undefined, datumIdx };
+}
+
+function getAlignedRowIdx(firstTimeSeriesValues: TimeSeriesValueTuple[] | undefined, closestTimestamp: number): number {
+  return firstTimeSeriesValues?.findIndex(([ts]) => ts === closestTimestamp) ?? -1;
+}
+// LOGZ.IO CHANGE END:: O(1) datum lookup for row-aligned series [unidash-perf]
+
 /**
  * Creates candidates for all series at a given timestamp when hovering over a bar chart.
  * This function is responsible for building the complete list of candidates for bar group tooltips.
@@ -263,6 +291,8 @@ export function createBarGroupCandidates({
   const candidates: Candidate[] = [];
   const totalSeries = data.length;
   const stackTotals = new Map<string, number>();
+  // LOGZ.IO CHANGE:: resolve the row index once and reuse it for every aligned series [unidash-perf]
+  const alignedRowIdx = getAlignedRowIdx(data[0]?.values, closestTimestamp);
 
   for (let seriesIdx = 0; seriesIdx < totalSeries; seriesIdx++) {
     const currentSeries = seriesMapping[seriesIdx];
@@ -275,7 +305,12 @@ export function createBarGroupCandidates({
       const hasDatasetValues = currentDataset?.values !== undefined && currentDataset?.values !== null;
 
       if (hasValidDataset && hasDatasetValues) {
-        const datumAtTimestamp = currentDataset.values.find(([ts]) => ts === closestTimestamp);
+        // LOGZ.IO CHANGE:: O(1) aligned lookup instead of a linear find + findIndex pair [unidash-perf]
+        const { datum: datumAtTimestamp, datumIdx } = findDatumAtTimestamp(
+          currentDataset.values,
+          closestTimestamp,
+          alignedRowIdx
+        );
         const hasDatumAtTimestamp = datumAtTimestamp !== undefined;
 
         if (hasDatumAtTimestamp) {
@@ -283,8 +318,6 @@ export function createBarGroupCandidates({
           const hasValidYValue = yValue !== null && yValue !== undefined;
 
           if (hasValidYValue) {
-            const datumIdx = currentDataset.values.findIndex(([ts]) => ts === closestTimestamp);
-
             const hasSelectedSeriesIdx = selectedSeriesIdx !== null && selectedSeriesIdx !== undefined;
             const isSelected = hasSelectedSeriesIdx && seriesIdx === selectedSeriesIdx;
 
@@ -417,6 +450,8 @@ export function gatherCandidates({
   }, []);
 
   const firstTimeSeriesValues = data[0]?.values;
+  // LOGZ.IO CHANGE:: resolve the row index once and reuse it for every aligned series [unidash-perf]
+  const alignedRowIdx = getAlignedRowIdx(firstTimeSeriesValues, closestTimestamp);
 
   for (let seriesIdx = 0; seriesIdx < totalSeries; seriesIdx++) {
     const currentSeries = seriesMapping[seriesIdx];
@@ -429,7 +464,12 @@ export function gatherCandidates({
       const hasDatasetValues = currentDataset?.values !== undefined && currentDataset?.values !== null;
 
       if (hasValidDataset && hasDatasetValues) {
-        const datumAtTimestamp = currentDataset.values.find(([ts]) => ts === closestTimestamp);
+        // LOGZ.IO CHANGE:: O(1) aligned lookup instead of a linear find + findIndex pair [unidash-perf]
+        const { datum: datumAtTimestamp, datumIdx } = findDatumAtTimestamp(
+          currentDataset.values,
+          closestTimestamp,
+          alignedRowIdx
+        );
         const hasDatumAtTimestamp = datumAtTimestamp !== undefined;
 
         if (hasDatumAtTimestamp) {
@@ -470,8 +510,6 @@ export function gatherCandidates({
                 stackId,
                 stackTotals,
               });
-
-              const datumIdx = currentDataset.values.findIndex(([ts]) => ts === closestTimestamp);
 
               let verticalDistance: number;
               let isWithinYBuffer: boolean;
@@ -515,7 +553,8 @@ export function gatherCandidates({
               const hasValidMousePixelX = mousePixelX !== undefined;
 
               if (hasValidMousePixelX) {
-                const timestampIdx = firstTimeSeriesValues?.findIndex(([ts]) => ts === closestTimestamp) ?? -1;
+                // LOGZ.IO CHANGE:: reuse the row index resolved once before the loop [unidash-perf]
+                const timestampIdx = alignedRowIdx;
 
                 let prevTimestamp: number | undefined;
                 if (timestampIdx > 0) {
