@@ -67,7 +67,7 @@ export function clearHighlightedSeries(chart: EChartsInstance): void {
   }
 }
 
-// LOGZ.IO CHANGE START:: tolerate cursor positions a couple px outside the plot rect [APPZ-2907]
+// LOGZ.IO CHANGE START:: tolerate cursor positions a couple px outside the plot rect
 // ECharts expands the line-series clip rect by the stroke width so boundary-hugging series aren't cut
 // off, and zrender hit-tests that spill: in a ~1-2px halo around the plot the cursor turns into a
 // pointer and the line shows its hover emphasis, but a strict containPixel check silently hid the
@@ -85,7 +85,7 @@ function getGridRect(chart: EChartsInstance): GridRect | undefined {
   // Reaches into the private chart model the same way enableDataZoom/getNearbySeriesData already do.
   return chart['_model']?.getComponent?.('grid')?.coordinateSystem?.getRect?.();
 }
-// LOGZ.IO CHANGE END:: tolerate cursor positions a couple px outside the plot rect [APPZ-2907]
+// LOGZ.IO CHANGE END:: tolerate cursor positions a couple px outside the plot rect
 
 /*
  * Convert a point from pixel coordinate to logical coordinate.
@@ -99,7 +99,7 @@ export function getPointInGrid(cursorCoordX: number, cursorCoordY: number, chart
 
   let pointInPixel = [cursorCoordX, cursorCoordY];
   if (!chart.containPixel('grid', pointInPixel)) {
-    // LOGZ.IO CHANGE START:: clamp near-miss cursor positions onto the plot rect [APPZ-2907]
+    // LOGZ.IO CHANGE START:: clamp near-miss cursor positions onto the plot rect
     const rect = getGridRect(chart);
     if (rect === undefined) {
       return null;
@@ -115,7 +115,7 @@ export function getPointInGrid(cursorCoordX: number, cursorCoordY: number, chart
     }
 
     pointInPixel = [clampedX, clampedY];
-    // LOGZ.IO CHANGE END:: clamp near-miss cursor positions onto the plot rect [APPZ-2907]
+    // LOGZ.IO CHANGE END:: clamp near-miss cursor positions onto the plot rect
   }
 
   const pointInGrid: number[] = chart.convertFromPixel('grid', pointInPixel);
