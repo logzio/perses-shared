@@ -67,6 +67,26 @@ export function clearHighlightedSeries(chart: EChartsInstance): void {
   }
 }
 
+// LOGZ.IO CHANGE START:: tolerate cursor positions a couple px outside the plot rect
+// ECharts expands the line-series clip rect by the stroke width so boundary-hugging series aren't cut
+// off, and zrender hit-tests that spill: in a ~1-2px halo around the plot the cursor turns into a
+// pointer and the line shows its hover emphasis, but a strict containPixel check silently hid the
+// tooltip (and blocked pin-on-click). Cursor positions within this tolerance are clamped onto the rect.
+const GRID_EDGE_TOLERANCE_PX = 2;
+
+interface GridRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function getGridRect(chart: EChartsInstance): GridRect | undefined {
+  // Reaches into the private chart model the same way enableDataZoom/getNearbySeriesData already do.
+  return chart['_model']?.getComponent?.('grid')?.coordinateSystem?.getRect?.();
+}
+// LOGZ.IO CHANGE END:: tolerate cursor positions a couple px outside the plot rect
+
 /*
  * Convert a point from pixel coordinate to logical coordinate.
  * Used to determine if cursor is over chart canvas and closest datapoint.
@@ -77,9 +97,25 @@ export function getPointInGrid(cursorCoordX: number, cursorCoordY: number, chart
     return null;
   }
 
-  const pointInPixel = [cursorCoordX, cursorCoordY];
+  let pointInPixel = [cursorCoordX, cursorCoordY];
   if (!chart.containPixel('grid', pointInPixel)) {
-    return null;
+    // LOGZ.IO CHANGE START:: clamp near-miss cursor positions onto the plot rect
+    const rect = getGridRect(chart);
+    if (rect === undefined) {
+      return null;
+    }
+
+    const clampedX = Math.min(Math.max(cursorCoordX, rect.x), rect.x + rect.width);
+    const clampedY = Math.min(Math.max(cursorCoordY, rect.y), rect.y + rect.height);
+    if (
+      Math.abs(clampedX - cursorCoordX) > GRID_EDGE_TOLERANCE_PX ||
+      Math.abs(clampedY - cursorCoordY) > GRID_EDGE_TOLERANCE_PX
+    ) {
+      return null;
+    }
+
+    pointInPixel = [clampedX, clampedY];
+    // LOGZ.IO CHANGE END:: clamp near-miss cursor positions onto the plot rect
   }
 
   const pointInGrid: number[] = chart.convertFromPixel('grid', pointInPixel);

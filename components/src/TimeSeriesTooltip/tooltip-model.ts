@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { NearbySeriesArray, NearbySeriesInfo } from './types';
 
 export const TOOLTIP_MIN_WIDTH = 375;
@@ -95,73 +95,127 @@ type ZREventProperties = {
 
 export type ZRRawMouseEvent = MouseEvent & ZREventProperties;
 
-export const useMousePosition = (): CursorData['coords'] => {
-  const [coords, setCoords] = useState<CursorData['coords']>(null);
+// LOGZ.IO CHANGE START:: shared, frame-coalesced mouse-position store [unidash-perf]
+// A single window listener feeds all tooltip subscribers via useSyncExternalStore. Previously each
+// panel mounted its own listener + local state, so one mouse move re-rendered EVERY panel's tooltip;
+// with a per-chart snapshot (see useMousePosition below) only the hovered panel re-renders — the
+// other panels' snapshot stays `null`, which useSyncExternalStore skips (Object.is-equal).
+// Semantics preserved from the previous per-panel hook: updates coalesce to one per animation frame,
+// the first move onto a canvas flushes synchronously (hover-enter latency), moving off a canvas emits
+// one final update (so tooltips hide), and further off-canvas moves are ignored.
 
-  // LOGZ.IO CHANGE START:: coalesce mouse tracking to one update per animation frame, and skip
-  // updates while the cursor stays off any chart canvas. Previously this fired a React setState on
-  // EVERY native mousemove, and one listener is mounted per panel — so a single mouse move re-rendered
-  // every tooltip. Combined with large series counts that flooded the main thread and the
-  // GC/cycle-collector (see Firefox profile: ~76% CPU in cycle collection). [unidash-perf]
-  useEffect(() => {
-    let rafId: number | null = null;
-    let latestEvent: ZRRawMouseEvent | null = null;
-    // Whether the last position we emitted was over a chart canvas. Lets us emit a single update
-    // when the cursor leaves a canvas (so the tooltip hides), then ignore further off-canvas moves
-    // until it returns — and most of the viewport (gaps, headers, the rest of the page) is not a chart.
-    let lastTargetWasCanvas = false;
+/** Minimal structural view of an ECharts instance — avoids importing echarts types here. */
+export interface ChartDomProvider {
+  getDom: () => HTMLElement;
+}
 
-    const flush = (): void => {
-      rafId = null;
-      const event = latestEvent;
-      latestEvent = null;
-      if (event === null) return;
+const isCanvasTarget = (target: EventTarget | null): boolean => (target as HTMLElement | null)?.tagName === 'CANVAS';
 
-      const targetIsCanvas = (event.target as HTMLElement | null)?.tagName === 'CANVAS';
-      if (!targetIsCanvas && !lastTargetWasCanvas) return;
-      lastTargetWasCanvas = targetIsCanvas;
+let storeCoords: CursorCoordinates | null = null;
+let storeRafId: number | null = null;
+let storeLatestEvent: ZRRawMouseEvent | null = null;
+// Whether the last position we emitted was over a chart canvas. Lets us emit a single update when
+// the cursor leaves a canvas (so the tooltip hides), then ignore further off-canvas moves until it
+// returns — and most of the viewport (gaps, headers, the rest of the page) is not a chart.
+let storeLastTargetWasCanvas = false;
+const storeListeners = new Set<() => void>();
 
-      setCoords({
-        page: {
-          x: event.pageX,
-          y: event.pageY,
-        },
-        client: {
-          x: event.clientX,
-          y: event.clientY,
-        },
-        plotCanvas: {
-          // Default to zrender mousemove coords since they handle browser inconsistencies for us
-          // ex: Firefox and Chrome have slightly different implementations of offsetX and offsetY
-          // more info: https://github.com/ecomfe/zrender/blob/5.5.0/src/core/event.ts#L46-L120
-          // Fallback to offsetX and offsetY to ensure tooltip works correctly in Edge
-          x: event.zrX ?? event.offsetX,
-          y: event.zrY ?? event.offsetY,
-        },
-        // necessary to check whether cursor target matches correct chart canvas (since each chart has its own mousemove listener)
-        target: event.target,
-      });
-    };
+const flushMouseStore = (): void => {
+  storeRafId = null;
+  const event = storeLatestEvent;
+  storeLatestEvent = null;
+  if (event === null) return;
 
-    const setFromEvent = (e: ZRRawMouseEvent): void => {
-      latestEvent = e;
-      if (rafId === null) {
-        rafId = requestAnimationFrame(flush);
-      }
-    };
-    window.addEventListener('mousemove', setFromEvent, { passive: true });
+  const targetIsCanvas = isCanvasTarget(event.target);
+  if (!targetIsCanvas && !storeLastTargetWasCanvas) return;
+  storeLastTargetWasCanvas = targetIsCanvas;
 
-    return (): void => {
-      window.removeEventListener('mousemove', setFromEvent);
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-    };
-  }, []);
-  // LOGZ.IO CHANGE END:: coalesce mouse tracking [unidash-perf]
-
-  return coords;
+  storeCoords = {
+    page: {
+      x: event.pageX,
+      y: event.pageY,
+    },
+    client: {
+      x: event.clientX,
+      y: event.clientY,
+    },
+    plotCanvas: {
+      // Default to zrender mousemove coords since they handle browser inconsistencies for us
+      // ex: Firefox and Chrome have slightly different implementations of offsetX and offsetY
+      // more info: https://github.com/ecomfe/zrender/blob/5.5.0/src/core/event.ts#L46-L120
+      // Fallback to offsetX and offsetY to ensure tooltip works correctly in Edge
+      x: event.zrX ?? event.offsetX,
+      y: event.zrY ?? event.offsetY,
+    },
+    // used by per-chart snapshots to decide which chart's tooltip the cursor belongs to
+    target: event.target,
+  };
+  storeListeners.forEach((listener) => listener());
 };
+
+const handleMouseStoreMove = (e: ZRRawMouseEvent): void => {
+  storeLatestEvent = e;
+
+  // Flush synchronously on the first move onto a canvas so the tooltip doesn't wait an extra
+  // animation frame to appear (hover-enter latency); subsequent moves stay frame-coalesced.
+  const enteringCanvas = !storeLastTargetWasCanvas && isCanvasTarget(e.target);
+  if (enteringCanvas) {
+    if (storeRafId !== null) {
+      cancelAnimationFrame(storeRafId);
+    }
+    flushMouseStore();
+    return;
+  }
+
+  if (storeRafId === null) {
+    storeRafId = requestAnimationFrame(flushMouseStore);
+  }
+};
+
+const subscribeToMouseStore = (onStoreChange: () => void): (() => void) => {
+  if (storeListeners.size === 0) {
+    window.addEventListener('mousemove', handleMouseStoreMove, { passive: true });
+  }
+  storeListeners.add(onStoreChange);
+
+  return (): void => {
+    storeListeners.delete(onStoreChange);
+    if (storeListeners.size === 0) {
+      window.removeEventListener('mousemove', handleMouseStoreMove);
+      if (storeRafId !== null) {
+        cancelAnimationFrame(storeRafId);
+        storeRafId = null;
+      }
+      storeLatestEvent = null;
+      storeLastTargetWasCanvas = false;
+      storeCoords = null;
+    }
+  };
+};
+
+const getMouseStoreServerSnapshot = (): CursorCoordinates | null => null;
+
+/**
+ * Tracks the mouse position over chart canvases (frame-coalesced, shared window listener).
+ * Pass the chart's ref to scope the returned coords to that chart: the hook then returns non-null
+ * only while the cursor is over THIS chart's own canvas, and the component skips re-renders for
+ * moves over other panels entirely.
+ */
+export const useMousePosition = (chartRef?: { current?: ChartDomProvider | null }): CursorData['coords'] => {
+  const getSnapshot = useCallback((): CursorCoordinates | null => {
+    const coords = storeCoords;
+    if (!chartRef) return coords;
+    if (coords === null || !(coords.target instanceof Node)) return null;
+
+    const chartDom = chartRef.current?.getDom();
+    if (!chartDom || !isCanvasTarget(coords.target) || !chartDom.contains(coords.target)) return null;
+
+    return coords;
+  }, [chartRef]);
+
+  return useSyncExternalStore(subscribeToMouseStore, getSnapshot, getMouseStoreServerSnapshot);
+};
+// LOGZ.IO CHANGE END:: shared, frame-coalesced mouse-position store [unidash-perf]
 // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
 export type PointAction = {
   label: string;

@@ -79,26 +79,20 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   const [selectedSeriesIdx, setSelectedSeriesIdx] = useState<number | null>(null); // LOGZ.IO CHANGE:: Drilldown panel [APPZ-377]
   const transform = useRef<string | undefined>();
 
-  const mousePos = useMousePosition();
+  // LOGZ.IO CHANGE START:: the mouse-position snapshot is scoped to THIS chart's canvas, so a hover
+  // on one panel no longer re-renders every other panel's tooltip (the store skips subscribers whose
+  // snapshot stays null). When pinned, the tooltip renders from pinnedPos and ignores the live
+  // cursor — getNearbySeriesData and assembleTransform already prefer pinnedPos over mousePos. [unidash-perf]
+  const liveMousePos = useMousePosition(chartRef);
   const { height, width, ref: tooltipRef } = useResizeObserver();
 
   const isTooltipPinned = pinnedPos !== null && enablePinning;
+  const mousePos = liveMousePos ?? pinnedPos;
 
   if (mousePos === null || mousePos.target === null || data === null) return null;
 
   const chart = chartRef.current;
-
-  // Ensure user is hovering over a chart before checking for nearby series.
-  // LOGZ.IO CHANGE START:: only react to hovers over THIS panel's own canvas. Each panel mounts its
-  // own global mousemove listener, so without scoping to this chart's DOM a hover on one panel would
-  // run getNearbySeriesData (cost scales with series count) on every other panel's tooltip. [unidash-perf]
-  if (pinnedPos === null) {
-    const target = mousePos.target as HTMLElement;
-    if (target.tagName !== 'CANVAS') return null;
-    const chartDom = chart?.getDom();
-    if (chartDom && !chartDom.contains(target)) return null;
-  }
-  // LOGZ.IO CHANGE END:: only react to hovers over THIS panel's own canvas [unidash-perf]
+  // LOGZ.IO CHANGE END:: per-chart scoped mouse position [unidash-perf]
 
   const containerElement = containerId ? document.querySelector(containerId) : undefined;
   // if tooltip is attached to a container, set max height to the height of the container so tooltip does not get cut off

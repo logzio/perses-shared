@@ -12,7 +12,8 @@
 // limitations under the License.
 
 import { TimeSeries, TimeSeriesValueTuple } from '@perses-dev/spec';
-import { getClosestTimestamp, getClosestTimestampInFullDataset } from './chart-actions';
+import { ECharts as EChartsInstance } from 'echarts/core';
+import { getClosestTimestamp, getClosestTimestampInFullDataset, getPointInGrid } from './chart-actions';
 
 const TEST_TIME_SERIES_VALUES: TimeSeriesValueTuple[] = [
   [1690381125000, 0.12],
@@ -136,5 +137,56 @@ describe('getClosestTimestamp', () => {
 describe('getClosestTimestampInFullDataset', () => {
   it('should determine closest timestamp to current cursor xValue in full time series data', () => {
     expect(getClosestTimestampInFullDataset(TEST_TIME_SERIES_DATA, 1690386199722.634)).toEqual(1690386195000);
+  });
+});
+
+// LOGZ.IO ADDITION:: edge-halo tolerance around the plot rect [APPZ-2907]
+describe('getPointInGrid', () => {
+  const GRID_RECT = { x: 40, y: 10, width: 400, height: 200 }; // grid spans x: 40-440, y: 10-210
+
+  const buildFakeChart = (withModel = true): EChartsInstance =>
+    ({
+      containPixel: (_finder: unknown, point: number[]): boolean => {
+        const [x = NaN, y = NaN] = point;
+        return (
+          x >= GRID_RECT.x &&
+          x <= GRID_RECT.x + GRID_RECT.width &&
+          y >= GRID_RECT.y &&
+          y <= GRID_RECT.y + GRID_RECT.height
+        );
+      },
+      // identity conversion so assertions can observe the (possibly clamped) pixel input
+      convertFromPixel: (_finder: unknown, point: number[]): number[] => [...point],
+      ...(withModel
+        ? { _model: { getComponent: (): unknown => ({ coordinateSystem: { getRect: (): unknown => GRID_RECT } }) } }
+        : {}),
+    }) as unknown as EChartsInstance;
+
+  it('should convert points inside the grid unchanged', () => {
+    expect(getPointInGrid(100, 50, buildFakeChart())).toEqual([100, 50]);
+  });
+
+  it('should clamp cursor positions within the edge tolerance onto the plot rect', () => {
+    // 2px left of the grid: series strokes render there, so the tooltip should snap to the edge
+    expect(getPointInGrid(38, 50, buildFakeChart())).toEqual([40, 50]);
+    // 2px below the bottom edge
+    expect(getPointInGrid(100, 212, buildFakeChart())).toEqual([100, 210]);
+    // corner: slightly out on both axes
+    expect(getPointInGrid(441, 211, buildFakeChart())).toEqual([440, 210]);
+  });
+
+  it('should return null when the cursor is beyond the edge tolerance', () => {
+    // 3px miss: just past the 2px tolerance
+    expect(getPointInGrid(37, 50, buildFakeChart())).toBeNull();
+    expect(getPointInGrid(30, 50, buildFakeChart())).toBeNull();
+    expect(getPointInGrid(100, 220, buildFakeChart())).toBeNull();
+  });
+
+  it('should return null outside the grid when the chart model is unavailable', () => {
+    expect(getPointInGrid(38, 50, buildFakeChart(false))).toBeNull();
+  });
+
+  it('should return null when no chart is provided', () => {
+    expect(getPointInGrid(100, 50, undefined)).toBeNull();
   });
 });
