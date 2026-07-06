@@ -45,7 +45,7 @@ function createTupleView(time: Float64Array, column: Float64Array): TimeSeriesVa
   const cache: Array<TimeSeriesValueTuple | undefined> = new Array(length);
 
   return new Proxy(cache, {
-    get(target, prop, receiver) {
+    get(target, prop, receiver): unknown {
       if (typeof prop === 'string') {
         const index = Number(prop);
 
@@ -66,7 +66,7 @@ function createTupleView(time: Float64Array, column: Float64Array): TimeSeriesVa
       return Reflect.get(target, prop, receiver);
     },
     // Array methods like map/forEach skip "holes" via HasProperty — every in-range row exists.
-    has(target, prop) {
+    has(target, prop): boolean {
       if (typeof prop === 'string') {
         const index = Number(prop);
 

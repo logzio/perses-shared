@@ -54,8 +54,18 @@ describe('buildColumnarTimeChart', () => {
 
   it('should ignore samples outside the time scale and null values', () => {
     const { source } = buildColumnarTimeChart(
-      [{ name: 's', values: [[900, 1], [1_030, null], [1_045, 7], [2_000, 9]] }],
-      TIME_SCALE,
+      [
+        {
+          name: 's',
+          values: [
+            [900, 1],
+            [1_030, null],
+            [1_045, 7],
+            [2_000, 9],
+          ],
+        },
+      ],
+      TIME_SCALE
     );
     const column = Array.from(source[getSeriesColumnKey(0)] ?? []);
 
