@@ -13,7 +13,14 @@
 
 import { TimeSeries, TimeSeriesValueTuple } from '@perses-dev/spec';
 import { ECharts as EChartsInstance } from 'echarts/core';
-import { getClosestTimestamp, getClosestTimestampInFullDataset, getPointInGrid } from './chart-actions';
+import { DatapointInfo } from '../model';
+import {
+  batchDispatchNearbySeriesActions,
+  clearNearbySeriesDispatchCache,
+  getClosestTimestamp,
+  getClosestTimestampInFullDataset,
+  getPointInGrid,
+} from './chart-actions';
 
 const TEST_TIME_SERIES_VALUES: TimeSeriesValueTuple[] = [
   [1690381125000, 0.12],
@@ -188,5 +195,61 @@ describe('getPointInGrid', () => {
 
   it('should return null when no chart is provided', () => {
     expect(getPointInGrid(100, 50, undefined)).toBeNull();
+  });
+});
+
+// LOGZ.IO ADDITION:: emphasis-dispatch dedup — identical consecutive payloads must not re-trigger
+// ECharts state processing and repaints on every mousemove [unidash-perf]
+describe('batchDispatchNearbySeriesActions', () => {
+  const buildChart = (): EChartsInstance => ({ dispatchAction: jest.fn() }) as unknown as EChartsInstance;
+
+  const emphasizedDatapoint: DatapointInfo = { seriesIndex: 0, dataIndex: 5, seriesName: 'a', yValue: 1 };
+
+  it('should dispatch select, downplay and highlight for a new payload', () => {
+    const chart = buildChart();
+
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(3);
+  });
+
+  it('should skip dispatching when the payload is identical to the previous move', () => {
+    const chart = buildChart();
+
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(3);
+  });
+
+  it('should dispatch again when the payload changes', () => {
+    const chart = buildChart();
+
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+    batchDispatchNearbySeriesActions(chart, [0, 1], [1], [0], [emphasizedDatapoint], []);
+
+    expect(jest.mocked(chart.dispatchAction).mock.calls.length).toBeGreaterThan(3);
+  });
+
+  it('should dispatch an identical payload again after the cache is cleared for the chart', () => {
+    const chart = buildChart();
+
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+    clearNearbySeriesDispatchCache(chart);
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(6);
+  });
+
+  it('should keep dedup state per chart instance', () => {
+    const chartA = buildChart();
+    const chartB = buildChart();
+
+    batchDispatchNearbySeriesActions(chartA, [0], [], [0], [], []);
+    batchDispatchNearbySeriesActions(chartB, [0], [], [0], [], []);
+
+    // Payload with no emphasis dispatches downplay + highlight + toggleSelect on each chart.
+    expect(chartA.dispatchAction).toHaveBeenCalledTimes(3);
+    expect(chartB.dispatchAction).toHaveBeenCalledTimes(3);
   });
 });

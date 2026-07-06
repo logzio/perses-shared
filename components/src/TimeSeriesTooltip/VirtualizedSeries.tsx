@@ -27,13 +27,24 @@ export interface VirtualizedSeriesProps {
 
 // LOGZ.IO CHANGE FILE:: Performance optimization
 
+// Approximate rendered height of one SeriesInfo row; the estimate only has to hold until
+// Virtuoso reports the measured list height. 300 mirrors the max height cap below.
+const SERIES_ROW_HEIGHT_PX = 22;
+const MAX_LIST_HEIGHT_PX = 300;
+const MAX_INITIAL_ITEMS = Math.ceil(MAX_LIST_HEIGHT_PX / SERIES_ROW_HEIGHT_PX);
+
 export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
   allowActions,
   sortedFocusedSeries,
   wrapLabels,
   onSelected,
 }) => {
-  const [height, setHeight] = useState(10);
+  // Seed the list height from the row count so the tooltip's first paint already shows the full
+  // content. Mounting at a tiny fixed height showed half a row until Virtuoso measured itself,
+  // which stays frozen on screen whenever the first hover blocks the main thread.
+  const [height, setHeight] = useState(() =>
+    Math.min(sortedFocusedSeries.length * SERIES_ROW_HEIGHT_PX, MAX_LIST_HEIGHT_PX)
+  );
   return (
     <Box
       sx={(theme) => ({
@@ -46,9 +57,13 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
     >
       <Virtuoso
         role="list"
-        style={{ height: height > 300 ? 300 : height, width: '100%' }}
+        style={{ height: height > MAX_LIST_HEIGHT_PX ? MAX_LIST_HEIGHT_PX : height, width: '100%' }}
         totalListHeightChanged={setHeight}
         totalCount={sortedFocusedSeries.length}
+        // Render the visible rows in the very first pass instead of waiting for the
+        // post-mount viewport measurement (which can be delayed by long tasks).
+        initialItemCount={Math.min(sortedFocusedSeries.length, MAX_INITIAL_ITEMS)}
+        defaultItemHeight={SERIES_ROW_HEIGHT_PX}
         data={sortedFocusedSeries}
         itemContent={(index, data) => {
           if (isNil(data.datumIdx) || isNil(data.seriesIdx)) return null;

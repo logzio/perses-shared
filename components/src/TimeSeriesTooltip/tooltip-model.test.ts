@@ -218,6 +218,58 @@ describe('useMousePosition', () => {
     restore();
   });
 
+  // LOGZ.IO ADDITION:: scroll must hide the tooltip and mute browser-synthesized hover [unidash-perf]
+  it('should hide the tooltip when the page scrolls', () => {
+    const { restore } = mockAnimationFrame();
+    const nowSpy = jest.spyOn(performance, 'now').mockReturnValue(100);
+    const canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+
+    const { result, unmount } = renderHook(() => useMousePosition());
+
+    act(() => dispatchMove(canvas, 10)); // enter: synchronous
+    expect(result.current?.client.x).toBe(10);
+
+    act(() => {
+      canvas.dispatchEvent(new Event('scroll')); // scroll doesn't bubble; the store listens in capture phase
+    });
+
+    expect(result.current).toBeNull();
+
+    unmount();
+    nowSpy.mockRestore();
+    canvas.remove();
+    restore();
+  });
+
+  it('should ignore browser-synthesized moves during the scroll cooldown and resume after it', () => {
+    const { restore } = mockAnimationFrame();
+    const nowSpy = jest.spyOn(performance, 'now').mockReturnValue(100);
+    const canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+
+    const { result, unmount } = renderHook(() => useMousePosition());
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    // the post-scroll synthetic move lands within the cooldown -> ignored, no tooltip
+    nowSpy.mockReturnValue(200);
+    act(() => dispatchMove(canvas, 10));
+    expect(result.current).toBeNull();
+
+    // once scrolling has settled, real moves work again (canvas-enter flushes synchronously)
+    nowSpy.mockReturnValue(500);
+    act(() => dispatchMove(canvas, 20));
+    expect(result.current?.client.x).toBe(20);
+
+    unmount();
+    nowSpy.mockRestore();
+    canvas.remove();
+    restore();
+  });
+
   it('should emit a single update when the cursor leaves the canvas, then ignore further off-canvas moves', () => {
     const { flush, restore } = mockAnimationFrame();
     const canvas = document.createElement('canvas');

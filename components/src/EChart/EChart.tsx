@@ -40,6 +40,7 @@ import {
   MarkLineComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { clearNearbySeriesDispatchCache } from '../utils/chart-actions'; // LOGZ.IO CHANGE:: reset emphasis-dispatch dedup on option replace [unidash-perf]
 import { EChartsTheme } from '../model';
 
 // Loading the ECharts extensions should happen in the respective plugins.
@@ -65,6 +66,60 @@ use([
   MarkLineComponent,
   MarkPointComponent,
 ]);
+
+// LOGZ.IO CHANGE START:: suspend chart hit-testing while the page scrolls [unidash-perf]
+// After a scroll, the browser re-hit-tests the element under the (stationary) cursor and dispatches
+// pointerover/enter/leave + mousemove to whatever chart scrolled underneath it. Those events run the
+// full hover pipeline (zrender hover state, axis pointer, emphasis, tooltip render) — measured at
+// 200-260ms per handler burst during dashboard scrolling. Turning pointer-events off on every chart
+// container for the duration of the scroll (plus a short cooldown) suppresses all of it at the
+// browser level; the styles are restored as soon as scrolling settles.
+const SCROLL_POINTER_RESUME_MS = 250;
+const scrollSuspendTargets = new Set<HTMLElement>();
+let scrollSuspendListenerAttached = false;
+let scrollSuspendActive = false;
+let scrollSuspendRestoreTimer: ReturnType<typeof setTimeout> | undefined;
+
+function handleScrollSuspend(): void {
+  if (!scrollSuspendActive) {
+    scrollSuspendActive = true;
+    scrollSuspendTargets.forEach((el) => {
+      el.style.pointerEvents = 'none';
+    });
+  }
+  if (scrollSuspendRestoreTimer !== undefined) clearTimeout(scrollSuspendRestoreTimer);
+  scrollSuspendRestoreTimer = setTimeout(() => {
+    scrollSuspendActive = false;
+    scrollSuspendRestoreTimer = undefined;
+    scrollSuspendTargets.forEach((el) => {
+      el.style.pointerEvents = '';
+    });
+  }, SCROLL_POINTER_RESUME_MS);
+}
+
+function registerScrollSuspendTarget(el: HTMLElement): () => void {
+  scrollSuspendTargets.add(el);
+  if (!scrollSuspendListenerAttached) {
+    window.addEventListener('scroll', handleScrollSuspend, { capture: true, passive: true });
+    scrollSuspendListenerAttached = true;
+  }
+  if (scrollSuspendActive) el.style.pointerEvents = 'none';
+
+  return (): void => {
+    scrollSuspendTargets.delete(el);
+    el.style.pointerEvents = '';
+    if (scrollSuspendTargets.size === 0 && scrollSuspendListenerAttached) {
+      window.removeEventListener('scroll', handleScrollSuspend, true);
+      scrollSuspendListenerAttached = false;
+      if (scrollSuspendRestoreTimer !== undefined) {
+        clearTimeout(scrollSuspendRestoreTimer);
+        scrollSuspendRestoreTimer = undefined;
+      }
+      scrollSuspendActive = false;
+    }
+  };
+}
+// LOGZ.IO CHANGE END:: suspend chart hit-testing while the page scrolls [unidash-perf]
 
 // see docs for info about each property: https://echarts.apache.org/en/api.html#events
 export interface MouseEventsParameters<T> {
@@ -194,16 +249,53 @@ export const EChart = memo(function EChart<T>({
     }
     return (): void => {
       if (chartElement.current === null) return;
+      // LOGZ.IO CHANGE START:: pre-dispose cleanup [unidash-perf]
+      // Pending tooltip timers (ECharts' internal _keepShow setTimeout) and sync-group linkage keep
+      // referencing the instance graph — its canvas, zrender tree and cloned dataset — after unmount.
+      // Leak tracking showed unmounted chart canvases surviving forced GC after panel-group
+      // collapse/expand cycles (~150MB retained per cycle). Drop the tooltip and leave the sync
+      // group before disposing so no timer/registry closure retains the chart.
+      try {
+        chartElement.current.dispatchAction({ type: 'hideTip' });
+      } catch {
+        // best-effort: never block dispose
+      }
+      chartElement.current.group = '';
+      // LOGZ.IO CHANGE END:: pre-dispose cleanup [unidash-perf]
       chartElement.current.dispose();
       chartElement.current = null;
+      // LOGZ.IO CHANGE START:: don't leave parent refs pointing at the disposed instance — a disposed
+      // chart still references its DOM/canvas, so any longer-lived holder of this ref would retain the
+      // whole chart graph after unmount. [unidash-perf]
+      if (_instance !== undefined) {
+        _instance.current = undefined;
+      }
+      // LOGZ.IO CHANGE END:: clear escaped instance refs [unidash-perf]
     };
   }, [_instance, onChartInitialized, theme, renderer]);
+
+  // LOGZ.IO CHANGE START:: suspend chart hit-testing while the page scrolls [unidash-perf]
+  useLayoutEffect(() => {
+    if (containerRef.current === null) return;
+
+    return registerScrollSuspendTarget(containerRef.current);
+  }, []);
+  // LOGZ.IO CHANGE END:: suspend chart hit-testing while the page scrolls [unidash-perf]
 
   // When syncGroup is explicitly set, charts within same group share interactions such as crosshair
   useEffect(() => {
     if (!chartElement.current || !syncGroup) return;
-    chartElement.current.group = syncGroup;
-    connect([chartElement.current]); // more info: https://echarts.apache.org/en/api.html#echarts.connect
+    const chart = chartElement.current; // LOGZ.IO CHANGE:: capture for cleanup [unidash-perf]
+    chart.group = syncGroup;
+    connect([chart]); // more info: https://echarts.apache.org/en/api.html#echarts.connect
+    // LOGZ.IO CHANGE START:: leave the sync group when it changes or the chart unmounts, so the
+    // group registry never keeps a reference to a disposed chart. [unidash-perf]
+    return (): void => {
+      if (!chart.isDisposed()) {
+        chart.group = '';
+      }
+    };
+    // LOGZ.IO CHANGE END:: leave the sync group [unidash-perf]
   }, [syncGroup, chartElement]);
 
   // Update chart data when option changes
@@ -211,6 +303,9 @@ export const EChart = memo(function EChart<T>({
     if (prevOption.current === undefined || isEqual(prevOption.current, option)) return;
     if (!chartElement.current) return;
     chartElement.current.setOption(option, true);
+    // LOGZ.IO CHANGE:: replacing the option resets series states, so the emphasis-dispatch dedup
+    // cache must forget its last payload or an identical follow-up dispatch would be skipped. [unidash-perf]
+    clearNearbySeriesDispatchCache(chartElement.current);
     prevOption.current = option;
   }, [option]);
 

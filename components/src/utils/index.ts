@@ -14,6 +14,7 @@
 export * from './axis';
 export * from './browser-storage';
 export * from './chart-actions';
+export * from './columnar-data'; // LOGZ.IO CHANGE:: [unidash-perf]
 export * from './combine-sx';
 export * from './component-ids';
 export * from './data-field-interpolation';
