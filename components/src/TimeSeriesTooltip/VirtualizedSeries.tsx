@@ -66,7 +66,7 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
         defaultItemHeight={SERIES_ROW_HEIGHT_PX}
         data={sortedFocusedSeries}
         itemContent={(index, data) => {
-          if (isNil(data.datumIdx) || isNil(data.seriesIdx)) return null;
+          if (isNil(data) || isNil(data.datumIdx) || isNil(data.seriesIdx)) return null;
 
           const key = data.seriesIdx.toString() + data.datumIdx.toString();
 
@@ -82,7 +82,7 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
               emphasizeText={data.isClosestToCursor}
               // LOGZ.IO CHANGE START:: Drilldown panel
               isSelected={data.isSelected}
-              isSelectable={!!data.metadata?.isSelectable ?? true}
+              isSelectable={data.metadata?.isSelectable ?? true}
               onSelected={onSelected ? (): void => onSelected(data.seriesIdx!) : undefined}
               // LOGZ.IO CHANGE END:: Drilldown panel
             />
