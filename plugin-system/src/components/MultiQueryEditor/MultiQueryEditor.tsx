@@ -30,7 +30,7 @@ export interface MultiQueryEditorProps {
   onQueryRun: (index: number, query: QueryDefinition) => void;
 }
 
-// LOGZ.IO CHANGE START:: APPZ-1695 support log queries in MultiQueryEditor
+// LOGZ.IO CHANGE START:: support log queries in MultiQueryEditor
 function useDefaultQueryDefinition(
   queryTypes: QueryPluginType[],
   filteredQueryPlugins?: string[]
@@ -78,7 +78,7 @@ function useDefaultQueryDefinition(
   };
 }
 
-// LOGZ.IO CHANGE END:: APPZ-1695 support log queries in MultiQueryEditor
+// LOGZ.IO CHANGE END:: support log queries in MultiQueryEditor
 
 /**
  * A component render a list of {@link QueryEditorContainer} for the given query definitions.
@@ -95,7 +95,7 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
   // State for which queries are collapsed
   const [queriesCollapsed, setQueriesCollapsed] = useState(queries.map(() => false));
 
-  // LOGZ.IO CHANGE START:: APPZ-1695 replace incompatible queries when panel type changes
+  // LOGZ.IO CHANGE START:: replace incompatible queries when panel type changes
   useEffect(() => {
     if (isLoading || queries.length === 0) return;
 
@@ -105,7 +105,7 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
     onChange([defaultInitialQueryDefinition]);
     onQueryRun(0, defaultInitialQueryDefinition);
   }, [queryTypes, queries, isLoading, defaultInitialQueryDefinition, onChange, onQueryRun]);
-  // LOGZ.IO CHANGE END:: APPZ-1695 replace incompatible queries when panel type changes
+  // LOGZ.IO CHANGE END:: replace incompatible queries when panel type changes
 
   // Query handlers
   const handleQueryChange = useCallback(
@@ -119,11 +119,11 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
           }
         })
       );
-      // LOGZ.IO CHANGE START:: APPZ-1234 support forceUpdate to trigger query run on change
+      // LOGZ.IO CHANGE START:: support forceUpdate to trigger query run on change
       if (options?.forceUpdate) {
         onQueryRun(index, queryDef);
       }
-      // LOGZ.IO CHANGE END:: APPZ-1234 support forceUpdate to trigger query run on change
+      // LOGZ.IO CHANGE END:: support forceUpdate to trigger query run on change
     },
     [onChange, onQueryRun, queries]
   );
@@ -160,13 +160,14 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
     });
   };
 
-  // LOGZ.IO CHANGE START:: APPZ-955-math-on-queries-formulas
+  // LOGZ.IO CHANGE START:: math-on-queries-formulas
   const handleVisibilityToggle = useCallback(
     (index: number, isHidden: boolean) => {
       const updatedQueries = produce(queries, (draft) => {
         const entry = draft?.[index];
         if (entry) {
-          // LOGZ.IO CHANGE:: `hidden` lives on the query spec via patched @perses-dev/core; spec types omit it [APPZ-955]
+          // LOGZ.IO CHANGE:: `hidden` lives on the query spec; the @perses-dev/spec types omit it and its Zod
+          // schema strips it on panel save — PanelEditorForm re-attaches it (restoreValuesStrippedByValidation)
           (entry.spec as { hidden?: boolean }).hidden = !isHidden;
         }
       });
@@ -175,7 +176,7 @@ export const MultiQueryEditor = forwardRef<PluginEditorRef, MultiQueryEditorProp
     },
     [handleQueryChange, queries]
   );
-  // LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas
+  // LOGZ.IO CHANGE END:: math-on-queries-formulas
 
   const handleQueryCollapseExpand = (index: number): void => {
     setQueriesCollapsed((queriesCollapsed) => {

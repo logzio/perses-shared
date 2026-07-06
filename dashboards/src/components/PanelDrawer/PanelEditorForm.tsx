@@ -29,6 +29,8 @@ import { useListPanelGroups } from '../../context';
 import { PanelEditorProvider } from '../../context/PanelEditorProvider/PanelEditorProvider';
 import { usePanelEditor } from './usePanelEditor';
 import { PanelQueriesSharedControls } from './PanelQueriesSharedControls';
+// LOGZ.IO CHANGE:: Re-attach fields stripped by Zod validation before save
+import { restoreValuesStrippedByValidation } from './panel-editor-values';
 
 export interface PanelEditorFormProps {
   initialValues: PanelEditorValues;
@@ -79,32 +81,11 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
 
   const processForm: SubmitHandler<PanelEditorValues> = useCallback(
     (data) => {
-      // LOGZ.IO CHANGE START:: Restore panel-level time-range override fields stripped by Zod [APPZ-2474]
-      // The default Zod schema (`@perses-dev/core`) declares only `display`, `plugin`, `queries`,
-      // `links` on the panel spec, so unknown keys (`timeFrom` / `timeShift` / `hideTimeOverride`)
-      // get stripped during validation. We don't replace the schema (matching the schema's
-      // typing surface globally is fragile and broke other validations); instead we read the
-      // raw form values and re-attach the override fields onto the validated object before save.
-      const raw = form.getValues() as PanelEditorValues & {
-        panelDefinition: {
-          spec: { timeFrom?: string; timeShift?: string; hideTimeOverride?: boolean };
-        };
-      };
-      const rawSpec = raw.panelDefinition.spec;
-      const merged: PanelEditorValues = {
-        ...data,
-        panelDefinition: {
-          ...data.panelDefinition,
-          spec: {
-            ...data.panelDefinition.spec,
-            ...(rawSpec.timeFrom !== undefined && rawSpec.timeFrom !== '' ? { timeFrom: rawSpec.timeFrom } : {}),
-            ...(rawSpec.timeShift !== undefined && rawSpec.timeShift !== '' ? { timeShift: rawSpec.timeShift } : {}),
-            ...(rawSpec.hideTimeOverride !== undefined ? { hideTimeOverride: rawSpec.hideTimeOverride } : {}),
-          } as typeof data.panelDefinition.spec,
-        },
-      };
-      onSave(merged);
-      // LOGZ.IO CHANGE END:: Restore panel-level time-range override fields [APPZ-2474]
+      // LOGZ.IO CHANGE START:: Re-attach fields stripped by Zod validation before save
+      // Zod strips the Logz.io extension fields (query `hidden`, panel time override) from the
+      // validated values — restore them from the raw form values, see restoreValuesStrippedByValidation.
+      onSave(restoreValuesStrippedByValidation(data, form.getValues()));
+      // LOGZ.IO CHANGE END:: Re-attach fields stripped by Zod validation before save
     },
     [form, onSave]
   );
