@@ -15,6 +15,7 @@
 // its rows already present, instead of a 10px sliver that waits for a post-mount measurement [unidash-perf]
 
 import { TextEncoder } from 'util';
+import { fireEvent, render } from '@testing-library/react';
 import { NearbySeriesArray } from './types';
 import { VirtualizedSeries } from './VirtualizedSeries';
 
@@ -68,5 +69,46 @@ describe('VirtualizedSeries', () => {
     for (let i = 0; i < 6; i++) {
       expect(html).toContain(`series-name-${i}`);
     }
+  });
+
+  it('should treat rows without explicit selectability metadata as selectable', () => {
+    const onSelected = jest.fn();
+    const series = buildSeries(2); // no metadata -> defaults to selectable
+
+    const { getByText } = render(
+      <VirtualizedSeries allowActions sortedFocusedSeries={series} wrapLabels={false} onSelected={onSelected} />
+    );
+
+    fireEvent.click(getByText('series-name-0'));
+
+    expect(onSelected).toHaveBeenCalledWith(0);
+  });
+
+  it('should keep rows explicitly marked non-selectable unclickable', () => {
+    const onSelected = jest.fn();
+    const series = buildSeries(2);
+
+    series[0] = { ...series[0]!, metadata: { isSelectable: false } };
+
+    const { getByText } = render(
+      <VirtualizedSeries allowActions sortedFocusedSeries={series} wrapLabels={false} onSelected={onSelected} />
+    );
+
+    fireEvent.click(getByText('series-name-0'));
+
+    expect(onSelected).not.toHaveBeenCalled();
+  });
+
+  it('should not crash when the series list shrinks below the rendered row range', () => {
+    // Virtuoso keeps its initially rendered range until its first measurement lands (never, in
+    // jsdom); shrinking the data underneath it makes itemContent receive undefined items — the
+    // panel-breaking "Cannot read properties of undefined (reading 'datumIdx')".
+    const { rerender } = render(
+      <VirtualizedSeries allowActions={false} sortedFocusedSeries={buildSeries(14)} wrapLabels={false} />
+    );
+
+    expect(() =>
+      rerender(<VirtualizedSeries allowActions={false} sortedFocusedSeries={buildSeries(3)} wrapLabels={false} />)
+    ).not.toThrow();
   });
 });
