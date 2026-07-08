@@ -98,9 +98,16 @@ export function DragAndDropElement({ children, data }: DragAndDropElementProps):
       return;
     }
 
+    // LOGZ.IO CHANGE START:: Restrict the drag to the "move" handle (rendered by DragButton with
+    // aria-label="move") so text can be selected inside inputs in the row instead of starting a
+    // drag. Falls back to dragging the whole element when no handle is present. [table-column-drag-handle]
+    const dragHandle = element.querySelector<HTMLElement>('[aria-label="move"]') ?? undefined;
+    // LOGZ.IO CHANGE END:: [table-column-drag-handle]
+
     return combine(
       draggable({
         element,
+        dragHandle, // LOGZ.IO CHANGE:: scope the drag to the move handle [table-column-drag-handle]
         getInitialData() {
           return data;
         },
