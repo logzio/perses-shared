@@ -16,7 +16,7 @@ import { screen, RenderOptions, render, RenderResult } from '@testing-library/re
 import { DurationString } from '@perses-dev/spec';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { ReactElement } from 'react';
-import { SnackbarProvider } from '@perses-dev/components';
+import { SnackbarProvider, TimeRangePickerComponent } from '@perses-dev/components';
 import { TimeRangeProviderBasic, TimeRangeProviderWithQueryParams } from '@perses-dev/plugin-system';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryParamProvider } from 'use-query-params';
@@ -53,6 +53,17 @@ describe('TimeRangeControls', () => {
     return <TimeRangeControls timeZone={timeZone} onTimeZoneChange={(tz) => setTimeZone(tz.value)} />;
   };
 
+  const ControlsWithCustomPicker = ({ picker }: { picker: TimeRangePickerComponent }): ReactElement => {
+    const { timeZone, setTimeZone } = useTimeZoneParams('local');
+    return (
+      <TimeRangeControls
+        timeZone={timeZone}
+        onTimeZoneChange={(tz) => setTimeZone(tz.value)}
+        timeRangePicker={picker}
+      />
+    );
+  };
+
   const renderTimeRangeControls = (testURLParams: boolean): void => {
     renderWithContext(
       <>
@@ -85,6 +96,34 @@ describe('TimeRangeControls', () => {
     userEvent.click(firstSelected);
     expect(dateButton).toHaveTextContent(/5 minutes/i);
   });
+
+  // LOGZ.IO CHANGE START:: Allow swapping the built-in time-range picker
+  it('should render a custom picker when provided and drive setTimeRange through its onChange', async () => {
+    const CustomPicker: TimeRangePickerComponent = ({ value, onChange }): ReactElement => (
+      <button onClick={() => onChange({ pastDuration: '5m' as DurationString })}>
+        {`custom-picker:${'pastDuration' in value ? value.pastDuration : 'absolute'}`}
+      </button>
+    );
+
+    renderWithContext(
+      <TimeRangeProviderBasic
+        initialRefreshInterval={testDefaultRefreshInterval}
+        initialTimeRange={testDefaultTimeRange}
+      >
+        <ControlsWithCustomPicker picker={CustomPicker} />
+      </TimeRangeProviderBasic>,
+      undefined
+    );
+
+    // The custom picker replaces the built-in selector and receives the current time range value.
+    expect(await screen.findByRole('button', { name: 'custom-picker:30m' })).toBeInTheDocument();
+    expect(screen.queryByText('Last 30 minutes')).not.toBeInTheDocument();
+
+    // Its onChange is wired to the dashboard time range, so selecting a new value updates the shared context.
+    userEvent.click(screen.getByRole('button', { name: 'custom-picker:30m' }));
+    expect(await screen.findByRole('button', { name: 'custom-picker:5m' })).toBeInTheDocument();
+  });
+  // LOGZ.IO CHANGE END:: Allow swapping the built-in time-range picker
 
   // TODO: add additional tests for absolute time selection, other inputs, form validation, etc.
 });

@@ -23,6 +23,7 @@ import {
   TimeOption,
   ToolbarIconButton,
   TimeRangeSelector,
+  TimeRangePickerComponent, // LOGZ.IO CHANGE:: pluggable time-range picker
   TimeZoneOption,
   getTimeZoneOptions,
   buildRelativeTimeOption,
@@ -37,7 +38,7 @@ import {
   useShowZoomRangeSetting,
 } from '../../runtime';
 
-// LOGZ.IO CHANGE START:: Change refresh time interval options [APPZ-364]
+// LOGZ.IO CHANGE START:: Change refresh time interval options
 export const DEFAULT_REFRESH_INTERVAL_OPTIONS: TimeOption[] = [
   { value: { pastDuration: '0s' }, display: 'Off' },
   { value: { pastDuration: '30s' }, display: '30s' },
@@ -49,7 +50,7 @@ export const DEFAULT_REFRESH_INTERVAL_OPTIONS: TimeOption[] = [
   { value: { pastDuration: '2h' }, display: '2h' },
   { value: { pastDuration: '1d' }, display: '1d' },
 ];
-// LOGZ.IO CHANGE END:: Change refresh time interval options [APPZ-364]
+// LOGZ.IO CHANGE END:: Change refresh time interval options
 
 const DEFAULT_HEIGHT = '34px';
 
@@ -64,6 +65,10 @@ interface TimeRangeControlsProps {
   timePresets?: TimeOption[];
   timeZone: string;
   onTimeZoneChange: (timeZone: TimeZoneOption) => void;
+  // LOGZ.IO CHANGE START:: Allow swapping the built-in time-range picker
+  /** Custom time-range picker. Falls back to the built-in `TimeRangeSelector` when omitted. */
+  timeRangePicker?: TimeRangePickerComponent;
+  // LOGZ.IO CHANGE END:: Allow swapping the built-in time-range picker
 }
 
 export function TimeRangeControls({
@@ -76,8 +81,11 @@ export function TimeRangeControls({
   timePresets,
   timeZone,
   onTimeZoneChange,
+  timeRangePicker, // LOGZ.IO CHANGE:: pluggable time-range picker
 }: TimeRangeControlsProps): ReactElement {
   const { timeRange, setTimeRange, refresh, refreshInterval, setRefreshInterval } = useTimeRange();
+  // LOGZ.IO CHANGE:: use the injected picker when provided, else the built-in selector
+  const PickerComponent = timeRangePicker ?? TimeRangeSelector;
 
   const showCustomTimeRangeValue = useShowCustomTimeRangeSetting(showCustomTimeRange);
   const showZoomInOutButtons = useShowZoomRangeSetting(showZoomButtons);
@@ -180,7 +188,8 @@ export function TimeRangeControls({
   return (
     <Stack direction="row" spacing={1}>
       {showTimeRangeSelector && (
-        <TimeRangeSelector
+        // LOGZ.IO CHANGE:: render the injected picker (defaults to TimeRangeSelector)
+        <PickerComponent
           timeOptions={timePresetsValue}
           value={timeRange}
           onChange={setTimeRange}
