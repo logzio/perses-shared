@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { Typography, Stack, Button, Box, useTheme, useMediaQuery, Alert } from '@mui/material';
-import { ErrorBoundary, ErrorAlert } from '@perses-dev/components';
+import { ErrorBoundary, ErrorAlert, TimeRangePickerComponent } from '@perses-dev/components';
 import { TimeRangeControls, useTimeZoneParams } from '@perses-dev/plugin-system';
 import { ReactElement, ReactNode } from 'react';
 import { OnSaveDashboard, useEditMode, useDashboardLinks } from '../../context';
@@ -41,6 +41,7 @@ export interface DashboardToolbarProps {
   onSave?: OnSaveDashboard;
   dashboardControlsComponent?: JSX.Element; // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
   toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Add support for toolbarAddonComponent
+  timeRangePicker?: TimeRangePickerComponent; // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
 }
 
 export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => {
@@ -57,6 +58,7 @@ export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => 
     onSave,
     dashboardControlsComponent,
     toolbarAddonComponent,
+    timeRangePicker, // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
   } = props;
 
   const { isEditMode } = useEditMode();
@@ -135,7 +137,8 @@ export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => 
           <Box width="100%">
             <ErrorBoundary FallbackComponent={ErrorAlert}>
               <DashboardStickyToolbar
-                toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters [APPZ-1228]
+                toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters
+                timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
                 initialVariableIsSticky={initialVariableIsSticky}
                 sx={{
                   backgroundColor: ({ palette }) => palette.background.default,
@@ -145,7 +148,11 @@ export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => 
           </Box>
           <Stack direction="row" ml="auto" flexWrap="wrap" justifyContent="end">
             <Stack direction="row" spacing={1} mt={1} ml={1}>
-              <TimeRangeControls timeZone={timeZone} onTimeZoneChange={(tz) => setTimeZone(tz.value)} />
+              <TimeRangeControls
+                timeZone={timeZone}
+                onTimeZoneChange={(tz) => setTimeZone(tz.value)}
+                timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+              />
               <DownloadButton />
               <EditJsonButton isReadonly={!isEditMode} />
             </Stack>

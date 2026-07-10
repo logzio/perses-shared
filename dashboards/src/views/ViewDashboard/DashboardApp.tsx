@@ -13,7 +13,14 @@
 
 import { ReactElement, ReactNode, useEffect, useState } from 'react';
 import { Box } from '@mui/material';
-import { ChartsProvider, ErrorAlert, ErrorBoundary, useChartsTheme, useChartsContext } from '@perses-dev/components';
+import {
+  ChartsProvider,
+  ErrorAlert,
+  ErrorBoundary,
+  useChartsTheme,
+  useChartsContext,
+  TimeRangePickerComponent, // LOGZ.IO CHANGE:: pluggable time-range picker
+} from '@perses-dev/components';
 import { useDatasourceStore } from '@perses-dev/plugin-system';
 import { DashboardSpec } from '@perses-dev/spec';
 import {
@@ -48,9 +55,10 @@ export interface DashboardAppProps {
   dashboardTitleComponent?: ReactNode;
   onSave?: OnSaveDashboard;
   onDiscard?: (name: string, spec: DashboardSpec) => void;
-  toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Support AdHoc filters [APPZ-1228]
+  toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Support AdHoc filters
   dashboardControlsComponent?: JSX.Element; // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
-  onDashboardChange?: (dashboard: DashboardResource) => void; // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes [APPZ-316]
+  timeRangePicker?: TimeRangePickerComponent; // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+  onDashboardChange?: (dashboard: DashboardResource) => void; // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
 }
 
 export const DashboardApp = (props: DashboardAppProps): ReactElement => {
@@ -76,12 +84,13 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     onSave,
     onDiscard,
     dashboardControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
-    toolbarAddonComponent, // LOGZ.IO CHANGE:: Support AdHoc filters [APPZ-1228]
-    onDashboardChange, // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes [APPZ-316]
+    toolbarAddonComponent, // LOGZ.IO CHANGE:: Support AdHoc filters
+    timeRangePicker, // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+    onDashboardChange, // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
   } = props;
 
   const chartsTheme = useChartsTheme();
-  const parentChartsContext = useChartsContext(); // LOGZ.IO CHANGE:: Custom Drilldown preview [APPZ-709]
+  const parentChartsContext = useChartsContext(); // LOGZ.IO CHANGE:: Custom Drilldown preview
 
   const { isEditMode, setEditMode } = useEditMode();
 
@@ -105,11 +114,11 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     }
   };
 
-  // LOGZ.IO CHANGE START:: Alert users when trying to navigate out of dashboard in edit mode that has changes [APPZ-316]
+  // LOGZ.IO CHANGE START:: Alert users when trying to navigate out of dashboard in edit mode that has changes
   useEffect(() => {
     onDashboardChange?.(dashboard as unknown as DashboardResource);
   }, [dashboard, onDashboardChange, originalDashboard]);
-  // LOGZ.IO CHANGE END:: Alert users when trying to navigate out of dashboard in edit mode that has changes [APPZ-316]
+  // LOGZ.IO CHANGE END:: Alert users when trying to navigate out of dashboard in edit mode that has changes
 
   const onEditButtonClick = (): void => {
     setEditMode(true);
@@ -161,7 +170,8 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
         onEditButtonClick={onEditButtonClick}
         onCancelButtonClick={onCancelButtonClick}
         dashboardControlsComponent={dashboardControlsComponent}
-        toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters [APPZ-1228]
+        toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters
+        timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
       />
       <Box
         sx={{
@@ -183,8 +193,8 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
         <ChartsProvider
           chartsTheme={chartsTheme}
           enableSyncGrouping={false}
-          enablePinning={true} // LOGZ.IO CHANGE:: Custom Drilldown preview [APPZ-709]
-          pointActions={parentChartsContext.pointActions || []} // LOGZ.IO CHANGE:: Custom Drilldown preview [APPZ-709]
+          enablePinning={true} // LOGZ.IO CHANGE:: Custom Drilldown preview
+          pointActions={parentChartsContext.pointActions || []} // LOGZ.IO CHANGE:: Custom Drilldown preview
         >
           <PanelDrawer />
         </ChartsProvider>

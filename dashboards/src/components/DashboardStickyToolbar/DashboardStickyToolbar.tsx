@@ -27,13 +27,15 @@ import PinOutline from 'mdi-material-ui/PinOutline';
 import PinOffOutline from 'mdi-material-ui/PinOffOutline';
 import { TimeRangeControls, useTimeZoneParams } from '@perses-dev/plugin-system';
 import { ExternalVariableDefinition, VariableDefinition } from '@perses-dev/core';
+import { TimeRangePickerComponent } from '@perses-dev/components'; // LOGZ.IO CHANGE:: pluggable time-range picker
 import { VariableList } from '../Variables';
 import { useExternalVariableDefinitions, useVariableDefinitions } from '../../context';
 
 interface DashboardStickyToolbarProps {
   initialVariableIsSticky?: boolean;
   sx?: SxProps<Theme>;
-  toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Support AdHoc filters [APPZ-1228]
+  toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Support AdHoc filters
+  timeRangePicker?: TimeRangePickerComponent; // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
 }
 
 export function DashboardStickyToolbar(props: DashboardStickyToolbarProps): ReactElement {
@@ -90,7 +92,7 @@ export function DashboardStickyToolbar(props: DashboardStickyToolbarProps): Reac
             gap={1}
           >
             {variablesLength > 0 && <VariableList />}
-            {props.toolbarAddonComponent} {/* LOGZ.IO CHANGE:: Support AdHoc filters [APPZ-1228] */}
+            {props.toolbarAddonComponent} {/* LOGZ.IO CHANGE:: Support AdHoc filters */}
             {props.initialVariableIsSticky && (
               <IconButton style={{ width: 'fit-content', height: 'fit-content' }} onClick={() => setIsPin(!isPin)}>
                 {isPin ? <PinOutline /> : <PinOffOutline />}
@@ -105,7 +107,11 @@ export function DashboardStickyToolbar(props: DashboardStickyToolbarProps): Reac
               direction="row"
               justifyContent="end"
             >
-              <TimeRangeControls timeZone={timeZone} onTimeZoneChange={(tz) => setTimeZone(tz.value)} />
+              <TimeRangeControls
+                timeZone={timeZone}
+                onTimeZoneChange={(tz) => setTimeZone(tz.value)}
+                timeRangePicker={props.timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+              />
             </Stack>
           )}
         </Box>

@@ -15,7 +15,7 @@ import { Box, MenuItem, Popover, Select, IconButton, TextField, Stack } from '@m
 import Calendar from 'mdi-material-ui/Calendar';
 import EarthIcon from 'mdi-material-ui/Earth';
 import { TimeRangeValue, isRelativeTimeRange, AbsoluteTimeRange, toAbsoluteTimeRange } from '@perses-dev/spec';
-import { ReactElement, useMemo, useRef, useState } from 'react';
+import { ComponentType, ReactElement, useMemo, useRef, useState } from 'react';
 import { useTimeZone } from '../context';
 import { TimeZoneOption, getTimeZoneOptions } from '../model/timeZoneOption';
 import { TimeOption } from '../model';
@@ -24,7 +24,8 @@ import { getGMTOffset } from '../utils/format';
 import { DateTimeRangePicker } from './DateTimeRangePicker';
 import { buildCustomTimeOption, formatTimeRange } from './utils';
 
-interface TimeRangeSelectorProps {
+// LOGZ.IO CHANGE:: export props so a custom picker can implement the same contract
+export interface TimeRangeSelectorProps {
   /**
    * The current value of the time range.
    */
@@ -52,6 +53,16 @@ interface TimeRangeSelectorProps {
   timeZoneOptions?: TimeZoneOption[];
   onTimeZoneChange?: (timeZone: TimeZoneOption) => void;
 }
+
+// LOGZ.IO CHANGE START:: Pluggable time-range picker contract
+/**
+ * Props contract implemented by any pluggable time-range picker.
+ * The built-in `TimeRangeSelector` satisfies it and is used as the default when
+ * no custom picker is provided to the dashboard.
+ */
+export type TimeRangePickerProps = TimeRangeSelectorProps;
+export type TimeRangePickerComponent = ComponentType<TimeRangePickerProps>;
+// LOGZ.IO CHANGE END:: Pluggable time-range picker contract
 
 /**
  * Date & time selection component to customize what data renders on dashboard.
