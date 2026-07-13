@@ -139,7 +139,9 @@ function getValueAndKindForNaturalNumbers(value: number, unit: TimeUnits): { val
 
   for (timeUnit of LARGEST_TO_SMALLEST_TIME_UNITS) {
     valueInTimeUnit = valueInSeconds / TIME_UNITS_IN_SECONDS[timeUnit];
-    if (valueInTimeUnit >= 1) {
+    // LOGZ.IO CHANGE START:: compare magnitude so negatives pick the same unit as their positive counterpart; the sign is preserved in valueInTimeUnit
+    if (Math.abs(valueInTimeUnit) >= 1) {
+      // LOGZ.IO CHANGE END
       return { value: valueInTimeUnit, unit: timeUnit };
     }
   }

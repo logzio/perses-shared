@@ -219,6 +219,34 @@ const TIME_TESTS: UnitTestCase[] = [
     format: { unit: 'years' },
     expected: '100 years',
   },
+  // LOGZ.IO CHANGE START:: negative values must convert units like positives (not fall through to ns).
+  // Cases reuse (output-unit, input-unit) pairs already exercised above, so the formatter-cache count stays 25.
+  {
+    value: -0.004,
+    format: { unit: 'seconds' },
+    expected: '-4ms',
+  },
+  {
+    value: -100,
+    format: { unit: 'seconds' },
+    expected: '-1.67m',
+  },
+  {
+    value: -1,
+    format: { unit: 'seconds' },
+    expected: '-1s',
+  },
+  {
+    value: -1,
+    format: { unit: 'years' },
+    expected: '-1 year',
+  },
+  {
+    value: -0.001,
+    format: { unit: 'nanoseconds' },
+    expected: '-0.001ns',
+  },
+  // LOGZ.IO CHANGE END
 ];
 describe('formatValue', () => {
   it.each(TIME_TESTS)('returns $expected when $value formatted as $format', (args: UnitTestCase) => {
