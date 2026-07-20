@@ -73,6 +73,12 @@ const ListLegendItemBase = forwardRef<HTMLDivElement, ListLegendItemProps>(funct
   }
 
   const handleClick: MouseEventHandler<HTMLDivElement> = (e) => {
+    // LOGZ.IO CHANGE START:: Don't toggle the series when the click is actually a text selection, so the label can be copied
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) {
+      return;
+    }
+    // LOGZ.IO CHANGE END
     onClick(e, item.id);
     item.onClick?.(e);
   };
@@ -100,7 +106,8 @@ const ListLegendItemBase = forwardRef<HTMLDivElement, ListLegendItemProps>(funct
       </Box>
       <ListItemText
         primary={item.label}
-        primaryTypographyProps={{ noWrap: noWrap }}
+        // LOGZ.IO CHANGE:: Re-enable text selection so the label can be copied (ButtonBase forces user-select: none)
+        primaryTypographyProps={{ noWrap: noWrap, sx: { userSelect: 'text' } }}
         onMouseOver={handleTextMouseOver}
         onMouseOut={handleTextMouseOut}
       ></ListItemText>

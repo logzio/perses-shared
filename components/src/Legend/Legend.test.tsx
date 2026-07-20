@@ -149,6 +149,28 @@ describe('Legend', () => {
       });
     });
 
+    test('does not toggle selection when the click is a text selection (so the label can be copied)', () => {
+      const mockOnSelectedItemsChange = jest.fn();
+      const getSelectionSpy = jest
+        .spyOn(window, 'getSelection')
+        .mockReturnValue({ isCollapsed: false } as unknown as Selection);
+
+      renderLegend({
+        onSelectedItemsChange: mockOnSelectedItemsChange,
+        position,
+      });
+
+      const listItems = screen.getAllByRole('listitem');
+      const itemToClick = listItems[1];
+      if (!itemToClick) {
+        throw new Error('Missing item to click');
+      }
+
+      userEvent.click(itemToClick);
+      getSelectionSpy.mockRestore();
+      expect(mockOnSelectedItemsChange).not.toHaveBeenCalled();
+    });
+
     test.each(['shiftKey', 'metaKey'])(`adds/removes selected items on click modified with %s`, (modifierKey) => {
       const mockOnSelectedItemsChange = jest.fn();
       renderLegend({
