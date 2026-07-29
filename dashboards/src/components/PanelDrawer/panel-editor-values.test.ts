@@ -96,7 +96,7 @@ describe('restoreValuesStrippedByValidation', () => {
     expect(restoredSpec.hideTimeOverride).toBe(false);
   });
 
-  // LOGZ.IO CHANGE START:: Item-level repeat rides alongside panelDefinition and is stripped too [APPZ-0000]
+  // LOGZ.IO CHANGE START:: Item-level repeat rides alongside panelDefinition and is stripped too
   it('should strip the item-level repeat when validating with the @perses-dev/spec schema', () => {
     const raw = { ...RAW_VALUES, repeat: { repeatVariable: 'cluster', repeatDirection: 'v', maxPerRow: 3 } };
 
@@ -131,7 +131,7 @@ describe('restoreValuesStrippedByValidation', () => {
 
     expect(restored).not.toHaveProperty('repeat');
   });
-  // LOGZ.IO CHANGE END:: Item-level repeat [APPZ-0000]
+  // LOGZ.IO CHANGE END:: Item-level repeat
 
   it('should not restore empty-string time override fields when they were cleared in the editor', () => {
     const raw = JSON.parse(JSON.stringify(RAW_VALUES)) as PanelEditorValues;

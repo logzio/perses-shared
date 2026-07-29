@@ -23,7 +23,7 @@ import { PanelGroupSlice } from './panel-group-slice';
 export interface VirtualPanelRef {
   ref: string;
   repeatVariable?: RepeatVariableBinding;
-  // LOGZ.IO CHANGE:: Keeps a viewed item-level repeat instance addressable across reloads [APPZ-0000]
+  // LOGZ.IO CHANGE:: Keeps a viewed item-level repeat instance addressable across reloads
   itemRepeatVariable?: RepeatVariableBinding;
 }
 

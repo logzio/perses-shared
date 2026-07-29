@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Item-level repeat resolves against the dashboard, not the enclosing row [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level repeat resolves against the dashboard, not the enclosing row
 
 import { ReactElement, ReactNode } from 'react';
 import { screen } from '@testing-library/react';
@@ -67,4 +67,4 @@ describe('useDashboardVariableValues', () => {
   });
 });
 
-// LOGZ.IO CHANGE END:: Item-level repeat resolves against the dashboard [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level repeat resolves against the dashboard

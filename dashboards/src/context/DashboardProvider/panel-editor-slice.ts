@@ -65,7 +65,7 @@ export interface PanelEditorState {
   /**
    * Initial values for the things that can be edited about a panel.
    */
-  // LOGZ.IO CHANGE:: Carries the grid item's repeat options alongside the panel [APPZ-0000]
+  // LOGZ.IO CHANGE:: Carries the grid item's repeat options alongside the panel
   initialValues: RepeatablePanelEditorValues;
 
   /**
@@ -79,7 +79,7 @@ export interface PanelEditorState {
   close: () => void;
 }
 
-// LOGZ.IO CHANGE START:: Item-level repeat is stored on the grid item layout [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level repeat is stored on the grid item layout
 /**
  * Write the editor's repeat options onto a grid item layout.
  *
@@ -96,7 +96,7 @@ function applyItemRepeat(layout: PanelGroupItemLayout | undefined, repeat?: Grid
   layout.repeatDirection = layout.repeatVariable ? repeat?.repeatDirection : undefined;
   layout.maxPerRow = layout.repeatVariable ? repeat?.maxPerRow : undefined;
 }
-// LOGZ.IO CHANGE END:: Item-level repeat is stored on the grid item layout [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level repeat is stored on the grid item layout
 
 /**
  * Curried function for creating the PanelEditorSlice.
@@ -128,7 +128,7 @@ export function createPanelEditorSlice(): StateCreator<
         throw new Error(`Cannot find Panel with key '${panelKey}'`);
       }
 
-      // LOGZ.IO CHANGE:: Item-level repeat is authored on the grid item, so seed it from there [APPZ-0000]
+      // LOGZ.IO CHANGE:: Item-level repeat is authored on the grid item, so seed it from there
       const layoutToEdit = panelGroups[panelGroupId]?.itemLayouts.find((layout) => layout.i === panelGroupLayoutId);
 
       const editorState: PanelEditorState = {
@@ -137,7 +137,7 @@ export function createPanelEditorSlice(): StateCreator<
         initialValues: {
           groupId: panelGroupItemId.panelGroupId,
           panelDefinition: panelToEdit,
-          // LOGZ.IO CHANGE:: Item-level repeat [APPZ-0000]
+          // LOGZ.IO CHANGE:: Item-level repeat
           repeat: {
             repeatVariable: layoutToEdit?.repeatVariable,
             repeatDirection: layoutToEdit?.repeatDirection,
@@ -150,7 +150,7 @@ export function createPanelEditorSlice(): StateCreator<
 
             // If the panel didn't change groups, nothing else to do
             if (next.groupId === panelGroupId) {
-              // LOGZ.IO CHANGE:: ...apart from the repeat, which lives on the layout [APPZ-0000]
+              // LOGZ.IO CHANGE:: ...apart from the repeat, which lives on the layout
               applyItemRepeat(
                 state.panelGroups[panelGroupId]?.itemLayouts.find((layout) => layout.i === panelGroupLayoutId),
                 next.repeat
@@ -188,7 +188,7 @@ export function createPanelEditorSlice(): StateCreator<
               w: existingLayout.w,
               h: existingLayout.h,
             };
-            // LOGZ.IO CHANGE:: The rebuild above drops every field it doesn't list, repeat included [APPZ-0000]
+            // LOGZ.IO CHANGE:: The rebuild above drops every field it doesn't list, repeat included
             applyItemRepeat(movedLayout, next.repeat);
 
             newGroup.itemLayouts.push(movedLayout);
@@ -243,7 +243,7 @@ export function createPanelEditorSlice(): StateCreator<
               w: 12,
               h: 6,
             };
-            // LOGZ.IO CHANGE:: A panel can be created with its repeat already configured [APPZ-0000]
+            // LOGZ.IO CHANGE:: A panel can be created with its repeat already configured
             applyItemRepeat(layout, next.repeat);
 
             group.itemLayouts.push(layout);

@@ -17,22 +17,22 @@ import { PanelOptions, useViewPanelGroup } from '@perses-dev/dashboards';
 import { ComponentProps, ReactElement, useEffect, useMemo, useState } from 'react';
 import { Layout, Layouts, Responsive, WidthProvider } from 'react-grid-layout';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
-// LOGZ.IO CHANGE:: Item-level repeat scopes each instance to one variable value [APPZ-0000]
+// LOGZ.IO CHANGE:: Item-level repeat scopes each instance to one variable value
 import { useVariableValues, VariableContext } from '@perses-dev/plugin-system';
-// LOGZ.IO CHANGE:: Item-level repeat expands over the dashboard's values, not the enclosing row's [APPZ-0000]
+// LOGZ.IO CHANGE:: Item-level repeat expands over the dashboard's values, not the enclosing row's
 import { useDashboardVariableValues } from '../../context';
 import { GRID_LAYOUT_COLS, GRID_LAYOUT_SMALL_BREAKPOINT } from '../../constants';
 import { isRepeatBindingEqual, PanelGroupDefinition, RepeatVariableBinding } from '../../model';
 import { GridContainer } from './GridContainer';
 import { GridItemContent } from './GridItemContent';
 import { GridTitle } from './GridTitle';
-// LOGZ.IO CHANGE:: Item-level repeat [APPZ-0000]
+// LOGZ.IO CHANGE:: Item-level repeat
 import { expandRepeatedItemLayouts, isRepeatInstanceId, RepeatedItemLayout } from './repeat-item-layouts';
 
 const DEFAULT_MARGIN = 10;
 const ROW_HEIGHT = 30;
 
-// LOGZ.IO CHANGE:: `static` pins derived repeat instances in place [APPZ-0000]
+// LOGZ.IO CHANGE:: `static` pins derived repeat instances in place
 type RowItemLayout = RepeatedItemLayout & { static?: boolean };
 
 export interface RowProps {
@@ -51,7 +51,7 @@ export interface RowProps {
   ) => void;
   repeatVariable?: [string, string];
   /**
-   * LOGZ.IO CHANGE:: True when this row is a repeated copy rather than the original [APPZ-0000]
+   * LOGZ.IO CHANGE:: True when this row is a repeated copy rather than the original
    * Grafana offers row and panel actions on the original only, so the copies render read-only.
    */
   isRepeatClone?: boolean;
@@ -85,7 +85,7 @@ export function Row({
   // If there is a panel in view mode, we should hide the grid if the panel is not in the current group.
   const isGridDisplayed = !viewPanelItemId || hasViewPanel;
 
-  // LOGZ.IO CHANGE START:: Item-level repeat — expand repeating items into one instance per value [APPZ-0000]
+  // LOGZ.IO CHANGE START:: Item-level repeat — expand repeating items into one instance per value
   // Resolved against the dashboard's values rather than this row's: when the row repeats over the
   // *same* variable it has already pinned it to a single value, and Grafana still expands the item
   // across all of them. Each instance re-pins the variable for itself in `RepeatScopedGridItem`,
@@ -114,7 +114,7 @@ export function Row({
         isRepeatBindingEqual(layout.binding, viewPanelItemId?.itemRepeatVariable)
     )?.i;
   }, [expandedLayouts, itemLayoutViewed, viewPanelItemId?.itemRepeatVariable]);
-  // LOGZ.IO CHANGE END:: Item-level repeat [APPZ-0000]
+  // LOGZ.IO CHANGE END:: Item-level repeat
 
   // TODO: handle it without useEffect
   useEffect(() => {
@@ -143,7 +143,7 @@ export function Row({
     return expandedLayouts;
   }, [expandedLayouts, viewedInstanceId, panelFullHeight]);
 
-  // LOGZ.IO CHANGE START:: Repeat instance geometry is derived, so it must never be written back [APPZ-0000]
+  // LOGZ.IO CHANGE START:: Repeat instance geometry is derived, so it must never be written back
   const handleLayoutChange = (currentLayout: Layout[], allLayouts: Layouts): void => {
     if (!onLayoutChange) return;
 
@@ -155,7 +155,7 @@ export function Row({
 
     onLayoutChange(restoreAuthoredLayouts(currentLayout, authored, yOffsets), restored);
   };
-  // LOGZ.IO CHANGE END:: Repeat instance geometry [APPZ-0000]
+  // LOGZ.IO CHANGE END:: Repeat instance geometry
 
   return (
     <GridContainer
@@ -174,7 +174,7 @@ export function Row({
               ? undefined
               : { isOpen: isOpen, onToggleOpen: () => setIsOpen((current) => !current) }
           }
-          // LOGZ.IO CHANGE:: Only the original row carries the group controls [APPZ-0000]
+          // LOGZ.IO CHANGE:: Only the original row carries the group controls
           noActions={isRepeatClone}
         />
       )}
@@ -203,7 +203,7 @@ export function Row({
               }}
             >
               <ErrorBoundary FallbackComponent={ErrorAlert}>
-                {/* LOGZ.IO CHANGE:: `binding` scopes a repeated instance to a single variable value [APPZ-0000] */}
+                {/* LOGZ.IO CHANGE:: `binding` scopes a repeated instance to a single variable value */}
                 <RepeatScopedGridItem
                   binding={binding}
                   panelOptions={panelOptions}
@@ -214,7 +214,7 @@ export function Row({
                     itemRepeatVariable: binding,
                   }}
                   width={calculateGridItemWidth(w, gridColWidth)}
-                  // LOGZ.IO CHANGE:: A copied row, or any instance past the first, is not the original [APPZ-0000]
+                  // LOGZ.IO CHANGE:: A copied row, or any instance past the first, is not the original
                   noEditActions={isRepeatClone || (instanceIndex !== undefined && instanceIndex > 0)}
                 />
               </ErrorBoundary>
@@ -232,7 +232,7 @@ const calculateGridItemWidth = (w: number, colWidth: number): number => {
   return Math.round(colWidth * w + Math.max(0, w - 1) * DEFAULT_MARGIN);
 };
 
-// LOGZ.IO CHANGE START:: Item-level repeat helpers [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level repeat helpers
 
 /**
  * Map the layout react-grid-layout reports back onto the authored item layouts.
@@ -281,4 +281,4 @@ function RepeatScopedGridItem({ binding, ...props }: RepeatScopedGridItemProps):
   );
 }
 
-// LOGZ.IO CHANGE END:: Item-level repeat helpers [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level repeat helpers

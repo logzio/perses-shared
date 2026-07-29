@@ -219,7 +219,7 @@ interface PluginProviderProps {
   builtinVariables?: BuiltinVariableDefinition[];
 }
 
-// LOGZ.IO CHANGE START:: Expose the dashboard-level variable values, free of any repeat scope [APPZ-0000]
+// LOGZ.IO CHANGE START:: Expose the dashboard-level variable values, free of any repeat scope
 /**
  * Variable values as selected on the dashboard, with "All" expanded to the full option list.
  *
@@ -257,12 +257,12 @@ export function useDashboardVariableValues(): VariableStateMap {
     return contextValues;
   }, [originalValues, definitions, externalDefinitions]);
 }
-// LOGZ.IO CHANGE END:: Expose the dashboard-level variable values [APPZ-0000]
+// LOGZ.IO CHANGE END:: Expose the dashboard-level variable values
 
 function PluginProvider({ children, builtinVariables }: PluginProviderProps): ReactElement {
   const { absoluteTimeRange } = useTimeRange();
 
-  // LOGZ.IO CHANGE:: Body extracted to useDashboardVariableValues so repeats can read it unshadowed [APPZ-0000]
+  // LOGZ.IO CHANGE:: Body extracted to useDashboardVariableValues so repeats can read it unshadowed
   const values = useDashboardVariableValues();
 
   const allBuiltinVariables: BuiltinVariableDefinition[] = useMemo(() => {

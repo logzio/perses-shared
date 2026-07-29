@@ -96,7 +96,7 @@ export function convertLayoutsToPanelGroups(
     // Split layout information from panel keys to make it easier to update just layouts on move/resize of panels
     for (const item of layout.spec.items) {
       const panelGroupLayoutId = generateId().toString();
-      // LOGZ.IO CHANGE:: `items` is typed without item-level repeat upstream [APPZ-0000]
+      // LOGZ.IO CHANGE:: `items` is typed without item-level repeat upstream
       const { repeatVariable, repeatDirection, maxPerRow } = item as RepeatableGridItemDefinition;
       itemLayouts.push({
         i: panelGroupLayoutId,

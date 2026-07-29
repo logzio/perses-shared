@@ -27,17 +27,17 @@ import { Controller, FormProvider, Resolver, SubmitHandler, useForm, useWatch } 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useListPanelGroups } from '../../context';
 import { PanelEditorProvider } from '../../context/PanelEditorProvider/PanelEditorProvider';
-// LOGZ.IO CHANGE:: Item-level (single panel) repeat [APPZ-0000]
+// LOGZ.IO CHANGE:: Item-level (single panel) repeat
 import { RepeatablePanelEditorValues } from '../../model';
 import { usePanelEditor } from './usePanelEditor';
 import { PanelQueriesSharedControls } from './PanelQueriesSharedControls';
 // LOGZ.IO CHANGE:: Re-attach fields stripped by Zod validation before save
 import { restoreValuesStrippedByValidation } from './panel-editor-values';
-// LOGZ.IO CHANGE:: Item-level (single panel) repeat [APPZ-0000]
+// LOGZ.IO CHANGE:: Item-level (single panel) repeat
 import { RepeatOptionsEditor } from './RepeatOptionsEditor';
 
 export interface PanelEditorFormProps {
-  // LOGZ.IO CHANGE:: `Repeatable*` adds the grid item's repeat options [APPZ-0000]
+  // LOGZ.IO CHANGE:: `Repeatable*` adds the grid item's repeat options
   initialValues: RepeatablePanelEditorValues;
   initialAction: Action;
   panelKey?: string;
@@ -55,7 +55,7 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
 
   const { panelEditorSchema } = useValidationSchemas();
   // LOGZ.IO CHANGE:: The upstream schema knows nothing of `repeat`, so it validates (and strips) the
-  // rest exactly as before — `restoreValuesStrippedByValidation` puts it back. [APPZ-0000]
+  // rest exactly as before — `restoreValuesStrippedByValidation` puts it back.
   const form = useForm<RepeatablePanelEditorValues>({
     resolver: zodResolver(panelEditorSchema) as Resolver<RepeatablePanelEditorValues>,
     mode: 'onBlur',
@@ -263,7 +263,7 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
             </Grid>
 
             {/* LOGZ.IO CHANGE:: Repeat is a layout value, so it sits with "Panel group" rather than in a
-                per-plugin options tab — those exist for only some panel types [APPZ-0000] */}
+                per-plugin options tab — those exist for only some panel types */}
             <RepeatOptionsEditor control={form.control} />
 
             <ErrorBoundary FallbackComponent={ErrorAlert}>

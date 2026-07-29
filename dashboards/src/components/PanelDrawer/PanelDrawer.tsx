@@ -46,7 +46,7 @@ export const PanelDrawer = (): ReactElement => {
   const isOpen = panelEditor !== undefined && !isClosing;
 
   const handleSave = useCallback(
-    // LOGZ.IO CHANGE:: Carries the grid item's repeat options through to the store [APPZ-0000]
+    // LOGZ.IO CHANGE:: Carries the grid item's repeat options through to the store
     (values: RepeatablePanelEditorValues) => {
       // This shouldn't happen since we don't render the submit button until we have a model, but check to make TS happy
       if (panelEditor === undefined || values === undefined) {
@@ -99,7 +99,7 @@ export const PanelDrawer = (): ReactElement => {
   }, [handleExited, handleSave, isOpen, panelEditor, panelKey]);
 
   // If the panel editor is using a repeat variable, we need to wrap the drawer in a VariableContext.Provider
-  // LOGZ.IO CHANGE:: A panel can be scoped by a group repeat, an item repeat, or both (nested) [APPZ-0000]
+  // LOGZ.IO CHANGE:: A panel can be scoped by a group repeat, an item repeat, or both (nested)
   const repeatBindings = [
     panelEditor?.panelGroupItemId?.repeatVariable,
     panelEditor?.panelGroupItemId?.itemRepeatVariable,

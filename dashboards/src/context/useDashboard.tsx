@@ -146,13 +146,13 @@ function convertPanelGroupsToLayouts(
             width: layout.w,
             height: layout.h,
             content: createPanelRef(panelKey),
-            // LOGZ.IO CHANGE START:: Round-trip item-level repeat [APPZ-0000]
+            // LOGZ.IO CHANGE START:: Round-trip item-level repeat
             ...(layout.repeatVariable && {
               repeatVariable: layout.repeatVariable,
               repeatDirection: layout.repeatDirection,
               maxPerRow: layout.maxPerRow,
             }),
-            // LOGZ.IO CHANGE END:: Round-trip item-level repeat [APPZ-0000]
+            // LOGZ.IO CHANGE END:: Round-trip item-level repeat
           };
         }),
         repeatVariable: repeatVariable,

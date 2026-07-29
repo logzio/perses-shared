@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Item-level repeat is edited in the panel editor but stored on the layout [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level repeat is edited in the panel editor but stored on the layout
 
 import { createStore, StoreApi } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
@@ -139,4 +139,4 @@ describe('panel editor item-level repeat', () => {
   });
 });
 
-// LOGZ.IO CHANGE END:: Item-level repeat [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level repeat

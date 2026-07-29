@@ -27,7 +27,7 @@ interface PanelSpecTimeOverrides {
  * missing from the validated values `react-hook-form` hands to the submit handler:
  * - panel spec: `timeFrom` / `timeShift` / `hideTimeOverride` (panel time override, APPZ-2474)
  * - query spec: `hidden` ("Hide from chart", APPZ-955)
- * - top level: `repeat` (item-level repeat, APPZ-0000) — a layout value, not part of the panel
+ * - top level: `repeat` (item-level repeat) — a layout value, not part of the panel
  *
  * We don't replace the schema (matching its typing surface globally is fragile and broke other
  * validations); instead this re-attaches those fields from the raw (pre-validation) form values

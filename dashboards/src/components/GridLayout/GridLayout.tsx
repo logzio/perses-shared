@@ -120,13 +120,13 @@ export function RepeatGridLayout({
   const variables = useVariableValues();
   const variable = variables[repeatVariableName];
 
-  // LOGZ.IO CHANGE START:: Don't flash an unrepeated row while the repeat variable resolves [APPZ-0000]
+  // LOGZ.IO CHANGE START:: Don't flash an unrepeated row while the repeat variable resolves
   // Rendering the fallback here would mount panels bound to a value that is about to change,
   // firing a full round of queries whose results are thrown away.
   if (variable?.loading) {
     return null;
   }
-  // LOGZ.IO CHANGE END:: Don't flash an unrepeated row [APPZ-0000]
+  // LOGZ.IO CHANGE END:: Don't flash an unrepeated row
 
   // If the variable is not defined, or if it is defined but has no values, render a standard row without repeating
   if (variable === undefined || !Array.isArray(variable.value) || variable.value.length === 0) {
@@ -161,7 +161,7 @@ export function RepeatGridLayout({
             onLayoutChange={onLayoutChange}
             onWidthChange={onWidthChange}
             repeatVariable={[repeatVariableName, value]}
-            // LOGZ.IO CHANGE:: Every row past the first is a derived copy, so it renders read-only [APPZ-0000]
+            // LOGZ.IO CHANGE:: Every row past the first is a derived copy, so it renders read-only
             isRepeatClone={index > 0}
           />
         </VariableContext.Provider>

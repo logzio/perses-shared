@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Item-level (single panel) repeat, mirroring Grafana's panel repeat [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level (single panel) repeat, mirroring Grafana's panel repeat
 
 import { VariableStateMap } from '@perses-dev/plugin-system';
 import { PanelGroupItemLayout } from '../../model';
@@ -213,4 +213,4 @@ describe('expandRepeatedItemLayouts', () => {
   });
 });
 
-// LOGZ.IO CHANGE END:: Item-level (single panel) repeat [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level (single panel) repeat

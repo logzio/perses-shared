@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Item-level (single panel) repeat, mirroring Grafana's panel repeat [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level (single panel) repeat, mirroring Grafana's panel repeat
 
 import { ReactElement } from 'react';
 import { Grid, MenuItem, TextField, Typography } from '@mui/material';
@@ -118,4 +118,4 @@ export function RepeatOptionsEditor({ control }: RepeatOptionsEditorProps): Reac
   );
 }
 
-// LOGZ.IO CHANGE END:: Item-level (single panel) repeat [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level (single panel) repeat

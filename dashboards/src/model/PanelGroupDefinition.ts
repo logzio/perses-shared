@@ -25,7 +25,7 @@ export type PanelGroupItemLayoutId = string;
  */
 export type RepeatVariableBinding = [string, string];
 
-// LOGZ.IO CHANGE START:: Item-level (single panel) repeat, mirroring Grafana's panel repeat [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level (single panel) repeat, mirroring Grafana's panel repeat
 /**
  * Direction repeated items are laid out in. Mirrors Grafana's `repeatDirection`:
  * `h` packs instances side by side (wrapping at `maxPerRow`), `v` stacks them.
@@ -45,7 +45,7 @@ export interface GridItemRepeatOptions {
   /** Max instances per grid row. Defaults to {@link DEFAULT_MAX_PER_ROW}. Only honored when direction is `h`. */
   maxPerRow?: number;
 }
-// LOGZ.IO CHANGE END:: Item-level (single panel) repeat [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level (single panel) repeat
 
 /**
  * Uniquely identifies an item in a PanelGroup.
@@ -54,7 +54,7 @@ export interface PanelGroupItemId {
   panelGroupId: PanelGroupId;
   panelGroupItemLayoutId: PanelGroupItemLayoutId;
   repeatVariable?: RepeatVariableBinding; // Optional, used for repeated panel groups. Variable name and value.
-  // LOGZ.IO CHANGE:: Set for a single repeated grid item; independent of the group-level binding above [APPZ-0000]
+  // LOGZ.IO CHANGE:: Set for a single repeated grid item; independent of the group-level binding above
   itemRepeatVariable?: RepeatVariableBinding;
 }
 
@@ -89,7 +89,7 @@ export interface PanelGroupItemLayout extends BaseLayout, GridItemRepeatOptions 
   i: PanelGroupItemLayoutId;
 }
 
-// LOGZ.IO CHANGE START:: Item-level repeat is not in @perses-dev/spec's GridItemDefinition yet [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level repeat is not in @perses-dev/spec's GridItemDefinition yet
 /**
  * `GridItemDefinition` plus item-level repeat. Kept as a named extension instead of patching
  * `@perses-dev/spec` so the fields survive spec version bumps.
@@ -110,7 +110,7 @@ export const DEFAULT_MAX_PER_ROW = 4;
 export interface RepeatablePanelEditorValues extends PanelEditorValues {
   repeat?: GridItemRepeatOptions;
 }
-// LOGZ.IO CHANGE END:: Item-level repeat [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level repeat
 
 /**
  * Definition of a panel group, containing layout and panel information.
@@ -132,13 +132,13 @@ export function isPanelGroupItemIdEqual(a?: PanelGroupItemId, b?: PanelGroupItem
   return (
     a?.panelGroupId === b?.panelGroupId &&
     a?.panelGroupItemLayoutId === b?.panelGroupItemLayoutId &&
-    // LOGZ.IO CHANGE:: Repeat instances share a layout id, so the bindings decide which one it is [APPZ-0000]
+    // LOGZ.IO CHANGE:: Repeat instances share a layout id, so the bindings decide which one it is
     isRepeatBindingEqual(a?.repeatVariable, b?.repeatVariable) &&
     isRepeatBindingEqual(a?.itemRepeatVariable, b?.itemRepeatVariable)
   );
 }
 
-// LOGZ.IO CHANGE START:: Item-level repeat [APPZ-0000]
+// LOGZ.IO CHANGE START:: Item-level repeat
 /**
  * Two repeat bindings match when they pin the same variable to the same value. Absent on both
  * sides counts as a match, so non-repeated items compare as before.
@@ -146,4 +146,4 @@ export function isPanelGroupItemIdEqual(a?: PanelGroupItemId, b?: PanelGroupItem
 export function isRepeatBindingEqual(a?: RepeatVariableBinding, b?: RepeatVariableBinding): boolean {
   return a?.[0] === b?.[0] && a?.[1] === b?.[1];
 }
-// LOGZ.IO CHANGE END:: Item-level repeat [APPZ-0000]
+// LOGZ.IO CHANGE END:: Item-level repeat

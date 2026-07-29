@@ -29,7 +29,7 @@ export interface GridItemContentProps {
   panelGroupItemId: PanelGroupItemId;
   width: number; // necessary for determining the suggested step ms
   panelOptions?: PanelOptions;
-  // LOGZ.IO CHANGE:: Set on a repeated copy — Grafana only edits the original [APPZ-0000]
+  // LOGZ.IO CHANGE:: Set on a repeated copy — Grafana only edits the original
   noEditActions?: boolean;
 }
 
@@ -127,7 +127,7 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
   // Provide actions to the panel when in edit mode
   let editHandlers: PanelProps['editHandlers'] = undefined;
   // LOGZ.IO CHANGE:: A repeated copy is derived, so editing/duplicating/deleting it is meaningless —
-  // the change would be discarded on the next expansion. Grafana hides the same actions. [APPZ-0000]
+  // the change would be discarded on the next expansion. Grafana hides the same actions.
   if (isEditMode && !props.noEditActions) {
     editHandlers = {
       onEditPanelClick: openEditPanel,
