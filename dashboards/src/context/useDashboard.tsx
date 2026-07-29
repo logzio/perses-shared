@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { createPanelRef, DashboardSpec, DurationString, GridDefinition, PanelGroupId } from '@perses-dev/spec';
-import { DashboardResource, PanelGroupDefinition } from '../model';
+import { DashboardResource, PanelGroupDefinition, RepeatableGridItemDefinition } from '../model';
 
 import { useDashboardStore } from './DashboardProvider';
 import { useVariableDefinitionActions, useVariableDefinitions } from './VariableProvider';
@@ -135,7 +135,7 @@ function convertPanelGroupsToLayouts(
       kind: 'Grid',
       spec: {
         display,
-        items: itemLayouts.map((layout) => {
+        items: itemLayouts.map((layout): RepeatableGridItemDefinition => {
           const panelKey = itemPanelKeys[layout.i];
           if (panelKey === undefined) {
             throw new Error(`Missing panel key of layout ${layout.i}`);
@@ -146,6 +146,13 @@ function convertPanelGroupsToLayouts(
             width: layout.w,
             height: layout.h,
             content: createPanelRef(panelKey),
+            // LOGZ.IO CHANGE START:: Round-trip item-level repeat [APPZ-0000]
+            ...(layout.repeatVariable && {
+              repeatVariable: layout.repeatVariable,
+              repeatDirection: layout.repeatDirection,
+              maxPerRow: layout.maxPerRow,
+            }),
+            // LOGZ.IO CHANGE END:: Round-trip item-level repeat [APPZ-0000]
           };
         }),
         repeatVariable: repeatVariable,

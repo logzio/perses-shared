@@ -219,13 +219,22 @@ interface PluginProviderProps {
   builtinVariables?: BuiltinVariableDefinition[];
 }
 
-function PluginProvider({ children, builtinVariables }: PluginProviderProps): ReactElement {
+// LOGZ.IO CHANGE START:: Expose the dashboard-level variable values, free of any repeat scope [APPZ-0000]
+/**
+ * Variable values as selected on the dashboard, with "All" expanded to the full option list.
+ *
+ * This is the value map {@link PluginProvider} publishes on `VariableContext`, but read straight from
+ * the variable store — so unlike `useVariableValues` it is *not* shadowed by the nested
+ * `VariableContext.Provider` that a repeated row (or a repeated grid item) installs to pin its own
+ * value. Item-level repeat needs exactly that: a panel repeating over the same variable as its
+ * enclosing row must still expand across every value, which is how Grafana behaves.
+ */
+export function useDashboardVariableValues(): VariableStateMap {
   const originalValues = useVariableDefinitionStates();
   const definitions = useVariableDefinitions();
   const externalDefinitions = useExternalVariableDefinitions();
-  const { absoluteTimeRange } = useTimeRange();
 
-  const values = useMemo(() => {
+  return useMemo(() => {
     const contextValues: VariableStateMap = {};
 
     // This will loop through all the current variables values
@@ -247,6 +256,14 @@ function PluginProvider({ children, builtinVariables }: PluginProviderProps): Re
     });
     return contextValues;
   }, [originalValues, definitions, externalDefinitions]);
+}
+// LOGZ.IO CHANGE END:: Expose the dashboard-level variable values [APPZ-0000]
+
+function PluginProvider({ children, builtinVariables }: PluginProviderProps): ReactElement {
+  const { absoluteTimeRange } = useTimeRange();
+
+  // LOGZ.IO CHANGE:: Body extracted to useDashboardVariableValues so repeats can read it unshadowed [APPZ-0000]
+  const values = useDashboardVariableValues();
 
   const allBuiltinVariables: BuiltinVariableDefinition[] = useMemo(() => {
     const result: BuiltinVariableDefinition[] = [

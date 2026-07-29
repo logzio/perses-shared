@@ -15,7 +15,13 @@ import { Action } from '@perses-dev/components';
 import { PanelEditorValues, PanelGroupId } from '@perses-dev/spec';
 import { StateCreator } from 'zustand';
 import { generatePanelKey, getYForNewRow } from '../../utils';
-import { PanelGroupDefinition, PanelGroupItemId, PanelGroupItemLayout } from '../../model';
+import {
+  GridItemRepeatOptions,
+  PanelGroupDefinition,
+  PanelGroupItemId,
+  PanelGroupItemLayout,
+  RepeatablePanelEditorValues,
+} from '../../model';
 import { generateId, Middleware, createPanelDefinition } from './common';
 import { PanelGroupSlice, addPanelGroup, createEmptyPanelGroup } from './panel-group-slice';
 import { PanelSlice } from './panel-slice';
@@ -59,18 +65,38 @@ export interface PanelEditorState {
   /**
    * Initial values for the things that can be edited about a panel.
    */
-  initialValues: PanelEditorValues;
+  // LOGZ.IO CHANGE:: Carries the grid item's repeat options alongside the panel [APPZ-0000]
+  initialValues: RepeatablePanelEditorValues;
 
   /**
    * Applies changes, but doesn't close the editor.
    */
-  applyChanges: (next: PanelEditorValues) => void;
+  applyChanges: (next: RepeatablePanelEditorValues) => void;
 
   /**
    * Close the editor.
    */
   close: () => void;
 }
+
+// LOGZ.IO CHANGE START:: Item-level repeat is stored on the grid item layout [APPZ-0000]
+/**
+ * Write the editor's repeat options onto a grid item layout.
+ *
+ * Direction and max-per-row only mean anything alongside a variable, so clearing the variable clears
+ * them too — otherwise turning a repeat off would leave orphaned fields in the saved dashboard.
+ */
+function applyItemRepeat(layout: PanelGroupItemLayout | undefined, repeat?: GridItemRepeatOptions): void {
+  if (layout === undefined) {
+    return;
+  }
+
+  // An empty string is what the "None" option in the editor submits.
+  layout.repeatVariable = repeat?.repeatVariable || undefined;
+  layout.repeatDirection = layout.repeatVariable ? repeat?.repeatDirection : undefined;
+  layout.maxPerRow = layout.repeatVariable ? repeat?.maxPerRow : undefined;
+}
+// LOGZ.IO CHANGE END:: Item-level repeat is stored on the grid item layout [APPZ-0000]
 
 /**
  * Curried function for creating the PanelEditorSlice.
@@ -102,12 +128,21 @@ export function createPanelEditorSlice(): StateCreator<
         throw new Error(`Cannot find Panel with key '${panelKey}'`);
       }
 
+      // LOGZ.IO CHANGE:: Item-level repeat is authored on the grid item, so seed it from there [APPZ-0000]
+      const layoutToEdit = panelGroups[panelGroupId]?.itemLayouts.find((layout) => layout.i === panelGroupLayoutId);
+
       const editorState: PanelEditorState = {
         mode: 'update',
         panelGroupItemId: panelGroupItemId,
         initialValues: {
           groupId: panelGroupItemId.panelGroupId,
           panelDefinition: panelToEdit,
+          // LOGZ.IO CHANGE:: Item-level repeat [APPZ-0000]
+          repeat: {
+            repeatVariable: layoutToEdit?.repeatVariable,
+            repeatDirection: layoutToEdit?.repeatDirection,
+            maxPerRow: layoutToEdit?.maxPerRow,
+          },
         },
         applyChanges: (next) => {
           set((state) => {
@@ -115,6 +150,11 @@ export function createPanelEditorSlice(): StateCreator<
 
             // If the panel didn't change groups, nothing else to do
             if (next.groupId === panelGroupId) {
+              // LOGZ.IO CHANGE:: ...apart from the repeat, which lives on the layout [APPZ-0000]
+              applyItemRepeat(
+                state.panelGroups[panelGroupId]?.itemLayouts.find((layout) => layout.i === panelGroupLayoutId),
+                next.repeat
+              );
               return;
             }
 
@@ -141,13 +181,17 @@ export function createPanelEditorSlice(): StateCreator<
               throw new Error(`Could not find new group ${next.groupId}`);
             }
 
-            newGroup.itemLayouts.push({
+            const movedLayout: PanelGroupItemLayout = {
               i: existingLayout.i,
               x: 0,
               y: getYForNewRow(newGroup),
               w: existingLayout.w,
               h: existingLayout.h,
-            });
+            };
+            // LOGZ.IO CHANGE:: The rebuild above drops every field it doesn't list, repeat included [APPZ-0000]
+            applyItemRepeat(movedLayout, next.repeat);
+
+            newGroup.itemLayouts.push(movedLayout);
             newGroup.itemPanelKeys[existingLayout.i] = existingPanelKey;
           });
         },
@@ -199,6 +243,9 @@ export function createPanelEditorSlice(): StateCreator<
               w: 12,
               h: 6,
             };
+            // LOGZ.IO CHANGE:: A panel can be created with its repeat already configured [APPZ-0000]
+            applyItemRepeat(layout, next.repeat);
+
             group.itemLayouts.push(layout);
             group.itemPanelKeys[layout.i] = panelKey;
           });

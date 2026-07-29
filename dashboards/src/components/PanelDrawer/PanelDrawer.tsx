@@ -27,9 +27,9 @@
 
 import { ReactElement, useState, useMemo, ReactNode, useCallback } from 'react';
 import { Drawer, ErrorAlert, ErrorBoundary } from '@perses-dev/components';
-import { PanelEditorValues } from '@perses-dev/spec';
 import { useVariableValues, VariableContext } from '@perses-dev/plugin-system';
 import { usePanelEditor, usePanelKey } from '../../context';
+import { RepeatablePanelEditorValues, RepeatVariableBinding } from '../../model';
 import { PanelEditorForm } from './PanelEditorForm';
 
 /**
@@ -46,7 +46,8 @@ export const PanelDrawer = (): ReactElement => {
   const isOpen = panelEditor !== undefined && !isClosing;
 
   const handleSave = useCallback(
-    (values: PanelEditorValues) => {
+    // LOGZ.IO CHANGE:: Carries the grid item's repeat options through to the store [APPZ-0000]
+    (values: RepeatablePanelEditorValues) => {
       // This shouldn't happen since we don't render the submit button until we have a model, but check to make TS happy
       if (panelEditor === undefined || values === undefined) {
         throw new Error('Cannot apply changes');
@@ -98,12 +99,14 @@ export const PanelDrawer = (): ReactElement => {
   }, [handleExited, handleSave, isOpen, panelEditor, panelKey]);
 
   // If the panel editor is using a repeat variable, we need to wrap the drawer in a VariableContext.Provider
-  if (panelEditor?.panelGroupItemId?.repeatVariable) {
-    return (
-      <RepeatVariableWrapper repeatVariable={panelEditor.panelGroupItemId.repeatVariable}>
-        {drawer}
-      </RepeatVariableWrapper>
-    );
+  // LOGZ.IO CHANGE:: A panel can be scoped by a group repeat, an item repeat, or both (nested) [APPZ-0000]
+  const repeatBindings = [
+    panelEditor?.panelGroupItemId?.repeatVariable,
+    panelEditor?.panelGroupItemId?.itemRepeatVariable,
+  ].filter((binding): binding is RepeatVariableBinding => binding !== undefined);
+
+  if (repeatBindings.length > 0) {
+    return <RepeatVariableWrapper repeatVariables={repeatBindings}>{drawer}</RepeatVariableWrapper>;
   }
 
   return drawer;
@@ -112,19 +115,18 @@ export const PanelDrawer = (): ReactElement => {
 // Wraps the drawer in a VariableContext.Provider to provide the repeat variable value
 // This is necessary for previewing panels that use repeat variables and query editor
 function RepeatVariableWrapper({
-  repeatVariable,
+  repeatVariables,
   children,
 }: {
-  repeatVariable: [string, string];
+  repeatVariables: RepeatVariableBinding[];
   children: ReactNode;
 }): ReactElement {
   const variables = useVariableValues();
 
-  return (
-    <VariableContext.Provider
-      value={{ state: { ...variables, [repeatVariable[0]]: { value: repeatVariable[1], loading: false } } }}
-    >
-      {children}
-    </VariableContext.Provider>
+  const state = repeatVariables.reduce(
+    (acc, [name, value]) => ({ ...acc, [name]: { value, loading: false } }),
+    variables
   );
+
+  return <VariableContext.Provider value={{ state }}>{children}</VariableContext.Provider>;
 }

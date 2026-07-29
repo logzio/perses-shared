@@ -23,20 +23,25 @@ import {
   getSubmitText,
 } from '@perses-dev/components';
 import { PluginKindSelect, usePluginEditor, useValidationSchemas } from '@perses-dev/plugin-system';
-import { Controller, FormProvider, SubmitHandler, useForm, useWatch } from 'react-hook-form';
+import { Controller, FormProvider, Resolver, SubmitHandler, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useListPanelGroups } from '../../context';
 import { PanelEditorProvider } from '../../context/PanelEditorProvider/PanelEditorProvider';
+// LOGZ.IO CHANGE:: Item-level (single panel) repeat [APPZ-0000]
+import { RepeatablePanelEditorValues } from '../../model';
 import { usePanelEditor } from './usePanelEditor';
 import { PanelQueriesSharedControls } from './PanelQueriesSharedControls';
 // LOGZ.IO CHANGE:: Re-attach fields stripped by Zod validation before save
 import { restoreValuesStrippedByValidation } from './panel-editor-values';
+// LOGZ.IO CHANGE:: Item-level (single panel) repeat [APPZ-0000]
+import { RepeatOptionsEditor } from './RepeatOptionsEditor';
 
 export interface PanelEditorFormProps {
-  initialValues: PanelEditorValues;
+  // LOGZ.IO CHANGE:: `Repeatable*` adds the grid item's repeat options [APPZ-0000]
+  initialValues: RepeatablePanelEditorValues;
   initialAction: Action;
   panelKey?: string;
-  onSave: (values: PanelEditorValues) => void;
+  onSave: (values: RepeatablePanelEditorValues) => void;
   onClose: () => void;
 }
 
@@ -49,8 +54,10 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
   const [isDiscardDialogOpened, setDiscardDialogOpened] = useState<boolean>(false);
 
   const { panelEditorSchema } = useValidationSchemas();
-  const form = useForm<PanelEditorValues>({
-    resolver: zodResolver(panelEditorSchema),
+  // LOGZ.IO CHANGE:: The upstream schema knows nothing of `repeat`, so it validates (and strips) the
+  // rest exactly as before — `restoreValuesStrippedByValidation` puts it back. [APPZ-0000]
+  const form = useForm<RepeatablePanelEditorValues>({
+    resolver: zodResolver(panelEditorSchema) as Resolver<RepeatablePanelEditorValues>,
     mode: 'onBlur',
     defaultValues: initialValues,
   });
@@ -79,7 +86,7 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
     setLinks(links);
   }, [setLinks, links]);
 
-  const processForm: SubmitHandler<PanelEditorValues> = useCallback(
+  const processForm: SubmitHandler<RepeatablePanelEditorValues> = useCallback(
     (data) => {
       // LOGZ.IO CHANGE START:: Re-attach fields stripped by Zod validation before save
       // Zod strips the Logz.io extension fields (query `hidden`, panel time override) from the
@@ -254,6 +261,10 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
                 )}
               />
             </Grid>
+
+            {/* LOGZ.IO CHANGE:: Repeat is a layout value, so it sits with "Panel group" rather than in a
+                per-plugin options tab — those exist for only some panel types [APPZ-0000] */}
+            <RepeatOptionsEditor control={form.control} />
 
             <ErrorBoundary FallbackComponent={ErrorAlert}>
               <PanelQueriesSharedControls

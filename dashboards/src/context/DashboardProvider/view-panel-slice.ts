@@ -13,7 +13,7 @@
 
 import { StateCreator } from 'zustand';
 import { PanelGroupId } from '@perses-dev/spec';
-import { PanelGroupDefinition, PanelGroupItemId } from '../../model';
+import { PanelGroupDefinition, PanelGroupItemId, RepeatVariableBinding } from '../../model';
 import { Middleware } from './common';
 import { PanelGroupSlice } from './panel-group-slice';
 
@@ -22,7 +22,9 @@ import { PanelGroupSlice } from './panel-group-slice';
  */
 export interface VirtualPanelRef {
   ref: string;
-  repeatVariable?: [string, string];
+  repeatVariable?: RepeatVariableBinding;
+  // LOGZ.IO CHANGE:: Keeps a viewed item-level repeat instance addressable across reloads [APPZ-0000]
+  itemRepeatVariable?: RepeatVariableBinding;
 }
 
 /**
@@ -101,6 +103,7 @@ function findPanelGroupItemIdOfPanelRef(
         panelGroupId: panelGroup.id,
         panelGroupItemLayoutId: key,
         repeatVariable: panelRef.repeatVariable,
+        itemRepeatVariable: panelRef.itemRepeatVariable,
       };
     }
   }
@@ -119,7 +122,11 @@ function findPanelRefOfPanelGroupItemId(
   if (panelGroup) {
     const panelRef = panelGroup.itemPanelKeys[panelGroupItemId.panelGroupItemLayoutId];
     if (panelRef) {
-      return { ref: panelRef, repeatVariable: panelGroupItemId.repeatVariable };
+      return {
+        ref: panelRef,
+        repeatVariable: panelGroupItemId.repeatVariable,
+        itemRepeatVariable: panelGroupItemId.itemRepeatVariable,
+      };
     }
   }
   return undefined;
