@@ -64,3 +64,55 @@ export function restoreValuesStrippedByValidation(
     },
   };
 }
+
+// LOGZ.IO CHANGE START:: unsaved-changes comparison, extracted from PanelEditorForm so the
+// normalization rules are unit-testable [APPZ-302]
+
+/** An absent `display` and one with neither a name nor a description mean the same thing. */
+function normalizeDisplay(values: RepeatablePanelEditorValues): RepeatablePanelEditorValues {
+  if (
+    values.panelDefinition.spec.display?.name === undefined &&
+    values.panelDefinition.spec.display?.description === undefined
+  ) {
+    values.panelDefinition.spec.display = undefined;
+  }
+
+  return values;
+}
+
+/**
+ * A repeat with no variable is no repeat.
+ *
+ * Three shapes all mean "not repeated" and must compare equal: the key being absent entirely (how
+ * `create` mode seeds `initialValues`), a `repeatVariable` of `undefined` (how `update` mode seeds it
+ * for an unrepeated panel), and the empty string the editor's "None" option submits. Without this,
+ * `RepeatOptionsEditor` registering `repeat.*` with react-hook-form makes `form.getValues()`
+ * materialize a `repeat` object that the seeded values lack, so an untouched panel reads as dirty and
+ * Cancel raises a spurious "Discard Changes" dialog.
+ *
+ * Direction and max-per-row only mean anything alongside a variable, so they drop with it.
+ */
+function normalizeRepeat(values: RepeatablePanelEditorValues): RepeatablePanelEditorValues {
+  if (!values.repeat?.repeatVariable) {
+    values.repeat = undefined;
+  }
+
+  return values;
+}
+
+/**
+ * Whether the editor holds edits worth warning about before discarding.
+ *
+ * Compared as JSON so field order is the only structural assumption; `undefined` members drop out on
+ * both sides, which is what lets the normalizations above collapse equivalent shapes.
+ */
+export function hasUnsavedChanges(
+  initialValues: RepeatablePanelEditorValues,
+  currentValues: RepeatablePanelEditorValues
+): boolean {
+  const normalize = (values: RepeatablePanelEditorValues): RepeatablePanelEditorValues =>
+    normalizeRepeat(normalizeDisplay(JSON.parse(JSON.stringify(values))));
+
+  return JSON.stringify(normalize(initialValues)) !== JSON.stringify(normalize(currentValues));
+}
+// LOGZ.IO CHANGE END:: unsaved-changes comparison, extracted from PanelEditorForm [APPZ-302]

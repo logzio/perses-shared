@@ -13,7 +13,7 @@
 
 import { ReactElement, useCallback, useEffect, useState } from 'react';
 import { Box, Button, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
-import { PanelDefinition, PanelEditorValues } from '@perses-dev/spec';
+import { PanelDefinition } from '@perses-dev/spec';
 import {
   DiscardChangesConfirmationDialog,
   ErrorAlert,
@@ -32,7 +32,7 @@ import { RepeatablePanelEditorValues } from '../../model';
 import { usePanelEditor } from './usePanelEditor';
 import { PanelQueriesSharedControls } from './PanelQueriesSharedControls';
 // LOGZ.IO CHANGE:: Re-attach fields stripped by Zod validation before save
-import { restoreValuesStrippedByValidation } from './panel-editor-values';
+import { hasUnsavedChanges, restoreValuesStrippedByValidation } from './panel-editor-values';
 // LOGZ.IO CHANGE:: Item-level (single panel) repeat
 import { RepeatOptionsEditor } from './RepeatOptionsEditor';
 
@@ -102,23 +102,9 @@ export function PanelEditorForm(props: PanelEditorFormProps): ReactElement {
   // - update action: ask for discard approval if changed
   // - read action: don´t ask for discard approval
   function handleCancel(): void {
-    const currentValues = form.getValues();
-
-    // Normalize display: if both name and description are undefined, set display to undefined
-    const normalizeDisplay = (values: PanelEditorValues): PanelEditorValues => {
-      if (
-        values.panelDefinition.spec.display?.name === undefined &&
-        values.panelDefinition.spec.display?.description === undefined
-      ) {
-        values.panelDefinition.spec.display = undefined;
-      }
-      return values;
-    };
-
-    const normalizedInitial = normalizeDisplay(JSON.parse(JSON.stringify(initialValues)));
-    const normalizedCurrent = normalizeDisplay(JSON.parse(JSON.stringify(currentValues)));
-
-    if (JSON.stringify(normalizedInitial) !== JSON.stringify(normalizedCurrent)) {
+    // LOGZ.IO CHANGE:: comparison moved to `hasUnsavedChanges` so its normalization rules are
+    // unit-testable — see the repeat note there [APPZ-302]
+    if (hasUnsavedChanges(initialValues, form.getValues())) {
       setDiscardDialogOpened(true);
     } else {
       onClose();
