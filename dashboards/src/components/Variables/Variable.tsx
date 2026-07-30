@@ -12,7 +12,17 @@
 // limitations under the License.
 
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
-import { TextField, Popper, PopperProps, Checkbox, Autocomplete, createFilterOptions, Chip, Box } from '@mui/material';
+import {
+  TextField,
+  Popper,
+  PopperProps,
+  Checkbox,
+  Autocomplete,
+  createFilterOptions,
+  Chip,
+  Box,
+  useTheme, //LOGZ.IO CHANGE
+} from '@mui/material';
 import {
   DEFAULT_ALL_VALUE,
   ListVariableDefinition,
@@ -30,43 +40,15 @@ import {
 } from '@perses-dev/plugin-system';
 import { UseQueryResult } from '@tanstack/react-query';
 import { useVariableDefinitionAndState, useVariableDefinitionActions } from '../../context';
-import { MAX_VARIABLE_WIDTH, MIN_VARIABLE_WIDTH } from '../../constants';
+import { MIN_VARIABLE_WIDTH } from '../../constants'; //LOGZ.IO CHANGE
 import { ListVariableListBoxProvider, ListVariableListBox } from './ListVariableListBox';
+//LOGZ.IO CHANGE
+import { getInputFont, getOptionsWidthPx, getWidthPx } from './variable-width.util';
 
 type VariableProps = {
   name: VariableName;
   source?: string;
 };
-
-//LOGZ.IO CHANGE START:: Variable input width calculation [APPZ-1764]
-let measurementCanvas: HTMLCanvasElement | null = null;
-let measurementContext: CanvasRenderingContext2D | null = null;
-
-function getMeasurementContext(): CanvasRenderingContext2D | null {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  if (!measurementCanvas) {
-    measurementCanvas = document.createElement('canvas');
-    measurementContext = measurementCanvas.getContext('2d');
-  }
-
-  return measurementContext;
-}
-
-function getTextWidth(text: string, font: string): number {
-  const context = getMeasurementContext();
-
-  if (!context) {
-    return text.length * 8;
-  }
-
-  context.font = font;
-  const metrics = context.measureText(text);
-  return Math.ceil(metrics.width);
-}
-//LOGZ.IO CHANGE END:: Variable input width calculation [APPZ-1764]
 
 function variableOptionToVariableValue(options: VariableOption | VariableOption[] | null): VariableValue {
   if (options === null) {
@@ -219,25 +201,6 @@ const StyledPopper = (props: PopperProps): ReactElement => (
   <Popper {...props} sx={{ minWidth: 'fit-content' }} placement="bottom-start" />
 );
 
-//LOGZ.IO CHANGE START:: Variable input width calculation [APPZ-1764]
-const VARIABLE_INPUT_FONT = '400 14px Roboto, sans-serif';
-
-const ARROW_DROPDOWN_WIDTH = 40;
-const PADDING_BUFFER = 20;
-const getWidthPx = (inputValue: string, kind: 'list' | 'text'): number => {
-  const textWidth = getTextWidth(inputValue, VARIABLE_INPUT_FONT);
-
-  const totalWidth = textWidth + (kind === 'list' ? ARROW_DROPDOWN_WIDTH : 0) + PADDING_BUFFER;
-
-  if (totalWidth < MIN_VARIABLE_WIDTH) {
-    return MIN_VARIABLE_WIDTH;
-  } else if (totalWidth > MAX_VARIABLE_WIDTH) {
-    return MAX_VARIABLE_WIDTH;
-  } else {
-    return totalWidth;
-  }
-};
-//LOGZ.IO CHANGE END:: Variable input width calculation [APPZ-1764]
 function ListVariable({ name, source }: VariableProps): ReactElement {
   const ctx = useVariableDefinitionAndState(name, source);
   const definition = ctx.definition as ListVariableDefinition;
@@ -251,6 +214,7 @@ function ListVariable({ name, source }: VariableProps): ReactElement {
   const [inputWidth, setInputWidth] = useState(MIN_VARIABLE_WIDTH);
   // Used for multiple value variables, it will not clear variable input when selecting an option
   const [inputValue, setInputValue] = useState('');
+  const theme = useTheme(); //LOGZ.IO CHANGE
 
   const title = definition?.spec.display?.name ?? name;
   const allowMultiple = definition?.spec.allowMultiple === true;
@@ -262,6 +226,18 @@ function ListVariable({ name, source }: VariableProps): ReactElement {
     () => filterOptions(viewOptions, { inputValue, getOptionLabel: (o) => o.label }),
     [inputValue, viewOptions, filterOptions]
   );
+
+  //LOGZ.IO CHANGE START
+  const optionsWidth = useMemo(() => getOptionsWidthPx(viewOptions, getInputFont(theme)), [viewOptions, theme]);
+
+  // Options are empty while they load, and dependent variables reload whenever their parent changes.
+  // Keeping the last computed width avoids collapsing back to the minimum on every reload.
+  useEffect(() => {
+    if (viewOptions.length > 0) {
+      setInputWidth(optionsWidth);
+    }
+  }, [optionsWidth, viewOptions.length]);
+  //LOGZ.IO CHANGE END
 
   // Update value when changed
   useEffect(() => {
@@ -333,11 +309,6 @@ function ListVariable({ name, source }: VariableProps): ReactElement {
           }
         }}
         inputValue={allowMultiple ? inputValue : undefined}
-        onInputChange={(_, newInputValue) => {
-          if (!allowMultiple) {
-            setInputWidth(getWidthPx(newInputValue, 'list'));
-          }
-        }}
         onBlur={() => {
           if (allowMultiple) {
             setInputValue('');
@@ -354,7 +325,7 @@ function ListVariable({ name, source }: VariableProps): ReactElement {
           const { key, ...optionProps } = props;
           return (
             <li key={key} {...optionProps} style={{ padding: 0 }}>
-              {/* LOGZ.IO CHANGE:: Variable input width calculation [APPZ-1764] */}
+              {/* LOGZ.IO CHANGE */}
               <Checkbox checked={selected} />
               {option.label}
             </li>
@@ -416,8 +387,14 @@ function TextVariable({ name, source }: VariableProps): ReactElement {
   const state = ctx.state;
   const definition = ctx.definition as TextVariableDefinition;
   const [tempValue, setTempValue] = useState(state?.value ?? '');
-  const [inputWidth, setInputWidth] = useState(getWidthPx(tempValue as string, 'text'));
+  const theme = useTheme(); //LOGZ.IO CHANGE
   const { setVariableValue } = useVariableDefinitionActions();
+
+  //LOGZ.IO CHANGE
+  const inputWidth = useMemo(
+    () => getWidthPx(String(tempValue ?? ''), 'text', getInputFont(theme)),
+    [tempValue, theme]
+  );
 
   useEffect(() => {
     setTempValue(state?.value ?? '');
@@ -427,10 +404,7 @@ function TextVariable({ name, source }: VariableProps): ReactElement {
     <TextField
       title={tempValue as string}
       value={tempValue}
-      onChange={(e) => {
-        setTempValue(e.target.value);
-        setInputWidth(getWidthPx(e.target.value, 'text'));
-      }}
+      onChange={(e) => setTempValue(e.target.value)} //LOGZ.IO CHANGE
       onBlur={() => setVariableValue(name, tempValue, source)}
       placeholder={name}
       label={definition?.spec.display?.name ?? name}
