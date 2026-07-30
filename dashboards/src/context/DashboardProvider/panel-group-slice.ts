@@ -14,7 +14,7 @@
 import { getPanelKeyFromRef, LayoutDefinition, PanelGroupId } from '@perses-dev/spec';
 import { StateCreator } from 'zustand';
 import { WritableDraft } from 'immer';
-import { PanelGroupDefinition } from '../../model';
+import { PanelGroupDefinition, RepeatableGridItemDefinition } from '../../model';
 import { generateId, Middleware } from './common';
 
 /**
@@ -96,12 +96,17 @@ export function convertLayoutsToPanelGroups(
     // Split layout information from panel keys to make it easier to update just layouts on move/resize of panels
     for (const item of layout.spec.items) {
       const panelGroupLayoutId = generateId().toString();
+      // LOGZ.IO CHANGE:: `items` is typed without item-level repeat upstream
+      const { repeatVariable, repeatDirection, maxPerRow } = item as RepeatableGridItemDefinition;
       itemLayouts.push({
         i: panelGroupLayoutId,
         w: item.width,
         h: item.height,
         x: item.x,
         y: item.y,
+        repeatVariable,
+        repeatDirection,
+        maxPerRow,
       });
       itemPanelKeys[panelGroupLayoutId] = getPanelKeyFromRef(item.content);
     }

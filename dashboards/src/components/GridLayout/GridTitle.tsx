@@ -33,6 +33,8 @@ export interface GridTitleProps {
     isOpen: boolean;
     onToggleOpen: () => void;
   };
+  // LOGZ.IO CHANGE:: Set on a repeated copy of a row — Grafana only edits the original
+  noActions?: boolean;
 }
 
 /**
@@ -40,7 +42,7 @@ export interface GridTitleProps {
  * and collapsing
  */
 export function GridTitle(props: GridTitleProps): ReactElement {
-  const { panelGroupId, title: rawTitle, collapse } = props;
+  const { panelGroupId, title: rawTitle, collapse, noActions } = props;
 
   const title = useReplaceVariablesInString(rawTitle) as string;
 
@@ -68,7 +70,8 @@ export function GridTitle(props: GridTitleProps): ReactElement {
             {collapse.isOpen ? <ExpandedIcon /> : <CollapsedIcon />}
           </IconButton>
           {text}
-          {isEditMode && (
+          {/* LOGZ.IO CHANGE:: `noActions` hides the group controls on a repeated copy of the row */}
+          {isEditMode && !noActions && (
             <Stack direction="row" marginLeft="auto">
               <InfoTooltip description={TOOLTIP_TEXT.addPanelToGroup}>
                 <IconButton

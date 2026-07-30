@@ -96,6 +96,43 @@ describe('restoreValuesStrippedByValidation', () => {
     expect(restoredSpec.hideTimeOverride).toBe(false);
   });
 
+  // LOGZ.IO CHANGE START:: Item-level repeat rides alongside panelDefinition and is stripped too
+  it('should strip the item-level repeat when validating with the @perses-dev/spec schema', () => {
+    const raw = { ...RAW_VALUES, repeat: { repeatVariable: 'cluster', repeatDirection: 'v', maxPerRow: 3 } };
+
+    expect(panelEditorSchema.parse(raw)).not.toHaveProperty('repeat');
+  });
+
+  it('should restore the item-level repeat configured in the editor', () => {
+    const raw = {
+      ...RAW_VALUES,
+      repeat: { repeatVariable: 'cluster', repeatDirection: 'v' as const, maxPerRow: 3 },
+    };
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect(restored.repeat).toEqual({ repeatVariable: 'cluster', repeatDirection: 'v', maxPerRow: 3 });
+  });
+
+  it('should restore a cleared repeat so turning it off reaches the store', () => {
+    // "None" submits an empty variable; the store reads that as "no repeat" and clears the layout.
+    const raw = { ...RAW_VALUES, repeat: { repeatVariable: '' } };
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect(restored.repeat).toEqual({ repeatVariable: '' });
+  });
+
+  it('should not invent a repeat for a panel that never had one', () => {
+    const restored = restoreValuesStrippedByValidation(
+      panelEditorSchema.parse(RAW_VALUES) as PanelEditorValues,
+      RAW_VALUES
+    );
+
+    expect(restored).not.toHaveProperty('repeat');
+  });
+  // LOGZ.IO CHANGE END:: Item-level repeat
+
   it('should not restore empty-string time override fields when they were cleared in the editor', () => {
     const raw = JSON.parse(JSON.stringify(RAW_VALUES)) as PanelEditorValues;
     (raw.panelDefinition.spec as { timeFrom?: string }).timeFrom = '';
