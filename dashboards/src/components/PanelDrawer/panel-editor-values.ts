@@ -12,6 +12,7 @@
 // limitations under the License.
 
 import { PanelEditorValues, QueryDefinition } from '@perses-dev/spec';
+import { RepeatablePanelEditorValues } from '../../model';
 
 interface PanelSpecTimeOverrides {
   timeFrom?: string;
@@ -26,6 +27,7 @@ interface PanelSpecTimeOverrides {
  * missing from the validated values `react-hook-form` hands to the submit handler:
  * - panel spec: `timeFrom` / `timeShift` / `hideTimeOverride` (panel time override, APPZ-2474)
  * - query spec: `hidden` ("Hide from chart", APPZ-955)
+ * - top level: `repeat` (item-level repeat) — a layout value, not part of the panel
  *
  * We don't replace the schema (matching its typing surface globally is fragile and broke other
  * validations); instead this re-attaches those fields from the raw (pre-validation) form values
@@ -33,9 +35,9 @@ interface PanelSpecTimeOverrides {
  * array, so raw and validated queries align by index.
  */
 export function restoreValuesStrippedByValidation(
-  validated: PanelEditorValues,
-  raw: PanelEditorValues
-): PanelEditorValues {
+  validated: RepeatablePanelEditorValues,
+  raw: RepeatablePanelEditorValues
+): RepeatablePanelEditorValues {
   const rawSpec = raw.panelDefinition.spec as PanelEditorValues['panelDefinition']['spec'] & PanelSpecTimeOverrides;
 
   const queries = validated.panelDefinition.spec.queries?.map((query, index): QueryDefinition => {
@@ -49,6 +51,7 @@ export function restoreValuesStrippedByValidation(
 
   return {
     ...validated,
+    ...(raw.repeat !== undefined && { repeat: raw.repeat }),
     panelDefinition: {
       ...validated.panelDefinition,
       spec: {
