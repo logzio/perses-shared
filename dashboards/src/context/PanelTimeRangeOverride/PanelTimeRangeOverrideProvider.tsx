@@ -59,10 +59,23 @@ export function PanelTimeRangeOverrideProvider({ spec, children }: PanelTimeRang
     [parent.timeRange, parent.absoluteTimeRange, timeFrom, timeShift]
   );
 
+  // The resolved override is forced absolute and re-anchored to `now`, so `resolved.timeRange`
+  // churns on every refresh tick. Compose the key from the parent's stable key plus the override
+  // spec instead, so consumers keyed on it (see `useRetainPreviousData`) still see one identity for
+  // "the same overridden window". [stale-timeframe]
+  const rangeKey = useMemo(
+    () =>
+      timeFrom === undefined && timeShift === undefined
+        ? parent.rangeKey
+        : `${parent.rangeKey}|from:${timeFrom ?? ''}|shift:${timeShift ?? ''}`,
+    [parent.rangeKey, timeFrom, timeShift]
+  );
+
   const ctx = useMemo<TimeRange>(
     () => ({
       timeRange: resolved.timeRange,
       absoluteTimeRange: resolved.absoluteTimeRange,
+      rangeKey,
       // Mutators / refresh delegate upward — there's no separate panel-level
       // refresh state; the panel re-resolves automatically when the dashboard does.
       setTimeRange: parent.setTimeRange,
@@ -74,6 +87,7 @@ export function PanelTimeRangeOverrideProvider({ spec, children }: PanelTimeRang
     [
       resolved.timeRange,
       resolved.absoluteTimeRange,
+      rangeKey,
       parent.setTimeRange,
       parent.setRefreshInterval,
       parent.refresh,

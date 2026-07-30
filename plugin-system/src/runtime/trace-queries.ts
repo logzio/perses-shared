@@ -31,6 +31,8 @@ export const TRACE_QUERY_KEY = 'TraceQuery';
 export function useTraceQueries(definitions: TraceQueryDefinition[]): Array<UseQueryResult<TraceData>> {
   const { getPlugin } = usePluginRegistry();
   const context = useTraceQueryContext();
+  // LOGZ.IO CHANGE:: scopes retained data to the selected window [stale-timeframe]
+  const { rangeKey } = useTimeRange();
 
   const pluginLoaderResponse = usePlugins(
     'TraceQuery',
@@ -60,8 +62,9 @@ export function useTraceQueries(definitions: TraceQueryDefinition[]): Array<UseQ
     }),
   });
 
-  // LOGZ.IO CHANGE:: keep previous data across refresh/time-range change (useQueries + keepPreviousData does not)
-  return useRetainPreviousData(results);
+  // LOGZ.IO CHANGE:: keep previous data across a refresh (useQueries + keepPreviousData does not),
+  // scoped by `rangeKey` so it is never retained across a time-range change [stale-timeframe]
+  return useRetainPreviousData(results, rangeKey);
 }
 
 function getQueryOptions({

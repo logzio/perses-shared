@@ -27,7 +27,7 @@ export const PROFILE_QUERY_KEY = 'ProfileQuery';
 export function useProfileQueries(definitions: ProfileQueryDefinition[]): Array<UseQueryResult<ProfileData>> {
   const { getPlugin } = usePluginRegistry();
   const datasourceStore = useDatasourceStore();
-  const { absoluteTimeRange } = useTimeRange();
+  const { absoluteTimeRange, rangeKey } = useTimeRange();
 
   const context = {
     datasourceStore,
@@ -57,6 +57,7 @@ export function useProfileQueries(definitions: ProfileQueryDefinition[]): Array<
     }),
   });
 
-  // LOGZ.IO CHANGE:: keep previous data across refresh/time-range change (useQueries + keepPreviousData does not)
-  return useRetainPreviousData(results);
+  // LOGZ.IO CHANGE:: keep previous data across a refresh (useQueries + keepPreviousData does not),
+  // scoped by `rangeKey` so it is never retained across a time-range change [stale-timeframe]
+  return useRetainPreviousData(results, rangeKey);
 }

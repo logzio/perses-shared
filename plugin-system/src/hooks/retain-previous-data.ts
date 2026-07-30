@@ -11,10 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE FILE:: keep previous panel data across a refresh / time-range change.
+// LOGZ.IO CHANGE FILE:: keep previous panel data across a refresh, but never across a time-range
+// change. [stale-timeframe]
 
 import { UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef } from 'react';
+
+interface RetainedData<T> {
+  key: string;
+  data: Array<T | undefined>;
+}
 
 /**
  * On a refresh (manual or automatic) with a relative time range, the resolved absolute time range
@@ -30,18 +36,36 @@ import { useEffect, useMemo, useRef } from 'react';
  * Retention is keyed by position; the query definitions are stable across a refresh, so positions
  * are stable. The previous data is only stored from committed renders (via effect) to stay correct
  * under concurrent rendering.
+ *
+ * `retentionKey` scopes the retained data to the window it was fetched for — pass the time range's
+ * `rangeKey`. Retaining across a *refresh* is the point of this hook; retaining across a
+ * *time-range change* is a correctness bug, because a chart's x-axis is derived from the payload
+ * (`TimeSeriesData.timeRange`), not from the time-range context. Without this scoping a panel whose
+ * new query has not produced data — e.g. it is `enabled: false` while a template variable it
+ * depends on refetches — keeps rendering the previous window's response indefinitely, reporting
+ * `isLoading: false` and showing no spinner, so the user sees a confidently wrong chart instead of
+ * a loading state.
  */
-export function useRetainPreviousData<T>(results: Array<UseQueryResult<T>>): Array<UseQueryResult<T>> {
-  const previousDataRef = useRef<Array<T | undefined>>([]);
+export function useRetainPreviousData<T>(
+  results: Array<UseQueryResult<T>>,
+  retentionKey: string
+): Array<UseQueryResult<T>> {
+  const retainedRef = useRef<RetainedData<T>>({ key: retentionKey, data: [] });
+
+  // Compared during render against the last *committed* key. A discarded render therefore fails
+  // toward "do not substitute", which is the safe direction.
+  const isRetainable = retainedRef.current.key === retentionKey;
 
   const merged = useMemo(() => {
+    if (!isRetainable) return results;
+
     let changed = false;
     const next = [...results];
 
     results.forEach((result, index) => {
       if (result.data !== undefined) return;
 
-      const previousData = previousDataRef.current[index];
+      const previousData = retainedRef.current.data[index];
       if (previousData !== undefined && !result.isError) {
         next[index] = {
           ...result,
@@ -54,19 +78,27 @@ export function useRetainPreviousData<T>(results: Array<UseQueryResult<T>>): Arr
     });
 
     return changed ? next : results;
-  }, [results]);
+  }, [results, isRetainable]);
 
   useEffect(() => {
+    const retained = retainedRef.current;
+
+    // The selected window changed: everything retained belongs to the previous one.
+    if (retained.key !== retentionKey) {
+      retained.key = retentionKey;
+      retained.data = [];
+    }
+
     results.forEach((result, index) => {
       if (result.data !== undefined) {
-        previousDataRef.current[index] = result.data;
+        retained.data[index] = result.data;
       }
     });
     // Drop retained data for positions that no longer exist (e.g. a query was removed).
-    if (previousDataRef.current.length > results.length) {
-      previousDataRef.current.length = results.length;
+    if (retained.data.length > results.length) {
+      retained.data.length = results.length;
     }
-  }, [results]);
+  }, [results, retentionKey]);
 
   return merged;
 }
