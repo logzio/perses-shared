@@ -12,7 +12,8 @@
 // limitations under the License.
 
 import { PanelEditorValues, panelEditorSchema } from '@perses-dev/spec';
-import { restoreValuesStrippedByValidation } from './panel-editor-values';
+import { RepeatablePanelEditorValues } from '../../model';
+import { hasUnsavedChanges, restoreValuesStrippedByValidation } from './panel-editor-values';
 
 describe('restoreValuesStrippedByValidation', () => {
   // Mirrors the customer scenario: a hidden query referenced by a math expression query.
@@ -160,3 +161,101 @@ describe('restoreValuesStrippedByValidation', () => {
     expect(restored.panelDefinition.spec.queries).toBeUndefined();
   });
 });
+
+// LOGZ.IO CHANGE START:: unsaved-changes comparison [APPZ-302]
+describe('hasUnsavedChanges', () => {
+  const buildValues = (overrides: Partial<RepeatablePanelEditorValues> = {}): RepeatablePanelEditorValues =>
+    ({
+      groupId: 0,
+      panelDefinition: {
+        kind: 'Panel',
+        spec: {
+          display: { name: 'Test Panel 3' },
+          plugin: { kind: 'TimeSeriesChart', spec: {} },
+        },
+      },
+      ...overrides,
+    }) as unknown as RepeatablePanelEditorValues;
+
+  it('should report no changes when nothing was edited', () => {
+    expect(hasUnsavedChanges(buildValues(), buildValues())).toBe(false);
+  });
+
+  it('should report a change when the panel name was edited', () => {
+    const edited = buildValues();
+
+    edited.panelDefinition.spec.display = { name: 'Renamed' };
+
+    expect(hasUnsavedChanges(buildValues(), edited)).toBe(true);
+  });
+
+  // Regression: `create` mode seeds `initialValues` without a `repeat` key, but RepeatOptionsEditor
+  // registers `repeat.*` with react-hook-form, so `getValues()` materializes the object. Comparing
+  // them raw made every untouched "Add Panel" read as dirty, so Cancel raised "Discard Changes" and
+  // the drawer never closed.
+  it('should report no changes when the repeat object was only materialized by the form', () => {
+    const initial = buildValues();
+    const current = buildValues({
+      repeat: { repeatVariable: undefined, repeatDirection: undefined, maxPerRow: undefined },
+    });
+
+    expect(initial.repeat).toBeUndefined();
+    expect(hasUnsavedChanges(initial, current)).toBe(false);
+  });
+
+  it('should report no changes when the repeat variable is the empty string the "None" option submits', () => {
+    const initial = buildValues({ repeat: { repeatVariable: undefined } });
+    const current = buildValues({ repeat: { repeatVariable: '' } });
+
+    expect(hasUnsavedChanges(initial, current)).toBe(false);
+  });
+
+  it('should report no changes when direction and max-per-row linger without a repeat variable', () => {
+    const initial = buildValues();
+    const current = buildValues({ repeat: { repeatVariable: '', repeatDirection: 'h', maxPerRow: 4 } });
+
+    expect(hasUnsavedChanges(initial, current)).toBe(false);
+  });
+
+  it('should report a change when a repeat variable was picked', () => {
+    const initial = buildValues({ repeat: { repeatVariable: undefined } });
+    const current = buildValues({ repeat: { repeatVariable: 'cluster' } });
+
+    expect(hasUnsavedChanges(initial, current)).toBe(true);
+  });
+
+  it('should report a change when an existing repeat variable was cleared', () => {
+    const initial = buildValues({ repeat: { repeatVariable: 'cluster' } });
+    const current = buildValues({ repeat: { repeatVariable: '' } });
+
+    expect(hasUnsavedChanges(initial, current)).toBe(true);
+  });
+
+  it('should report a change when the direction of an active repeat was edited', () => {
+    const initial = buildValues({ repeat: { repeatVariable: 'cluster', repeatDirection: 'h' } });
+    const current = buildValues({ repeat: { repeatVariable: 'cluster', repeatDirection: 'v' } });
+
+    expect(hasUnsavedChanges(initial, current)).toBe(true);
+  });
+
+  it('should treat an absent display as equal to one with neither name nor description', () => {
+    const initial = buildValues();
+    const current = buildValues();
+
+    initial.panelDefinition.spec.display = undefined;
+    current.panelDefinition.spec.display = { name: undefined, description: undefined } as unknown as {
+      name: string;
+    };
+
+    expect(hasUnsavedChanges(initial, current)).toBe(false);
+  });
+
+  it('should not mutate the values it is given', () => {
+    const current = buildValues({ repeat: { repeatVariable: '' } });
+
+    hasUnsavedChanges(buildValues(), current);
+
+    expect(current.repeat).toEqual({ repeatVariable: '' });
+  });
+});
+// LOGZ.IO CHANGE END:: unsaved-changes comparison [APPZ-302]
