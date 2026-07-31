@@ -26,7 +26,7 @@ export const LOG_QUERY_KEY = 'LogQuery';
 export function useLogQueries(definitions: LogQueryDefinition[]): Array<UseQueryResult<LogQueryResult>> {
   const { getPlugin } = usePluginRegistry();
   const datasourceStore = useDatasourceStore();
-  const { absoluteTimeRange } = useTimeRange();
+  const { absoluteTimeRange, rangeKey } = useTimeRange();
   const variableValues = useVariableValues();
 
   const context = {
@@ -57,6 +57,7 @@ export function useLogQueries(definitions: LogQueryDefinition[]): Array<UseQuery
     }),
   });
 
-  // LOGZ.IO CHANGE:: keep previous data across refresh/time-range change (useQueries + keepPreviousData does not)
-  return useRetainPreviousData(results);
+  // LOGZ.IO CHANGE:: keep previous data across a refresh (useQueries + keepPreviousData does not),
+  // scoped by `rangeKey` so it is never retained across a time-range change [stale-timeframe]
+  return useRetainPreviousData(results, rangeKey);
 }

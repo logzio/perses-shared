@@ -22,6 +22,7 @@ import {
 } from '@perses-dev/spec';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRefreshIntervalInMs } from './refresh-interval';
+import { getTimeRangeKey } from './range-key'; // LOGZ.IO CHANGE:: [stale-timeframe]
 
 export interface TimeRangeProviderProps {
   timeRange: TimeRangeValue;
@@ -34,6 +35,9 @@ export interface TimeRangeProviderProps {
 export interface TimeRange {
   timeRange: TimeRangeValue;
   absoluteTimeRange: AbsoluteTimeRange; // resolved absolute time for plugins to use
+  // LOGZ.IO CHANGE:: stable identity of the *selected* range, unchanged by refresh ticks that
+  // only re-resolve a relative range. See `getTimeRangeKey`. [stale-timeframe]
+  rangeKey: string;
   setTimeRange: (value: TimeRangeValue) => void;
   refresh: () => void;
   refreshInterval?: DurationString;
@@ -106,6 +110,9 @@ export function TimeRangeProvider(props: TimeRangeProviderProps): ReactElement {
     });
   }, [queryClient, timeRange]);
 
+  // LOGZ.IO CHANGE:: derived from the declared range, so it survives refresh ticks [stale-timeframe]
+  const rangeKey = useMemo(() => getTimeRangeKey(timeRange), [timeRange]);
+
   const refreshIntervalInMs = useMemo(() => getRefreshIntervalInMs(refreshInterval), [refreshInterval]);
   useEffect(() => {
     if (refreshIntervalInMs > 0) {
@@ -122,6 +129,7 @@ export function TimeRangeProvider(props: TimeRangeProviderProps): ReactElement {
       timeRange: timeRange,
       setTimeRange: handleSetTimeRange,
       absoluteTimeRange: absoluteTimeRange,
+      rangeKey: rangeKey, // LOGZ.IO CHANGE:: [stale-timeframe]
       refresh,
       refreshInterval: refreshInterval,
       refreshIntervalInMs: refreshIntervalInMs,
@@ -129,6 +137,7 @@ export function TimeRangeProvider(props: TimeRangeProviderProps): ReactElement {
     };
   }, [
     absoluteTimeRange,
+    rangeKey, // LOGZ.IO CHANGE:: [stale-timeframe]
     handleSetTimeRange,
     refresh,
     refreshInterval,

@@ -91,6 +91,8 @@ export function useTimeSeriesQueries(
 
   const { getPlugin } = usePluginRegistry();
   const baseContext = useTimeSeriesQueryContext();
+  // LOGZ.IO CHANGE:: scopes retained data to the selected window [stale-timeframe]
+  const { rangeKey } = useTimeRange();
 
   const context = useMemo(
     () => ({
@@ -130,13 +132,19 @@ export function useTimeSeriesQueries(
   // LOGZ.IO CHANGE:: Performance optimization [APPZ-359] useStableQueries()
   const results = useStableQueries({ queries }) as Array<UseQueryResult<TimeSeriesData>>;
 
-  // LOGZ.IO CHANGE:: keep the previous data while a refresh / time-range change refetches, so panels
-  // show only the header spinner instead of swapping to the full skeleton. keepPreviousData cannot do
-  // this for useQueries (its observer is recreated on key change), so retain the data manually.
-  const retainedResults = useRetainPreviousData(results);
+  // LOGZ.IO CHANGE:: keep the previous data while a *refresh* refetches, so panels show only the
+  // header spinner instead of swapping to the full skeleton. keepPreviousData cannot do this for
+  // useQueries (its observer is recreated on key change), so retain the data manually. Scoped by
+  // `rangeKey` so it is never retained across a time-range change. [stale-timeframe]
+  const retainedResults = useRetainPreviousData(results, rangeKey);
 
-  // Memoize resolved results computation to avoid rebuilding in every effect run
-  const newResolved = useMemo(() => buildResolvedResults(retainedResults), [retainedResults]);
+  // Memoize resolved results computation to avoid rebuilding in every effect run.
+  // LOGZ.IO CHANGE:: built from `results`, NOT `retainedResults` — this map both gates (`depsResolved`)
+  // and keys (`depsFingerprint`) dependent `__expr__`/math queries, so feeding it retained data makes
+  // them fire against the previous window's inputs and emit a result stamped with that window.
+  // Sourcing it from the raw results makes a dependent query wait for real data; retention still
+  // covers the visuals while it waits. [stale-timeframe]
+  const newResolved = useMemo(() => buildResolvedResults(results), [results]);
 
   // Sync resolved results when data references change
   useEffect(() => {

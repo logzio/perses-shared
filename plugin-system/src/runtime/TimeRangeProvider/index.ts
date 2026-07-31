@@ -15,3 +15,4 @@ export * from './TimeRangeProvider';
 export * from './TimeRangeProviders';
 export * from './TimeRangeSettingsProvider';
 export * from './query-params';
+export * from './range-key'; // LOGZ.IO CHANGE:: [stale-timeframe]
