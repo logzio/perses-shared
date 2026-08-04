@@ -18,6 +18,9 @@ export const TOOLTIP_MIN_WIDTH = 375;
 export const TOOLTIP_MAX_WIDTH = 650;
 export const TOOLTIP_MAX_HEIGHT = 650;
 export const TOOLTIP_LABELS_MAX_WIDTH = TOOLTIP_MAX_WIDTH - 150;
+// Shared pin/unpin vocabulary — used by the series tooltip and the annotation tooltip.
+export const PIN_TOOLTIP_HELP_TEXT = 'Click chart to pin';
+export const UNPIN_TOOLTIP_HELP_TEXT = 'Click chart to unpin';
 export const TOOLTIP_ADJUST_Y_POS_MULTIPLIER = 0.75;
 export const TOOLTIP_PADDING = 8;
 

@@ -11,12 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export * from './Annotations';
 export * from './CalculationSelector';
 export * from './DatasourceEditorForm';
 export * from './DatasourceSelect';
 export * from './HTTPSettingsEditor';
 export * from './ItemSelectionActionsOptionsEditor';
 export * from './LegendOptionsEditor';
+export * from './LinksEditor';
 export * from './MultiQueryEditor';
 export * from './OptionsEditorRadios';
 export * from './OptionsEditorTabs';

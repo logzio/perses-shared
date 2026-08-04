@@ -12,7 +12,15 @@
 // limitations under the License.
 
 export * from './datasource';
+export * from './folder';
 export * from './kind';
 export * from './resource';
 export * from './datasource-api';
 export * from './http';
+export * from './secret';
+export * from './role';
+export * from './roleBindings';
+export * from './user';
+export * from './ephemeralDashboard';
+export * from './variable';
+export * from './dashboard';

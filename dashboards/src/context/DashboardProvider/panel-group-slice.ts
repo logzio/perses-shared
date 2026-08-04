@@ -11,9 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { getPanelKeyFromRef, LayoutDefinition, PanelGroupId } from '@perses-dev/spec';
+import { getPanelKeyFromRef, LayoutDefinition } from '@perses-dev/spec';
 import { StateCreator } from 'zustand';
 import { WritableDraft } from 'immer';
+import { PanelGroupId } from '@perses-dev/plugin-system';
 import { PanelGroupDefinition, RepeatableGridItemDefinition } from '../../model';
 import { generateId, Middleware } from './common';
 
@@ -94,29 +95,32 @@ export function convertLayoutsToPanelGroups(
     const itemPanelKeys: PanelGroupDefinition['itemPanelKeys'] = {};
 
     // Split layout information from panel keys to make it easier to update just layouts on move/resize of panels
-    for (const item of layout.spec.items) {
-      const panelGroupLayoutId = generateId().toString();
-      // LOGZ.IO CHANGE:: `items` is typed without item-level repeat upstream
-      const { repeatVariable, repeatDirection, maxPerRow } = item as RepeatableGridItemDefinition;
-      itemLayouts.push({
-        i: panelGroupLayoutId,
-        w: item.width,
-        h: item.height,
-        x: item.x,
-        y: item.y,
-        repeatVariable,
-        repeatDirection,
-        maxPerRow,
-      });
-      itemPanelKeys[panelGroupLayoutId] = getPanelKeyFromRef(item.content);
+    if ('items' in layout.spec) {
+      for (const item of layout.spec.items) {
+        const panelGroupLayoutId = generateId().toString();
+        // LOGZ.IO CHANGE:: `items` is typed without item-level repeat upstream
+        const { repeatVariable, repeatDirection, maxPerRow } = item as RepeatableGridItemDefinition;
+        itemLayouts.push({
+          i: panelGroupLayoutId,
+          w: item.width,
+          h: item.height,
+          x: item.x,
+          y: item.y,
+          repeatVariable,
+          repeatDirection,
+          maxPerRow,
+        });
+        itemPanelKeys[panelGroupLayoutId] = getPanelKeyFromRef(item.content);
+      }
     }
 
     // Create the panel group and keep track of the ID order
+    const repeatVariable = 'repeatVariable' in layout.spec ? layout.spec.repeatVariable : undefined;
     const panelGroupId = generateId();
     panelGroups[panelGroupId] = {
       id: panelGroupId,
       isCollapsed: layout.spec.display?.collapse?.open === false,
-      repeatVariable: layout.spec.repeatVariable,
+      repeatVariable,
       title: layout.spec.display?.title,
       itemLayouts,
       itemPanelKeys,

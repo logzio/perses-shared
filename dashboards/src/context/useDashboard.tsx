@@ -11,11 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createPanelRef, DashboardSpec, DurationString, GridDefinition, PanelGroupId } from '@perses-dev/spec';
-import { DashboardResource, PanelGroupDefinition, RepeatableGridItemDefinition } from '../model';
+import { createPanelRef, DashboardSpec, DurationString, GridDefinition } from '@perses-dev/spec';
+import { DashboardResource } from '@perses-dev/client';
+import { PanelGroupId } from '@perses-dev/plugin-system';
+import { PanelGroupDefinition, RepeatableGridItemDefinition } from '../model';
 
 import { useDashboardStore } from './DashboardProvider';
 import { useVariableDefinitionActions, useVariableDefinitions } from './VariableProvider';
+import { useAnnotationActions, useAnnotationSpecs } from './AnnotationProvider';
 
 type DashboardType = Omit<DashboardResource, 'spec'> & { spec: DashboardSpec & { ttl?: DurationString } };
 export function useDashboard(): {
@@ -30,6 +33,7 @@ export function useDashboard(): {
     kind,
     metadata,
     display,
+    timezone,
     duration,
     refreshInterval,
     datasources,
@@ -43,6 +47,7 @@ export function useDashboard(): {
       setDashboard,
       kind,
       metadata,
+      timezone,
       display,
       duration,
       refreshInterval,
@@ -56,6 +61,7 @@ export function useDashboard(): {
       setDashboard,
       kind,
       metadata,
+      timezone,
       display,
       duration,
       refreshInterval,
@@ -65,7 +71,9 @@ export function useDashboard(): {
     })
   );
   const { setVariableDefinitions } = useVariableDefinitionActions();
+  const { setAnnotationSpecs } = useAnnotationActions();
   const variables = useVariableDefinitions();
+  const annotations = useAnnotationSpecs();
   const layouts = convertPanelGroupsToLayouts(panelGroups, panelGroupOrder);
 
   const dashboard: DashboardType =
@@ -78,7 +86,9 @@ export function useDashboard(): {
             panels,
             layouts,
             variables,
+            annotations,
             duration,
+            timezone,
             refreshInterval,
             datasources,
             links,
@@ -92,6 +102,7 @@ export function useDashboard(): {
             panels,
             layouts,
             variables,
+            annotations,
             duration,
             refreshInterval,
             datasources,
@@ -102,6 +113,9 @@ export function useDashboard(): {
 
   const setDashboard = (dashboardResource: DashboardResource): void => {
     setVariableDefinitions(dashboardResource.spec.variables);
+    if (dashboardResource.spec.annotations) {
+      setAnnotationSpecs(dashboardResource.spec.annotations);
+    }
     setDashboardResource(dashboardResource);
   };
 
@@ -154,7 +168,10 @@ function convertPanelGroupsToLayouts(
             }),
             // LOGZ.IO CHANGE END:: Round-trip item-level repeat
           };
-        }),
+          // LOGZ.IO CHANGE:: we serialize item repeat in our flat Grafana-shaped form, which spec
+          // 0.2.0 now models as a nested `repeatVariable` object. This cast is the one boundary where
+          // the two encodings meet; removing it requires migrating stored dashboards to spec's shape.
+        }) as unknown as GridDefinition['spec']['items'],
         repeatVariable: repeatVariable,
       },
     };

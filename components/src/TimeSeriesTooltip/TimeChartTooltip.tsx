@@ -18,7 +18,7 @@ import { TimeSeries, TimeSeriesMetadata } from '@perses-dev/spec';
 import useResizeObserver from 'use-resize-observer';
 import { FormatOptions, TimeChartSeriesMapping } from '../model';
 import { CursorCoordinates, PointAction, useMousePosition } from './tooltip-model';
-import { assembleTransform, getTooltipStyles } from './utils';
+import { assembleTransform, getTooltipStyles, isSeriesSelectable } from './utils';
 import { getNearbySeriesData } from './nearby-series';
 import { TooltipHeader } from './TooltipHeader';
 import { TooltipContent } from './TooltipContent';
@@ -125,8 +125,9 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
     let nextSelectedSeriesIdx: number | null = hasOneSeries ? 0 : null;
 
     if (firstSeriesClosestToCursor) {
-      nextSelectedSeriesIdx =
-        (firstSeriesClosestToCursor.metadata?.isSelectable ?? true) ? firstSeriesClosestToCursor.seriesIdx : null;
+      nextSelectedSeriesIdx = isSeriesSelectable(firstSeriesClosestToCursor.metadata)
+        ? firstSeriesClosestToCursor.seriesIdx
+        : null;
     }
 
     if (nextSelectedSeriesIdx !== selectedSeriesIdx) {

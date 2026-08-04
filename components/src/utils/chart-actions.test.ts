@@ -205,21 +205,28 @@ describe('batchDispatchNearbySeriesActions', () => {
 
   const emphasizedDatapoint: DatapointInfo = { seriesIndex: 0, dataIndex: 5, seriesName: 'a', yValue: 1 };
 
+  // Assert which actions are dispatched rather than how many: the exact count is upstream's to
+  // change (0.54.0 added a blanket downplay), while the dedup behaviour below is ours to protect.
+  const dispatchedTypes = (chart: EChartsInstance): string[] =>
+    jest.mocked(chart.dispatchAction).mock.calls.map(([payload]) => (payload as { type: string }).type);
+
   it('should dispatch select, downplay and highlight for a new payload', () => {
     const chart = buildChart();
 
     batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
 
-    expect(chart.dispatchAction).toHaveBeenCalledTimes(3);
+    expect(dispatchedTypes(chart)).toEqual(expect.arrayContaining(['select', 'downplay', 'highlight']));
   });
 
   it('should skip dispatching when the payload is identical to the previous move', () => {
     const chart = buildChart();
 
     batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+    const afterFirstMove = jest.mocked(chart.dispatchAction).mock.calls.length;
+
     batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
 
-    expect(chart.dispatchAction).toHaveBeenCalledTimes(3);
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(afterFirstMove);
   });
 
   it('should dispatch again when the payload changes', () => {
@@ -235,10 +242,12 @@ describe('batchDispatchNearbySeriesActions', () => {
     const chart = buildChart();
 
     batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+    const afterFirstMove = jest.mocked(chart.dispatchAction).mock.calls.length;
+
     clearNearbySeriesDispatchCache(chart);
     batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
 
-    expect(chart.dispatchAction).toHaveBeenCalledTimes(6);
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(afterFirstMove * 2);
   });
 
   it('should keep dedup state per chart instance', () => {
@@ -248,8 +257,77 @@ describe('batchDispatchNearbySeriesActions', () => {
     batchDispatchNearbySeriesActions(chartA, [0], [], [0], [], []);
     batchDispatchNearbySeriesActions(chartB, [0], [], [0], [], []);
 
-    // Payload with no emphasis dispatches downplay + highlight + toggleSelect on each chart.
-    expect(chartA.dispatchAction).toHaveBeenCalledTimes(3);
-    expect(chartB.dispatchAction).toHaveBeenCalledTimes(3);
+    // Each chart dedups independently, so the second chart is not treated as a repeat of the first.
+    expect(jest.mocked(chartB.dispatchAction).mock.calls.length).toBe(
+      jest.mocked(chartA.dispatchAction).mock.calls.length
+    );
+    expect(chartA.dispatchAction).toHaveBeenCalled();
+  });
+});
+
+describe('batchDispatchNearbySeriesActions - axis-triggered emphasis', () => {
+  function makeChartMock(): { chart: EChartsInstance; calls: Array<{ type: string; payload: unknown }> } {
+    const calls: Array<{ type: string; payload: unknown }> = [];
+    const chart = {
+      dispatchAction: (payload: { type: string; [k: string]: unknown }) => {
+        calls.push({ type: payload.type, payload: JSON.parse(JSON.stringify(payload)) });
+      },
+    } as unknown as EChartsInstance;
+    return { chart, calls };
+  }
+
+  it('dispatches a blanket downplay to clear ECharts axis-triggered emphasis before highlighting the winner', () => {
+    const { chart, calls } = makeChartMock();
+    const winnerDatapoint: DatapointInfo = { seriesIndex: 3, dataIndex: 5, seriesName: 's3', yValue: 42 };
+
+    batchDispatchNearbySeriesActions(chart, [1, 2, 3, 4], [3], [1, 2, 4], [winnerDatapoint], []);
+
+    const blanketDownplayIdx = calls.findIndex(
+      (c) => c.type === 'downplay' && (c.payload as { seriesIndex?: unknown }).seriesIndex === undefined
+    );
+    const targetedDownplayIdx = calls.findIndex(
+      (c) => c.type === 'downplay' && Array.isArray((c.payload as { seriesIndex?: unknown }).seriesIndex)
+    );
+    const highlightIdx = calls.findIndex((c) => c.type === 'highlight');
+
+    expect(blanketDownplayIdx).toBeGreaterThanOrEqual(0);
+    expect(targetedDownplayIdx).toBeGreaterThan(blanketDownplayIdx);
+    expect(highlightIdx).toBeGreaterThan(targetedDownplayIdx);
+    expect((calls[highlightIdx]!.payload as { seriesIndex: number[] }).seriesIndex).toEqual([3]);
+  });
+
+  it('dispatches a select action on the winning datapoint', () => {
+    const { chart, calls } = makeChartMock();
+    const winnerDatapoint: DatapointInfo = { seriesIndex: 7, dataIndex: 11, seriesName: 's7', yValue: 1.5 };
+
+    batchDispatchNearbySeriesActions(chart, [7], [7], [], [winnerDatapoint], []);
+
+    const selectCall = calls.find((c) => c.type === 'select');
+    expect(selectCall).toBeDefined();
+    expect((selectCall!.payload as { seriesIndex: number; dataIndex: number }).seriesIndex).toBe(7);
+    expect((selectCall!.payload as { seriesIndex: number; dataIndex: number }).dataIndex).toBe(11);
+  });
+
+  it('uses the last duplicate datapoint for select when duplicates exist (avoids color mismatch)', () => {
+    const { chart, calls } = makeChartMock();
+    const winner: DatapointInfo = { seriesIndex: 1, dataIndex: 0, seriesName: 's1', yValue: 100 };
+    const duplicate: DatapointInfo = { seriesIndex: 2, dataIndex: 0, seriesName: 's2', yValue: 100 };
+
+    batchDispatchNearbySeriesActions(chart, [1, 2], [1, 2], [], [winner, duplicate], [duplicate]);
+
+    const selectCall = calls.find((c) => c.type === 'select');
+    expect((selectCall!.payload as { seriesIndex: number }).seriesIndex).toBe(2);
+  });
+
+  it('falls back to highlighting all nearby series when no emphasized winner exists', () => {
+    const { chart, calls } = makeChartMock();
+
+    batchDispatchNearbySeriesActions(chart, [1, 2, 3], [], [1, 2, 3], [], []);
+
+    const highlight = calls.find((c) => c.type === 'highlight');
+    expect(highlight).toBeDefined();
+    expect((highlight!.payload as { seriesIndex: number[]; notBlur: boolean }).seriesIndex).toEqual([1, 2, 3]);
+    expect((highlight!.payload as { seriesIndex: number[]; notBlur: boolean }).notBlur).toBe(true);
+    expect(calls.some((c) => c.type === 'toggleSelect')).toBe(true);
   });
 });

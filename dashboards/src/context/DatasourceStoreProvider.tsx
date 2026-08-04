@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ReactElement, ReactNode, useCallback, useMemo, useState } from 'react';
+import { ReactElement, ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { DashboardSpec, DatasourceSelector, DatasourceSpec } from '@perses-dev/spec';
 import {
   DatasourceStoreContext,
@@ -22,8 +22,12 @@ import {
   DatasourceClient,
   DatasourceSelectItem,
 } from '@perses-dev/plugin-system';
-import { BuildDatasourceProxyUrlParams, DatasourceApi, DatasourceDefinition } from '@perses-dev/client';
-import { DashboardResource } from '../model/DashboardResource';
+import {
+  BuildDatasourceProxyUrlParams,
+  DashboardResource,
+  DatasourceApi,
+  DatasourceDefinition,
+} from '@perses-dev/client';
 
 export interface DatasourceStoreProviderProps {
   dashboardResource?: DashboardResource;
@@ -43,9 +47,20 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
   const [savedDatasources, setSavedDatasources] = useState<Record<string, DatasourceSpec>>(
     props.savedDatasources ?? {}
   );
+  // Cache for synchronous datasource spec access
+  const datasourceSpecCache = useRef<Map<string, DatasourceSpec>>(new Map());
   const project = projectName ?? dashboardResource?.metadata.project;
 
   const { getPlugin, listPluginMetadata } = usePluginRegistry();
+
+  // Helper to create cache key from DatasourceSelector
+  const createCacheKey = useCallback(
+    (selector: DatasourceSelector): string => {
+      const name = selector.name === undefined ? '__undefined__' : selector.name;
+      return `${selector.kind}:${name}:${project ?? 'global'}`;
+    },
+    [project]
+  );
 
   const findDatasource = useEvent(async (selector: DatasourceSelector) => {
     // Try to find it in dashboard spec
@@ -53,7 +68,7 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
       const { datasources } = dashboardResource.spec;
       const dashboardDatasource = findDashboardDatasource(datasources, selector);
       if (dashboardDatasource !== undefined) {
-        return {
+        const result = {
           spec: dashboardDatasource.spec,
           proxyUrl: buildDatasourceProxyUrl(datasourceApi, {
             project: dashboardResource.metadata.project,
@@ -61,6 +76,10 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
             name: dashboardDatasource.name,
           }),
         };
+        // Cache the spec for synchronous access
+        const cacheKey = createCacheKey(selector);
+        datasourceSpecCache.current.set(cacheKey, result.spec);
+        return result;
       }
     }
 
@@ -68,25 +87,33 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
       // Try to find it at the project level as a Datasource resource
       const datasource = await datasourceApi.getDatasource(String(project), selector);
       if (datasource !== undefined) {
-        return {
+        const result = {
           spec: datasource.spec,
           proxyUrl: buildDatasourceProxyUrl(datasourceApi, {
             project: datasource.metadata.project,
             name: datasource.metadata.name,
           }),
         };
+        // Cache the spec for synchronous access
+        const cacheKey = createCacheKey(selector);
+        datasourceSpecCache.current.set(cacheKey, result.spec);
+        return result;
       }
     }
 
     // Try to find it at the global level as a GlobalDatasource resource
     const globalDatasource = await datasourceApi.getGlobalDatasource(selector);
     if (globalDatasource !== undefined) {
-      return {
+      const result = {
         spec: globalDatasource.spec,
         proxyUrl: buildDatasourceProxyUrl(datasourceApi, {
           name: globalDatasource.metadata.name,
         }),
       };
+      // Cache the spec for synchronous access
+      const cacheKey = createCacheKey(selector);
+      datasourceSpecCache.current.set(cacheKey, result.spec);
+      return result;
     }
 
     throw new Error(`No datasource found for kind '${selector.kind}' and name '${selector.name}'`);
@@ -177,6 +204,15 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
     return savedDatasources;
   }, [savedDatasources]);
 
+  // Gets a cached datasource spec synchronously if available
+  const getDatasourceSpecSync = useCallback(
+    (selector: DatasourceSelector): DatasourceSpec | undefined => {
+      const cacheKey = createCacheKey(selector);
+      return datasourceSpecCache.current.get(cacheKey);
+    },
+    [createCacheKey]
+  );
+
   const setLocalDatasources = useCallback(
     (datasources: Record<string, DatasourceSpec>) => {
       if (dashboardResource) {
@@ -197,6 +233,7 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
       ({
         getDatasource,
         getDatasourceClient,
+        getDatasourceSpecSync,
         getLocalDatasources,
         setLocalDatasources,
         setSavedDatasources,
@@ -206,6 +243,7 @@ export function DatasourceStoreProvider(props: DatasourceStoreProviderProps): Re
     [
       getDatasource,
       getDatasourceClient,
+      getDatasourceSpecSync,
       getLocalDatasources,
       setLocalDatasources,
       listDatasourceSelectItems,
@@ -311,7 +349,7 @@ function buildDatasourceSelectItemGroups(pluginDisplayName: string): {
     usedNames.add(selectorName);
 
     const isExplicitDefault = !isOverridden && spec.default && !explicitDefaultAdded;
-    if (results[0] && (isFirst || isExplicitDefault)) {
+    if (results[0] && isExplicitDefault) {
       // If we haven't added a default yet and this is a default, add default option to the beginning of the results
       results[0].items = [
         {

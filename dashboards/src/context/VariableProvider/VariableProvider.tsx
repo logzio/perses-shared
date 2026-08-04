@@ -248,6 +248,7 @@ export function useDashboardVariableValues(): VariableStateMap {
         // If the variable is a list variable and has a custom all value, then use that value instead
         if (definition?.kind === 'ListVariable' && definition.spec.customAllValue) {
           v.value = definition.spec.customAllValue;
+          v.customAllValue = definition.spec.customAllValue;
         } else {
           v.value = v.options?.map((o: { value: string }) => o.value) ?? null;
         }

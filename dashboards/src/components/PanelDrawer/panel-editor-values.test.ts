@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { PanelEditorValues, panelEditorSchema } from '@perses-dev/spec';
+import { PanelEditorValues, panelEditorSchema } from '@perses-dev/plugin-system';
 import { RepeatablePanelEditorValues } from '../../model';
 import { hasUnsavedChanges, restoreValuesStrippedByValidation } from './panel-editor-values';
 

@@ -12,9 +12,73 @@
 // limitations under the License.
 
 import { RequestHeaders } from '@perses-dev/client';
-import { replaceVariables, VariableStateMap } from './variable-interpolation';
+import {
+  replaceVariables,
+  VariableStateMap,
+  parseVariablesAndFormat,
+  InterpolationFormat,
+} from './variable-interpolation';
+import { createRegexFromString } from './regexp';
 
 export type QueryParamValues = Record<string, string | string[]>;
+
+function expandQueryParamValue(value: string | string[], variableState: VariableStateMap): string | string[] {
+  // If value is an array, process each element
+  if (Array.isArray(value)) {
+    return value.map((v) => expandQueryParamValue(v, variableState) as string);
+  }
+
+  // Now we know value is a string, so we can safely use string methods
+  const valueString = value as string;
+  const variablesMap = parseVariablesAndFormat(valueString);
+
+  // Find the first multi-value variable that should expand to repeated keys
+  for (const [varName, format] of variablesMap) {
+    const varState = variableState[varName];
+    if (!varState) continue;
+
+    const options = varState.options ?? [];
+    const allOptionValues = options.map((o) => o.value);
+
+    const isArray = Array.isArray(varState.value);
+    const isCustomAllValue = varState.customAllValue !== undefined;
+
+    let expandValues: string[] | undefined;
+    if (isArray) {
+      expandValues = varState.value as string[];
+    } else if (isCustomAllValue) {
+      try {
+        const regex = createRegexFromString(varState.customAllValue as string);
+        const matched = options.filter((o) => regex.test(o.value)).map((o) => o.value);
+        expandValues = matched.length > 0 ? matched : allOptionValues;
+      } catch {
+        expandValues = allOptionValues;
+      }
+    }
+    if (!expandValues) continue;
+
+    // If format is queryparam or not specified (default for query params), expand to array
+    if (!format || format === InterpolationFormat.QUERYPARAM) {
+      // Build syntax patterns for this variable reference
+      const simpleSyntax = '$' + varName;
+      const bracketSyntax = format ? '${' + varName + ':' + format + '}' : '${' + varName + '}';
+
+      return expandValues.map((singleValue) => {
+        let text = valueString;
+        // Replace the variable reference with the raw value directly.
+        // We cannot use replaceVariables here because it would apply QUERYPARAM format
+        // to the single value, producing "varName=val" instead of just "val".
+        text = text.replaceAll(bracketSyntax, singleValue);
+        text = text.replaceAll(simpleSyntax, singleValue);
+        // Replace any remaining variables (other than the expanded one) using standard interpolation
+        return replaceVariables(text, variableState);
+      });
+    }
+  }
+
+  // No multi-value expansion needed — use standard interpolation
+  return replaceVariables(valueString, variableState);
+}
 
 export function interpolateHeaders(headers: Record<string, string>, variableState: VariableStateMap): RequestHeaders {
   const result: RequestHeaders = {};
@@ -33,7 +97,7 @@ export function interpolateQueryParams(
     if (Array.isArray(value)) {
       result[key] = value.map((v) => replaceVariables(v, variableState));
     } else {
-      result[key] = replaceVariables(value, variableState);
+      result[key] = expandQueryParamValue(value, variableState);
     }
   }
   return result;

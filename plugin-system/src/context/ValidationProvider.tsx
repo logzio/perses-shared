@@ -13,25 +13,29 @@
 
 import { createContext, ReactElement, ReactNode, useContext, useState } from 'react';
 import {
-  PanelEditorValues,
-  VariableDefinition,
-  PluginSchema,
-  panelEditorSchema as defaultPanelEditorSchema,
-  variableDefinitionSchema,
-  buildPanelEditorSchema,
+  AnnotationSpec,
+  annotationSpecSchema,
+  buildAnnotationSpecSchema,
   buildVariableDefinitionSchema,
+  PluginSchema,
+  VariableDefinition,
+  variableDefinitionSchema,
 } from '@perses-dev/spec';
 
 import { z } from 'zod';
 import { buildDatasourceDefinitionSchema, DatasourceDefinition, datasourceDefinitionSchema } from '@perses-dev/client';
+import { buildPanelEditorSchema, panelEditorSchema as defaultPanelEditorSchema } from '../schema';
+import { PanelEditorValues } from '../model';
 
 export interface ValidationSchemas {
   datasourceEditorSchema: z.Schema<DatasourceDefinition>;
   panelEditorSchema: z.Schema<PanelEditorValues>;
   variableEditorSchema: z.Schema<VariableDefinition>;
+  annotationEditorSchema: z.Schema<AnnotationSpec>;
   setDatasourceEditorSchemaPlugin: (pluginSchema: PluginSchema) => void;
   setPanelEditorSchemaPlugin: (pluginSchema: PluginSchema) => void;
   setVariableEditorSchemaPlugin: (pluginSchema: PluginSchema) => void;
+  setAnnotationEditorSchemaPlugin?: (pluginSchema: PluginSchema) => void;
 }
 
 export const ValidationSchemasContext = createContext<ValidationSchemas | undefined>(undefined);
@@ -52,14 +56,12 @@ interface ValidationProviderProps {
  * Provide validation schemas for forms handling plugins (datasources, variables, panels).
  */
 export function ValidationProvider({ children }: ValidationProviderProps): ReactElement {
-  // LOGZ.IO CHANGE START
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- LOGZ.IO CHANGE
-  const [datasourceEditorSchema, setDatasourceEditorSchema] = useState<any>(datasourceDefinitionSchema);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- LOGZ.IO CHANGE
-  const [panelEditorSchema, setPanelEditorSchema] = useState<any>(defaultPanelEditorSchema);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- LOGZ.IO CHANGE
-  const [variableEditorSchema, setVariableEditorSchema] = useState<any>(variableDefinitionSchema);
-  // LOGZ.IO CHANGE END
+  const [datasourceEditorSchema, setDatasourceEditorSchema] =
+    useState<z.Schema<DatasourceDefinition>>(datasourceDefinitionSchema);
+  const [panelEditorSchema, setPanelEditorSchema] = useState<z.Schema<PanelEditorValues>>(defaultPanelEditorSchema);
+  const [variableEditorSchema, setVariableEditorSchema] =
+    useState<z.Schema<VariableDefinition>>(variableDefinitionSchema);
+  const [annotationEditorSchema, setAnnotationEditorSchema] = useState<z.Schema<AnnotationSpec>>(annotationSpecSchema);
 
   function setDatasourceEditorSchemaPlugin(pluginSchema: PluginSchema): void {
     setDatasourceEditorSchema(buildDatasourceDefinitionSchema(pluginSchema));
@@ -73,15 +75,21 @@ export function ValidationProvider({ children }: ValidationProviderProps): React
     setVariableEditorSchema(buildVariableDefinitionSchema(pluginSchema));
   }
 
+  function setAnnotationEditorSchemaPlugin(pluginSchema: PluginSchema): void {
+    setAnnotationEditorSchema(buildAnnotationSpecSchema(pluginSchema));
+  }
+
   return (
     <ValidationSchemasContext.Provider
       value={{
         datasourceEditorSchema,
         panelEditorSchema,
         variableEditorSchema,
+        annotationEditorSchema,
         setDatasourceEditorSchemaPlugin,
         setPanelEditorSchemaPlugin,
         setVariableEditorSchemaPlugin,
+        setAnnotationEditorSchemaPlugin,
       }}
     >
       {children}

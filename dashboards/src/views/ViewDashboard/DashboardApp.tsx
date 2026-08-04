@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ReactElement, ReactNode, useEffect, useState } from 'react';
+import { ReactElement, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
 import {
   ChartsProvider,
@@ -23,6 +23,7 @@ import {
 } from '@perses-dev/components';
 import { useDatasourceStore } from '@perses-dev/plugin-system';
 import { DashboardSpec } from '@perses-dev/spec';
+import { DashboardResource } from '@perses-dev/client';
 import {
   PanelDrawer,
   Dashboard,
@@ -39,13 +40,13 @@ import {
 } from '../../components';
 import { OnSaveDashboard, useDashboard, useDiscardChangesConfirmationDialog, useEditMode } from '../../context';
 import { PanelFocusProvider } from '../../keyboard-shortcuts';
-import { DashboardResource } from '../../model';
 
 export interface DashboardAppProps {
   dashboardResource: DashboardResource;
   emptyDashboardProps?: Partial<EmptyDashboardProps>;
   isReadonly: boolean;
   isVariableEnabled: boolean;
+  isAnnotationEnabled: boolean;
   isDatasourceEnabled: boolean;
   disableShortcuts?: boolean;
   isCreating?: boolean;
@@ -53,6 +54,7 @@ export interface DashboardAppProps {
   // If true, browser confirmation dialog will be shown when navigating away with unsaved changes (closing tab, ...).
   isLeavingConfirmDialogEnabled?: boolean;
   dashboardTitleComponent?: ReactNode;
+  userPreferenceTimezone?: DashboardSpec['timezone'];
   onSave?: OnSaveDashboard;
   onDiscard?: (name: string, spec: DashboardSpec) => void;
   toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Support AdHoc filters
@@ -75,12 +77,14 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     emptyDashboardProps,
     isReadonly,
     isVariableEnabled,
+    isAnnotationEnabled,
     isDatasourceEnabled,
     disableShortcuts,
     isCreating,
     isInitialVariableSticky,
     isLeavingConfirmDialogEnabled,
     dashboardTitleComponent,
+    userPreferenceTimezone,
     onSave,
     onDiscard,
     dashboardControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
@@ -150,6 +154,10 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     disabled: disableShortcuts,
   });
 
+  const toolBarTimezone = useMemo((): string => {
+    return dashboardResource.spec.timezone || userPreferenceTimezone || 'local';
+  }, [dashboardResource.spec, userPreferenceTimezone]);
+
   return (
     <Box
       sx={{
@@ -161,11 +169,13 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     >
       <DashboardToolbar
         dashboardName={dashboardResource.metadata.name}
+        timezone={toolBarTimezone}
         dashboardTitleComponent={dashboardTitleComponent}
         initialVariableIsSticky={isInitialVariableSticky}
         onSave={onSave}
         isReadonly={isReadonly}
         isVariableEnabled={isVariableEnabled}
+        isAnnotationEnabled={isAnnotationEnabled}
         isDatasourceEnabled={isDatasourceEnabled}
         onEditButtonClick={onEditButtonClick}
         onCancelButtonClick={onCancelButtonClick}

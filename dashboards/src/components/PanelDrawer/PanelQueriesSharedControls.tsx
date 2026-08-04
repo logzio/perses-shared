@@ -14,21 +14,20 @@
 import { Box, Grid, Typography } from '@mui/material';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
 import { PanelEditorContext, PanelPreview } from '@perses-dev/dashboards';
-// LOGZ.IO CHANGE START:: Import PanelSpecChangeProvider for bidirectional panel-settings sync
 import {
   DataQueriesProvider,
+  PanelEditorValues,
+  // LOGZ.IO CHANGE:: PanelSpecChangeProvider for bidirectional panel-settings sync
   PanelSpecChangeProvider,
   PanelSpecEditor,
   usePlugin,
   useSuggestedStepMs,
 } from '@perses-dev/plugin-system';
-// LOGZ.IO CHANGE END:: Import PanelSpecChangeProvider for bidirectional panel-settings sync
-import { Definition, PanelDefinition, PanelEditorValues, QueryDefinition, UnknownSpec } from '@perses-dev/spec';
+import { Definition, PanelDefinition, QueryDefinition, UnknownSpec } from '@perses-dev/spec';
 import { Control, FieldPath, useWatch } from 'react-hook-form';
 import { ReactElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-// LOGZ.IO CHANGE START:: Wrap editor preview in panel time range override
+// LOGZ.IO CHANGE:: Wrap editor preview in panel time range override
 import { PanelTimeRangeOverrideProvider } from '../../context/PanelTimeRangeOverride';
-// LOGZ.IO CHANGE END:: Wrap editor preview in panel time range override
 
 export interface PanelQueriesSharedControlsProps {
   control: Control<PanelEditorValues>;
@@ -40,7 +39,7 @@ export interface PanelQueriesSharedControlsProps {
 }
 
 // Component of PanelEditor, it will share queries results to its children with DataQueriesProvider.
-// TODO: consider merging PanelEditorProvider, QueryCountProvider and DataQueriesProvider into a single provider to avoid multiple nested providers.
+// TODO: consider merging PanelEditorProvider and DataQueriesProvider into a single provider to avoid multiple nested providers.
 // LOGZ.IO CHANGE START:: Wrap editor preview/queries in panel time range override so the preview matches the dashboard panel
 // The override needs to wrap useSuggestedStepMs + DataQueriesProvider + PanelPreview, mirroring
 // what GridItemContent does for the dashboard view. The body is split into an inner component so
@@ -101,30 +100,17 @@ function PanelQueriesSharedControlsBody({
     [panelDefinition.spec.plugin.spec, pluginPreview]
   );
 
-  const [previewDefinition, setPreviewDefinition] = useState(
-    () =>
-      panelDefinition.spec.queries?.map((query) => {
-        return {
-          kind: query.spec.plugin.kind,
-          spec: query.spec.plugin.spec,
-          hidden: (query.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: Math on queries formulas
-        };
-      }) ?? []
-  );
+  const [previewDefinition, setPreviewDefinition] = useState<QueryDefinition[]>(panelDefinition.spec.queries ?? []);
 
   // LOGZ.IO CHANGE START:: sync preview when queries are added or removed
   const prevQueryCountRef = useRef(panelDefinition.spec.queries?.length ?? 0);
   useEffect(() => {
     const currentCount = panelDefinition.spec.queries?.length ?? 0;
 
+    // Covers every path that mutates queries (editor, JSON edit, panel-type change), not just
+    // MultiQueryEditor's onChange — upstream's handleOnQueriesChange wrapper only covers the latter.
     if (currentCount !== prevQueryCountRef.current) {
-      setPreviewDefinition(
-        panelDefinition.spec.queries?.map((query) => ({
-          kind: query.spec.plugin.kind,
-          spec: query.spec.plugin.spec,
-          hidden: (query.spec as { hidden?: boolean }).hidden ?? false,
-        })) ?? []
-      );
+      setPreviewDefinition(panelDefinition.spec.queries ?? []);
     }
     prevQueryCountRef.current = currentCount;
   }, [panelDefinition.spec.queries]);
@@ -133,11 +119,7 @@ function PanelQueriesSharedControlsBody({
   const handleRunQuery = useCallback((index: number, newDef: QueryDefinition) => {
     setPreviewDefinition((prev) => {
       const newDefinitions = [...prev];
-      newDefinitions[index] = {
-        kind: newDef.spec.plugin.kind,
-        spec: newDef.spec.plugin.spec,
-        hidden: (newDef.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: math-on-queries-formulas
-      };
+      newDefinitions[index] = newDef;
       return newDefinitions;
     });
   }, []);

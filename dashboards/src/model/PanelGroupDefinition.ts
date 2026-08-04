@@ -11,9 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { GridItemDefinition, PanelEditorValues } from '@perses-dev/spec';
-
-export type PanelGroupId = number;
+import { GridItemDefinition } from '@perses-dev/spec';
+import { PanelEditorValues, PanelGroupId } from '@perses-dev/plugin-system';
 
 /**
  * Panel Group Item Layout ID type. String identifier for items within a panel group.
@@ -89,12 +88,20 @@ export interface PanelGroupItemLayout extends BaseLayout, GridItemRepeatOptions 
   i: PanelGroupItemLayoutId;
 }
 
-// LOGZ.IO CHANGE START:: Item-level repeat is not in @perses-dev/spec's GridItemDefinition yet
+// LOGZ.IO CHANGE START:: Item-level repeat, encoded flat for Grafana parity
 /**
  * `GridItemDefinition` plus item-level repeat. Kept as a named extension instead of patching
  * `@perses-dev/spec` so the fields survive spec version bumps.
+ *
+ * spec 0.2.0 added its own item repeat as a nested object
+ * (`repeatVariable: { value, maxPer?, alignment? }`), which collides by name with our flat,
+ * Grafana-shaped fields. We keep ours: stored dashboards and the Grafana convertor both emit the
+ * flat form, so adopting upstream's encoding needs a data migration rather than a type change.
+ * `Omit` drops upstream's field so the two shapes can coexist until that migration happens.
  */
-export interface RepeatableGridItemDefinition extends GridItemDefinition, GridItemRepeatOptions {}
+export interface RepeatableGridItemDefinition
+  extends Omit<GridItemDefinition, 'repeatVariable'>,
+    GridItemRepeatOptions {}
 
 /** Grafana's default when `maxPerRow` is unset on a horizontally repeated panel. */
 export const DEFAULT_MAX_PER_ROW = 4;
