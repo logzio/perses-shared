@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { CSSProperties, memo, useEffect, useLayoutEffect, useRef } from 'react';
+import { CSSProperties, memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ECharts, EChartsCoreOption, init, connect, use } from 'echarts/core';
 import { Box, SxProps, Theme } from '@mui/material';
 import isEqual from 'lodash/isEqual';
@@ -282,9 +282,35 @@ export const EChart = memo(function EChart<T>({
   }, []);
   // LOGZ.IO CHANGE END:: suspend chart hit-testing while the page scrolls [unidash-perf]
 
+  // LOGZ.IO CHANGE START
+  // Track whether the chart is on screen. A connect group broadcasts every dispatched action to all
+  // of its members, so a dashboard that puts every panel in one group makes a single mouse move
+  // re-render charts the user cannot see. Membership is therefore limited to visible charts below.
+  const [isOnScreen, setIsOnScreen] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (container === null || !syncGroup) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      const latest = entries[entries.length - 1];
+
+      if (latest !== undefined) {
+        setIsOnScreen(latest.isIntersecting);
+      }
+    });
+
+    observer.observe(container);
+
+    return (): void => observer.disconnect();
+  }, [syncGroup]);
+  // LOGZ.IO CHANGE END
+
   // When syncGroup is explicitly set, charts within same group share interactions such as crosshair
   useEffect(() => {
-    if (!chartElement.current || !syncGroup) return;
+    // LOGZ.IO CHANGE:: only join the group while on screen
+    if (!chartElement.current || !syncGroup || !isOnScreen) return;
     const chart = chartElement.current; // LOGZ.IO CHANGE:: capture for cleanup [unidash-perf]
     chart.group = syncGroup;
     connect([chart]); // more info: https://echarts.apache.org/en/api.html#echarts.connect
@@ -293,10 +319,13 @@ export const EChart = memo(function EChart<T>({
     return (): void => {
       if (!chart.isDisposed()) {
         chart.group = '';
+        // LOGZ.IO CHANGE:: a chart that leaves the group stops receiving crosshair updates, so drop
+        // whatever it was showing rather than leaving it frozen for when it scrolls back into view.
+        chart.dispatchAction({ type: 'hideTip' });
       }
     };
     // LOGZ.IO CHANGE END:: leave the sync group [unidash-perf]
-  }, [syncGroup, chartElement]);
+  }, [syncGroup, chartElement, isOnScreen]);
 
   // Update chart data when option changes
   useEffect(() => {
@@ -341,15 +370,35 @@ export const EChart = memo(function EChart<T>({
     if (!containerRef.current) return;
 
     let rafId: number;
+    // LOGZ.IO CHANGE START
+    // ResizeObserver fires while scrolling even when nothing changed size, and every fire used to
+    // call resize(), which re-runs layout and repaints the whole chart. Remember the last size we
+    // acted on and drop fires that report the same one.
+    let lastWidth = -1;
+    let lastHeight = -1;
 
-    const resizeObserver = new ResizeObserver(() => {
-      if (chartElement.current) {
-        cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(() => {
-          chartElement.current?.resize();
-        });
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (!chartElement.current) return;
+
+      const rect = entries[entries.length - 1]?.contentRect;
+
+      if (rect !== undefined) {
+        // Round before comparing: sub-pixel jitter would otherwise defeat the check.
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+
+        if (width === lastWidth && height === lastHeight) return;
+
+        lastWidth = width;
+        lastHeight = height;
       }
+
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        chartElement.current?.resize();
+      });
     });
+    // LOGZ.IO CHANGE END
 
     resizeObserver.observe(containerRef.current);
 

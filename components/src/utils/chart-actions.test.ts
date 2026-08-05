@@ -218,6 +218,35 @@ describe('batchDispatchNearbySeriesActions', () => {
     expect(dispatchedTypes(chart)).toEqual(expect.arrayContaining(['select', 'downplay', 'highlight']));
   });
 
+  // LOGZ.IO CHANGE START
+  // Pins the number of actions dispatched per mouse move. This is the hottest path in the chart, so
+  // an upstream change that adds another dispatch should fail here rather than land unnoticed.
+  it('should dispatch exactly four actions per move: select, blanket downplay, targeted downplay, highlight', () => {
+    const chart = buildChart();
+
+    batchDispatchNearbySeriesActions(chart, [0, 1], [0], [1], [emphasizedDatapoint], []);
+
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(4);
+    expect(dispatchedTypes(chart)).toEqual(['select', 'downplay', 'downplay', 'highlight']);
+  });
+
+  // Every dispatch has to opt out of the connect group, otherwise hovering one panel re-renders each
+  // chart sharing that group.
+  it.each([
+    ['with an emphasized series', [0], [1]],
+    ['with no emphasized series', [], [0, 1]],
+  ])('should keep every dispatched action out of the shared connect group %s', (_label, emphasized, nonEmphasized) => {
+    const chart = buildChart();
+
+    batchDispatchNearbySeriesActions(chart, [0, 1], emphasized, nonEmphasized, [emphasizedDatapoint], []);
+
+    const payloads = jest.mocked(chart.dispatchAction).mock.calls.map(([payload]) => payload);
+
+    expect(payloads.length).toBeGreaterThan(0);
+    expect(payloads.every((payload) => (payload as { escapeConnect?: boolean }).escapeConnect === true)).toBe(true);
+  });
+  // LOGZ.IO CHANGE END
+
   it('should skip dispatching when the payload is identical to the previous move', () => {
     const chart = buildChart();
 

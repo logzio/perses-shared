@@ -113,20 +113,37 @@ export type AnnotationSpecWithData = {
   data: AnnotationData[];
 };
 
+// LOGZ.IO CHANGE START
+// The selector below builds a fresh array on every call, so without an equality check the result
+// gets a new identity on any store update. Consumers feed it into the time series chart option memo,
+// and a new identity there forces a full setOption re-ingest and repaint of every panel. Compare the
+// parts the selector actually reads — both are stable references held by the store.
+function areAnnotationsWithDataEqual(left: AnnotationSpecWithData[], right: AnnotationSpecWithData[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((item, index) => item.definition === right[index]?.definition && item.data === right[index]?.data)
+  );
+}
+// LOGZ.IO CHANGE END
+
 export function useAnnotationsWithData(): AnnotationSpecWithData[] {
   const store = useAnnotationStoreCtx();
 
-  return useStore(store, (s) => {
-    return s.annotationSpecs
-      .map((definition) => {
-        const state = s.annotationState[definition.display.name];
-        return {
-          definition,
-          data: state?.data,
-        };
-      })
-      .filter((annotation) => !!annotation.data) as AnnotationSpecWithData[];
-  });
+  return useStoreWithEqualityFn(
+    store,
+    (s) => {
+      return s.annotationSpecs
+        .map((definition) => {
+          const state = s.annotationState[definition.display.name];
+          return {
+            definition,
+            data: state?.data,
+          };
+        })
+        .filter((annotation) => !!annotation.data) as AnnotationSpecWithData[];
+    },
+    areAnnotationsWithDataEqual // LOGZ.IO CHANGE
+  );
 }
 
 interface AnnotationStoreArgs {
