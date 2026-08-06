@@ -27,6 +27,7 @@ import {
   DatasourceStoreProvider,
   VariableProviderProps,
   VariableProviderWithQueryParams,
+  AnnotationProvider,
   DashboardProviderProps,
 } from '../../context';
 import { DashboardProviderWithQueryParams } from '../../context/DashboardProvider/DashboardProviderWithQueryParams';
@@ -51,6 +52,7 @@ export function ViewDashboard(props: ViewDashboardProps): ReactElement {
     emptyDashboardProps,
     isReadonly,
     isVariableEnabled,
+    isAnnotationEnabled,
     isDatasourceEnabled,
     disableShortcuts,
     isEditing,
@@ -61,6 +63,7 @@ export function ViewDashboard(props: ViewDashboardProps): ReactElement {
     onSave,
     onDiscard,
     sx,
+    userPreferenceTimezone,
     dashboardStoreApiRef, // LOGZ.IO CHANGE START:: Add support for dashboardStoreApiRef
     onDashboardChange, // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
     dashboardControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
@@ -130,40 +133,44 @@ export function ViewDashboard(props: ViewDashboardProps): ReactElement {
             externalVariableDefinitions={externalVariableDefinitions}
             builtinVariableDefinitions={builtinVariables}
           >
-            <Box
-              sx={combineSx(
-                {
-                  display: 'flex',
-                  width: '100%',
-                  height: '100%',
-                  position: 'relative',
-                  overflow: 'hidden',
-                },
-                sx
-              )}
-              {...others}
-            >
-              <ErrorBoundary FallbackComponent={ErrorAlert}>
-                <DashboardApp
-                  dashboardResource={dashboardResource}
-                  emptyDashboardProps={emptyDashboardProps}
-                  isReadonly={isReadonly}
-                  isVariableEnabled={isVariableEnabled}
-                  isDatasourceEnabled={isDatasourceEnabled}
-                  disableShortcuts={disableShortcuts}
-                  isCreating={isCreating}
-                  isInitialVariableSticky={isInitialVariableSticky}
-                  isLeavingConfirmDialogEnabled={isLeavingConfirmDialogEnabled}
-                  dashboardTitleComponent={dashboardTitleComponent}
-                  onSave={onSave}
-                  onDiscard={onDiscard}
-                  onDashboardChange={onDashboardChange} // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
-                  dashboardControlsComponent={dashboardControlsComponent} // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
-                  toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters
-                  timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
-                />
-              </ErrorBoundary>
-            </Box>
+            <AnnotationProvider initialAnnotationSpecs={spec.annotations ?? []}>
+              <Box
+                sx={combineSx(
+                  {
+                    display: 'flex',
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  },
+                  sx
+                )}
+                {...others}
+              >
+                <ErrorBoundary FallbackComponent={ErrorAlert}>
+                  <DashboardApp
+                    dashboardResource={dashboardResource}
+                    emptyDashboardProps={emptyDashboardProps}
+                    isReadonly={isReadonly}
+                    isVariableEnabled={isVariableEnabled}
+                    isAnnotationEnabled={isAnnotationEnabled}
+                    isDatasourceEnabled={isDatasourceEnabled}
+                    disableShortcuts={disableShortcuts}
+                    isCreating={isCreating}
+                    isInitialVariableSticky={isInitialVariableSticky}
+                    isLeavingConfirmDialogEnabled={isLeavingConfirmDialogEnabled}
+                    dashboardTitleComponent={dashboardTitleComponent}
+                    onSave={onSave}
+                    onDiscard={onDiscard}
+                    userPreferenceTimezone={userPreferenceTimezone}
+                    onDashboardChange={onDashboardChange} // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
+                    dashboardControlsComponent={dashboardControlsComponent} // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
+                    toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters
+                    timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+                  />
+                </ErrorBoundary>
+              </Box>
+            </AnnotationProvider>
           </VariableProviderWithQueryParams>
         </TimeRangeProviderWithQueryParams>
       </DashboardProviderWithQueryParams>

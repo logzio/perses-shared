@@ -13,18 +13,33 @@
 
 import { produce } from 'immer';
 import { QueryDefinition, QueryPluginType } from '@perses-dev/spec';
-import { Stack, IconButton, Typography, BoxProps, Box, CircularProgress, Tooltip } from '@mui/material';
+import {
+  Stack,
+  IconButton,
+  Typography,
+  BoxProps,
+  Box,
+  CircularProgress,
+  TextField,
+  InputAdornment,
+  Tooltip,
+} from '@mui/material';
 import DeleteIcon from 'mdi-material-ui/DeleteOutline';
 import ChevronDown from 'mdi-material-ui/ChevronDown';
 import ChevronRight from 'mdi-material-ui/ChevronRight';
+// LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
 import EyeIcon from 'mdi-material-ui/Eye';
 import EyeOffIcon from 'mdi-material-ui/EyeOff';
-import { forwardRef, ReactElement } from 'react';
+import { forwardRef, ReactElement, useState } from 'react';
 import AlertIcon from 'mdi-material-ui/Alert';
 import { InfoTooltip } from '@perses-dev/components';
+import PencilIcon from 'mdi-material-ui/Pencil';
+import CheckIcon from 'mdi-material-ui/Check';
+import CloseIcon from 'mdi-material-ui/Close';
 import { OnChangeOptions } from '../../model';
 import { QueryData } from '../../runtime';
 import { PluginEditor, PluginEditorProps, PluginEditorRef } from '../PluginEditor';
+import { defaultQueryName } from './utils';
 
 /**
  * Properties for {@link QueryEditorContainer}
@@ -75,6 +90,23 @@ export const QueryEditorContainer = forwardRef<PluginEditorRef, QueryEditorConta
       onCollapseExpand,
       onVisibilityToggle,
     } = props;
+
+    // The displayed name is always derived from props so it stays in sync with the
+    // current query/index, even when queries are added, removed or reordered.
+    const displayedName = query.spec.name ?? defaultQueryName(index);
+
+    const [isEditingName, setIsEditingName] = useState(false);
+
+    function handleNameSave(name: string): void {
+      setIsEditingName(false);
+      onChange(
+        index,
+        produce(query, (draft) => {
+          draft.spec.name = name;
+        })
+      );
+    }
+
     return (
       <Stack key={index} spacing={1}>
         <Stack
@@ -84,19 +116,47 @@ export const QueryEditorContainer = forwardRef<PluginEditorRef, QueryEditorConta
           borderBottom={1}
           borderColor={(theme) => theme.palette.divider}
         >
-          <Stack direction="row">
-            <IconButton size="small" onClick={() => onCollapseExpand(index)}>
+          <Stack direction="row" gap={1} sx={{ width: '100%' }}>
+            <IconButton
+              size="small"
+              sx={{ width: 'fit-content', height: 'fit-content' }}
+              onClick={() => onCollapseExpand(index)}
+            >
               {isCollapsed ? <ChevronRight /> : <ChevronDown />}
             </IconButton>
-            <Stack gap={0.5} direction="row" alignItems="center">
-              <Typography variant="overline" component="h4">
-                Query #{index + 1}
-              </Typography>
+            <Stack
+              direction="row"
+              gap={1}
+              alignItems="center"
+              alignContent="center"
+              sx={{
+                width: '100%',
+                '&:hover button': {
+                  visibility: 'visible',
+                },
+              }}
+            >
+              {isEditingName ? (
+                <QueryNameInput
+                  // Remounting on identity change resets the draft so editing always
+                  // targets the currently displayed query.
+                  key={displayedName}
+                  initialName={displayedName}
+                  onSave={handleNameSave}
+                  onCancel={() => setIsEditingName(false)}
+                />
+              ) : (
+                <Typography variant="overline" component="h4">
+                  {displayedName}
+                </Typography>
+              )}
+              {/* LOGZ.IO CHANGE START:: APPZ-955-math-on-queries-formulas */}
               {isHidden && (
                 <Typography variant="caption" color="secondary" component="span" fontStyle="italic">
                   Disabled
                 </Typography>
               )}
+              {/* LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas */}
             </Stack>
           </Stack>
           <Stack direction="row" alignItems="center">
@@ -133,25 +193,32 @@ export const QueryEditorContainer = forwardRef<PluginEditorRef, QueryEditorConta
                 </Stack>
               </InfoTooltip>
             )}
-            {/* LOGZ.IO CHANGE START:: APPZ-955-math-on-queries-formulas */}
-            {onVisibilityToggle && (
-              <Tooltip title={isHidden ? 'Show in chart' : 'Hide from chart'}>
-                <IconButton
-                  aria-label={isHidden ? 'show query in chart' : 'hide query from chart'}
-                  size="small"
-                  onClick={() => onVisibilityToggle?.(index, isHidden)}
-                  sx={{ color: isHidden ? 'text.disabled' : 'text.secondary' }}
-                >
-                  {isHidden ? <EyeOffIcon /> : <EyeIcon />}
+            <Stack direction="row">
+              {/* LOGZ.IO CHANGE START:: APPZ-955-math-on-queries-formulas */}
+              {onVisibilityToggle && (
+                <Tooltip title={isHidden ? 'Show in chart' : 'Hide from chart'}>
+                  <IconButton
+                    aria-label={isHidden ? 'show query in chart' : 'hide query from chart'}
+                    size="small"
+                    onClick={() => onVisibilityToggle?.(index, isHidden)}
+                    sx={{ color: isHidden ? 'text.disabled' : 'text.secondary' }}
+                  >
+                    {isHidden ? <EyeOffIcon /> : <EyeIcon />}
+                  </IconButton>
+                </Tooltip>
+              )}
+              {/* LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas */}
+              {!isEditingName && (
+                <IconButton aria-label="edit query name" size="small" onClick={() => setIsEditingName(true)}>
+                  <PencilIcon fontSize="small" />
                 </IconButton>
-              </Tooltip>
-            )}
-            {/* LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas */}
-            {onDelete && (
-              <IconButton aria-label="delete query" size="small" onClick={() => onDelete && onDelete(index)}>
-                <DeleteIcon />
-              </IconButton>
-            )}
+              )}
+              {onDelete && (
+                <IconButton aria-label="delete query" size="small" onClick={() => onDelete && onDelete(index)}>
+                  <DeleteIcon />
+                </IconButton>
+              )}
+            </Stack>
           </Stack>
         </Stack>
         {!isCollapsed && (
@@ -171,6 +238,48 @@ export const QueryEditorContainer = forwardRef<PluginEditorRef, QueryEditorConta
 );
 
 QueryEditorContainer.displayName = 'QueryEditorContainer';
+
+/**
+ * Properties for {@link QueryNameInput}
+ */
+interface QueryNameInputProps {
+  initialName: string;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}
+
+/**
+ * Self-contained input to edit a query name. The draft value is local state seeded from
+ * `initialName`; callers reset it by changing the `key` (remounting) rather than syncing
+ * with an useEffect.
+ */
+function QueryNameInput({ initialName, onSave, onCancel }: QueryNameInputProps): ReactElement {
+  const [draftName, setDraftName] = useState(initialName);
+
+  return (
+    <TextField
+      size="small"
+      variant="outlined"
+      label="Query name"
+      aria-label="query name"
+      value={draftName}
+      onChange={(e) => setDraftName(e.target.value)}
+      fullWidth={true}
+      InputProps={{
+        endAdornment: (
+          <InputAdornment position="end">
+            <IconButton size="small" aria-label="cancel edit" onClick={onCancel} edge="end">
+              <CloseIcon />
+            </IconButton>
+            <IconButton size="small" aria-label="save query name" onClick={() => onSave(draftName)} edge="end">
+              <CheckIcon />
+            </IconButton>
+          </InputAdornment>
+        ),
+      }}
+    />
+  );
+}
 
 // Props on MUI Box that we don't want people to pass because we're either redefining them or providing them in
 // this component

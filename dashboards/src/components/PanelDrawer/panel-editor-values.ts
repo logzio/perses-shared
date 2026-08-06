@@ -11,7 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { PanelEditorValues, QueryDefinition } from '@perses-dev/spec';
+import { QueryDefinition } from '@perses-dev/spec';
+import { PanelEditorValues } from '@perses-dev/plugin-system';
 import { RepeatablePanelEditorValues } from '../../model';
 
 interface PanelSpecTimeOverrides {

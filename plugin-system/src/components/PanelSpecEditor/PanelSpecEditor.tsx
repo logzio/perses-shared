@@ -11,14 +11,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ErrorAlert, JSONEditor, LinksEditor } from '@perses-dev/components';
-import { PanelDefinition, PanelEditorValues, QueryDefinition, UnknownSpec } from '@perses-dev/spec';
+import { ErrorAlert, JSONEditor } from '@perses-dev/components';
+import { PanelDefinition, QueryDefinition, UnknownSpec } from '@perses-dev/spec';
 import { Control, Controller } from 'react-hook-form';
 import { forwardRef, ReactElement } from 'react';
 import { Stack } from '@mui/material';
-import { QueryCountProvider, useDataQueriesContext, usePlugin } from '../../runtime';
-import { PanelPlugin } from '../../model';
-import { OptionsEditorTabsProps, OptionsEditorTabs } from '../OptionsEditorTabs';
+import { LinksEditor } from '../LinksEditor';
+import { PanelEditorValues, PanelPlugin } from '../../model';
+import { useDataQueriesContext, usePlugin } from '../../runtime';
+import { OptionsEditorTabs, OptionsEditorTabsProps } from '../OptionsEditorTabs';
 import { MultiQueryEditor } from '../MultiQueryEditor';
 import { PluginEditorRef } from '../PluginEditor';
 // LOGZ.IO CHANGE START:: Panel-level time range override editor [APPZ-2474]
@@ -140,11 +141,7 @@ export const PanelSpecEditor = forwardRef<PluginEditorRef, PanelSpecEditorProps>
     ),
   });
 
-  return (
-    <QueryCountProvider queryCount={(panelDefinition.spec.queries ?? []).length}>
-      <OptionsEditorTabs key={tabs.length} tabs={tabs} />
-    </QueryCountProvider>
-  );
+  return <OptionsEditorTabs key={tabs.length} tabs={tabs} />;
 });
 
 PanelSpecEditor.displayName = 'PanelSpecEditor';

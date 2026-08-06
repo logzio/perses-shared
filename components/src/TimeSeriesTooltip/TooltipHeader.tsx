@@ -57,7 +57,9 @@ export const TooltipHeader = memo(function TooltipHeader({
             // LOGZ.IO CHANGE END:: Drilldown panel
           })}
         >
-          {formattedDate}
+          {/* LOGZ.IO CHANGE:: 0.54.0 moved the " - " separator out of `getDateAndTime` into each
+              caller's own markup, so render it here. */}
+          {`${formattedDate} - `}
         </Typography>
         <Typography fontSize={12} variant="caption">
           <strong>{formattedTime}</strong>

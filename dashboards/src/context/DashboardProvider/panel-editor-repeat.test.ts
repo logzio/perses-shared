@@ -16,7 +16,7 @@
 import { createStore, StoreApi } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
-import { LayoutDefinition, PanelDefinition } from '@perses-dev/spec';
+import { GridDefinition, LayoutDefinition, PanelDefinition } from '@perses-dev/spec';
 import { PanelGroupItemLayout } from '../../model';
 import { createPanelGroupSlice, PanelGroupSlice } from './panel-group-slice';
 import { createPanelEditorSlice, PanelEditorSlice } from './panel-editor-slice';
@@ -30,7 +30,7 @@ const panels: Record<string, PanelDefinition> = {
 };
 
 /** `repeat` is not in `@perses-dev/spec`'s item type — see RepeatableGridItemDefinition. */
-type GridItem = LayoutDefinition['spec']['items'][number];
+type GridItem = GridDefinition['spec']['items'][number];
 
 const buildLayouts = (repeat: Record<string, unknown> = {}): LayoutDefinition[] => [
   {

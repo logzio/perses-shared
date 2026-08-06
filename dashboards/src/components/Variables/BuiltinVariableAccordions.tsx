@@ -54,7 +54,8 @@ export function BuiltinVariableAccordions({
     for (const definition of builtinVariableDefinitions) {
       const source = definition.spec.source;
       // Only set if we haven't found a sourceDescription for this source yet and this definition has a sourceDescription
-      // LOGZ.IO CHANGE:: sourceDescription is a fork field (patched into @perses-dev/core); spec types omit it [APPZ-348]
+      // LOGZ.IO CHANGE:: `sourceDescription` is a fork-only field on BuiltinVariableSpec that
+      // upstream's types omit, so it has to be read through a cast. [APPZ-348]
       const sourceDescription = (definition.spec as { sourceDescription?: string }).sourceDescription;
       if (!result[source] && sourceDescription) {
         result[source] = sourceDescription;

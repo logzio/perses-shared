@@ -44,6 +44,15 @@ function isLineSeriesOption(series: LineSeriesOption | BarSeriesOption): series 
   return series.type === 'line' || series.type === undefined;
 }
 
+// LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+// `TimeSeriesMetadata` is an open `[key: string]: unknown` bag upstream, so reading `isSelectable`
+// off it yields `unknown` (and `?? true` widens to `{}`). Selectability is our convention layered on
+// that bag, so read it explicitly: absent or non-boolean means selectable.
+export function isSeriesSelectable(metadata?: TimeSeriesMetadata): boolean {
+  return typeof metadata?.isSelectable === 'boolean' ? metadata.isSelectable : true;
+}
+// LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+
 /**
  * Determine position of tooltip depending on chart dimensions and the number of focused series
  */

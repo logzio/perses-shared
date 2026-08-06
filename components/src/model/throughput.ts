@@ -41,6 +41,10 @@ export type ThroughputFormatOptions = {
 export const THROUGHPUT_GROUP_CONFIG: UnitGroupConfig = {
   label: 'Throughput',
   decimalPlaces: true,
+  // LOGZ.IO CHANGE:: ThroughputFormatOptions declares `shortValues` and formatThroughput honors it,
+  // but omitting it here made FormatControls disable the "Abbreviate values" switch — the option was
+  // applied to output while being unreachable in the UI.
+  shortValues: true,
 };
 const THROUGHPUT_GROUP = 'Throughput';
 export const THROUGHPUT_UNIT_CONFIG: Readonly<Record<ThroughputUnit, UnitConfig>> = {

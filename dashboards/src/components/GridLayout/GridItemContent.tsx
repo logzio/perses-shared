@@ -136,6 +136,9 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
     };
   }
 
+  // LOGZ.IO CHANGE:: upstream computes suggestedStepMs/plugin/pluginQueryOptions here; we compute them
+  // inside GridItemContentBody instead, so they resolve against the panel-level time-range override
+  // rather than the dashboard range. [APPZ-2474]
   return (
     <Box
       ref={mergedRef}
@@ -205,17 +208,7 @@ function GridItemContentBody({
 
   const { data: plugin } = usePlugin('Panel', panelDefinition.spec.plugin.kind);
 
-  const definitions = useMemo(
-    () =>
-      (panelDefinition.spec.queries ?? []).map((query) => {
-        return {
-          kind: query.spec.plugin.kind,
-          spec: query.spec.plugin.spec,
-          hidden: (query.spec as { hidden?: boolean }).hidden ?? false, // LOGZ.IO CHANGE:: APPZ-955-math-on-queries-formulas
-        };
-      }),
-    [panelDefinition.spec.queries]
-  );
+  const definitions = panelDefinition.spec.queries ?? [];
 
   const pluginQueryOptions = useMemo(
     () =>

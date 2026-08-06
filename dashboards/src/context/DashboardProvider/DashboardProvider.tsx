@@ -20,7 +20,7 @@ import { shallow } from 'zustand/shallow';
 import { createContext, ReactElement, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { Display, DurationString, DatasourceSpec } from '@perses-dev/spec';
 import { usePlugin, usePluginRegistry } from '@perses-dev/plugin-system';
-import { DashboardMetaData, DashboardKind, DashboardResource } from '../../model/DashboardResource';
+import { DashboardKind, DashboardResource, ProjectMetadata } from '@perses-dev/client';
 import { DEFAULT_REFRESH_INTERVAL } from '../../constants';
 import { createPanelGroupEditorSlice, PanelGroupEditorSlice } from './panel-group-editor-slice';
 import { convertLayoutsToPanelGroups, createPanelGroupSlice, PanelGroupSlice } from './panel-group-slice';
@@ -38,8 +38,7 @@ import { assignRef, MutableRef } from './assign-ref';
 import { createLinksSlice, LinksSlice } from './links-slice';
 
 export interface DashboardStoreState
-  extends
-    PanelGroupSlice,
+  extends PanelGroupSlice,
     PanelSlice,
     PanelGroupEditorSlice,
     DeletePanelGroupSlice,
@@ -54,9 +53,11 @@ export interface DashboardStoreState
   isEditMode: boolean;
   setEditMode: (isEditMode: boolean) => void;
   setDashboard: (dashboard: DashboardResource) => void;
+  setMetadata: (metadata: ProjectMetadata | ((prev: ProjectMetadata) => ProjectMetadata)) => void;
   kind: DashboardKind;
-  metadata: DashboardMetaData;
+  metadata: ProjectMetadata;
   duration: DurationString;
+  timezone?: string;
   refreshInterval: DurationString;
   display?: Display;
   datasources?: Record<string, DatasourceSpec>;
@@ -130,7 +131,15 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
   const {
     kind,
     metadata,
-    spec: { display, duration, refreshInterval = DEFAULT_REFRESH_INTERVAL, datasources, layouts = [], panels = {} },
+    spec: {
+      display,
+      timezone,
+      duration,
+      refreshInterval = DEFAULT_REFRESH_INTERVAL,
+      datasources,
+      layouts = [],
+      panels = {},
+    },
   } = dashboardResource;
 
   const links = dashboardResource.spec.links ?? [];
@@ -161,6 +170,7 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
           kind,
           metadata,
           display,
+          timezone,
           duration,
           refreshInterval,
           datasources,
@@ -172,12 +182,22 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
           setDashboard: ({
             kind,
             metadata,
-            spec: { display, panels = {}, layouts = [], duration, refreshInterval, datasources = {}, links = [] },
+            spec: {
+              display,
+              panels = {},
+              layouts = [],
+              duration,
+              refreshInterval,
+              datasources = {},
+              links = [],
+              timezone,
+            },
           }): void => {
             set((state) => {
               state.kind = kind;
               state.metadata = metadata;
               state.display = display;
+              state.timezone = timezone;
               state.panels = panels;
               const { panelGroups, panelGroupOrder } = convertLayoutsToPanelGroups(layouts);
               state.panelGroups = panelGroups;
@@ -187,6 +207,11 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
               state.datasources = datasources;
               state.links = links;
               // TODO: add ttl here to e.g allow edition from JSON view, but probably requires quite some refactoring
+            });
+          },
+          setMetadata: (metadata): void => {
+            set((state) => {
+              state.metadata = typeof metadata === 'function' ? metadata(state.metadata) : metadata;
             });
           },
         };

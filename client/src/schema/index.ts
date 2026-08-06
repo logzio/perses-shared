@@ -13,3 +13,7 @@
 
 export * from './datasource';
 export * from './metadata';
+export * from './user';
+export * from './secret';
+export * from './role';
+export * from './rolebinding';

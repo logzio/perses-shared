@@ -20,6 +20,13 @@ export interface DatasourceStore {
   getDatasource<PluginSpec = UnknownSpec>(selector: DatasourceSelector): Promise<DatasourceSpec<PluginSpec>>; // LOGZ.IO CHANGE START:: APPZ-1234 add PluginSpec type
 
   /**
+   * Gets a cached datasource spec synchronously if available.
+   * Used by variable dependency resolution to avoid async calls in dependsOn().
+   * Returns undefined if the spec is not cached.
+   */
+  getDatasourceSpecSync?(selector: DatasourceSelector): DatasourceSpec | undefined;
+
+  /**
    * Given a DatasourceSelector, gets a `Client` object from the corresponding Datasource plugin.
    */
   getDatasourceClient<Client>(selector: DatasourceSelector): Promise<Client>;

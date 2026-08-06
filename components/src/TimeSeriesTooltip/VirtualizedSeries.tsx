@@ -17,6 +17,7 @@ import { Virtuoso } from 'react-virtuoso';
 import { isNil } from 'lodash';
 import { TooltipContentProps } from './TooltipContent';
 import { SeriesInfo } from './SeriesInfo';
+import { isSeriesSelectable } from './utils';
 
 export interface VirtualizedSeriesProps {
   allowActions: TooltipContentProps['allowActions'];
@@ -82,7 +83,7 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
               emphasizeText={data.isClosestToCursor}
               // LOGZ.IO CHANGE START:: Drilldown panel
               isSelected={data.isSelected}
-              isSelectable={data.metadata?.isSelectable ?? true}
+              isSelectable={isSeriesSelectable(data.metadata)}
               onSelected={onSelected ? (): void => onSelected(data.seriesIdx!) : undefined}
               // LOGZ.IO CHANGE END:: Drilldown panel
             />

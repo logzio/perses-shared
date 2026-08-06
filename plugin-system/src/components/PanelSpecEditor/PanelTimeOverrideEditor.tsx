@@ -15,7 +15,7 @@
 // Renders three react-hook-form-bound inputs for the panel-level "Relative time" /
 // "Time shift" / "Hide override" fields. Lives in plugin-system because it's used
 // by `PanelSpecEditor` (also plugin-system); only depends on react-hook-form + MUI
-// + the `PanelEditorValues` type from `@perses-dev/spec`.
+// + plugin-system's own `PanelEditorValues` type (moved out of `@perses-dev/spec` in 0.54.0).
 //
 // Field paths are cast to `any` because the `PanelSpec` interface in `@perses-dev/spec`
 // doesn't declare these fields (we deliberately avoided module-augmenting it — see the
@@ -23,10 +23,10 @@
 // in react-hook-form is string-based and works regardless of the static types.
 import { Stack, TextField, FormControlLabel, Checkbox, Typography, Box, Collapse, IconButton } from '@mui/material';
 import { Control, Controller, FieldPath, useWatch } from 'react-hook-form';
-import { PanelEditorValues } from '@perses-dev/spec';
 import { ReactElement, useState } from 'react';
 import ChevronDownIcon from 'mdi-material-ui/ChevronDown';
 import ChevronRightIcon from 'mdi-material-ui/ChevronRight';
+import { PanelEditorValues } from '../../model';
 
 export interface PanelTimeOverrideEditorProps {
   control: Control<PanelEditorValues>;

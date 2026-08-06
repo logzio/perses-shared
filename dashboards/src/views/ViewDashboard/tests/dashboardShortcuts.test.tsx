@@ -16,7 +16,9 @@ import userEvent from '@testing-library/user-event';
 import { TimeRangeProviderBasic } from '@perses-dev/plugin-system';
 import { ReactElement, useState } from 'react';
 import { useHotkeyRegistrations } from '@tanstack/react-hotkeys';
-import { DashboardProvider, DatasourceStoreProvider, VariableProvider } from '../../../context';
+// Import to enable declaration merging for HotkeyMeta.category
+import '../../../keyboard-shortcuts/types';
+import { AnnotationProvider, DashboardProvider, DatasourceStoreProvider, VariableProvider } from '../../../context';
 import { defaultDatasourceProps, getTestDashboard, renderWithContext } from '../../../test';
 import { DashboardApp } from '../DashboardApp';
 
@@ -25,14 +27,14 @@ function ShortcutRegistrationProbe(): ReactElement {
   const categories = new Set<string>();
 
   hotkeys.forEach((registration) => {
-    const category = registration.options.meta?.category;
+    const category = (registration.options.meta as { category?: string })?.category;
     if (typeof category === 'string') {
       categories.add(category);
     }
   });
 
   sequences.forEach((registration) => {
-    const category = registration.options.meta?.category;
+    const category = (registration.options.meta as { category?: string })?.category;
     if (typeof category === 'string') {
       categories.add(category);
     }
@@ -46,15 +48,18 @@ function DashboardViewUnderTest(): ReactElement {
     <DatasourceStoreProvider {...defaultDatasourceProps}>
       <TimeRangeProviderBasic initialRefreshInterval="0s" initialTimeRange={{ pastDuration: '30m' }}>
         <VariableProvider>
-          <DashboardProvider initialState={{ dashboardResource: getTestDashboard(), isEditMode: false }}>
-            <DashboardApp
-              dashboardResource={getTestDashboard()}
-              isReadonly={false}
-              isVariableEnabled={true}
-              isDatasourceEnabled={true}
-            />
-            <ShortcutRegistrationProbe />
-          </DashboardProvider>
+          <AnnotationProvider initialAnnotationSpecs={[]}>
+            <DashboardProvider initialState={{ dashboardResource: getTestDashboard(), isEditMode: false }}>
+              <DashboardApp
+                dashboardResource={getTestDashboard()}
+                isReadonly={false}
+                isVariableEnabled={true}
+                isAnnotationEnabled={true}
+                isDatasourceEnabled={true}
+              />
+              <ShortcutRegistrationProbe />
+            </DashboardProvider>
+          </AnnotationProvider>
         </VariableProvider>
       </TimeRangeProviderBasic>
     </DatasourceStoreProvider>
@@ -81,20 +86,23 @@ describe('Dashboard shortcuts registration', () => {
         <DatasourceStoreProvider {...defaultDatasourceProps}>
           <TimeRangeProviderBasic initialRefreshInterval="0s" initialTimeRange={{ pastDuration: '30m' }}>
             <VariableProvider>
-              <DashboardProvider initialState={{ dashboardResource: getTestDashboard(), isEditMode: false }}>
-                {isMounted && (
-                  <DashboardApp
-                    dashboardResource={getTestDashboard()}
-                    isReadonly={false}
-                    isVariableEnabled={true}
-                    isDatasourceEnabled={true}
-                  />
-                )}
-                <ShortcutRegistrationProbe />
-                <button onClick={() => setIsMounted(false)} type="button">
-                  Unmount Dashboard
-                </button>
-              </DashboardProvider>
+              <AnnotationProvider initialAnnotationSpecs={[]}>
+                <DashboardProvider initialState={{ dashboardResource: getTestDashboard(), isEditMode: false }}>
+                  {isMounted && (
+                    <DashboardApp
+                      dashboardResource={getTestDashboard()}
+                      isReadonly={false}
+                      isVariableEnabled={true}
+                      isAnnotationEnabled={true}
+                      isDatasourceEnabled={true}
+                    />
+                  )}
+                  <ShortcutRegistrationProbe />
+                  <button onClick={() => setIsMounted(false)} type="button">
+                    Unmount Dashboard
+                  </button>
+                </DashboardProvider>
+              </AnnotationProvider>
             </VariableProvider>
           </TimeRangeProviderBasic>
         </DatasourceStoreProvider>

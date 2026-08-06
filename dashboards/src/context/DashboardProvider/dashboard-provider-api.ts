@@ -12,8 +12,10 @@
 // limitations under the License.
 
 import { useCallback, useMemo } from 'react';
-import { DurationString, Link, PanelDefinition, PanelGroupId } from '@perses-dev/spec';
-import { DashboardResource, PanelGroupDefinition, PanelGroupItemId, PanelGroupItemLayout } from '../../model';
+import { DurationString, Link, PanelDefinition } from '@perses-dev/spec';
+import { DashboardResource } from '@perses-dev/client';
+import { PanelGroupId } from '@perses-dev/plugin-system';
+import { PanelGroupDefinition, PanelGroupItemId, PanelGroupItemLayout } from '../../model';
 import { DashboardStoreState, useDashboardStore } from './DashboardProvider';
 import { DeletePanelGroupDialogState } from './delete-panel-group-slice';
 import { PanelGroupEditor } from './panel-group-editor-slice';

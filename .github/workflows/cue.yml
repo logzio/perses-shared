@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - main-logzio
   pull_request:
   merge_group:
   release:
@@ -20,32 +19,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: perses/github-actions@v0.12.0
       - uses: ./.github/perses-ci/actions/setup_environment
         with:
           enable_go: true
           enable_cue: true
-          cue_version: 'v0.15.1'
+          cue_version: "v0.15.4"
       - name: check that CUE schemas evaluate correctly
         run: make cue-eval
       - name: run the unit tests for CUE schemas
         run: make cue-test
 
   publish-module:
-    name: 'publish CUE module to Central Registry'
-    needs: 'validate-schemas'
+    name: "publish CUE module to Central Registry"
+    needs: "validate-schemas"
     runs-on: ubuntu-latest
     if: ${{ github.event.release.tag_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: perses/github-actions@v0.12.0
       - uses: ./.github/perses-ci/actions/setup_environment
         with:
           enable_go: true
           enable_cue: true
-          cue_version: 'v0.15.1'
+          cue_version: "v0.15.4"
       - name: Login to Central Registry # to allow publishing the module
         run: cue login --token=${{ secrets.CUE_REG_TOKEN }}
       - name: Publish the module

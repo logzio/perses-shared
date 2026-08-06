@@ -178,12 +178,27 @@ export function batchDispatchNearbySeriesActions(
     });
   }
 
-  // Clears emphasis state of all lines that are not emphasized.
-  // Emphasized is a subset of just the nearby series that are closest to cursor.
+  // Blanket downplay clears axis-triggered emphasis (enlarged "big point" markers) before
+  // re-applying emphasis to only the winner series.
+  // https://echarts.apache.org/en/api.html#action.downplay
   chart.dispatchAction({
     type: 'downplay',
-    seriesIndex: nonEmphasizedSeriesIndexes,
+    // LOGZ.IO CHANGE
+    // Without this, a downplay carrying no seriesIndex (i.e. every series) is broadcast to every
+    // chart sharing this connect group, so one mouse move re-renders every panel on the dashboard.
+    // The select/highlight dispatches around this one already opt out for the same reason.
+    escapeConnect: true,
   });
+
+  // Clears emphasis state of all lines that are not emphasized.
+  // Emphasized is a subset of just the nearby series that are closest to cursor.
+  if (nonEmphasizedSeriesIndexes.length > 0) {
+    chart.dispatchAction({
+      type: 'downplay',
+      seriesIndex: nonEmphasizedSeriesIndexes,
+      escapeConnect: true, // LOGZ.IO CHANGE:: keep de-emphasis local to the hovered chart
+    });
+  }
 
   // https://echarts.apache.org/en/api.html#action.highlight
   if (emphasizedSeriesIndexes.length > 0) {
@@ -206,6 +221,7 @@ export function batchDispatchNearbySeriesActions(
     // Clears selected datapoints since no bold series in tooltip, restore does not impact highlighting
     chart.dispatchAction({
       type: 'toggleSelect', // https://echarts.apache.org/en/api.html#action.toggleSelect
+      escapeConnect: true, // LOGZ.IO CHANGE:: keep selection changes local to the hovered chart
     });
   }
 }

@@ -12,13 +12,12 @@
 // limitations under the License.
 
 import { Collapse, useTheme } from '@mui/material';
-import { PanelGroupId } from '@perses-dev/spec';
 import { PanelOptions, useViewPanelGroup } from '@perses-dev/dashboards';
 import { ComponentProps, ReactElement, useEffect, useMemo, useState } from 'react';
 import { Layout, Layouts, Responsive, WidthProvider } from 'react-grid-layout';
 import { ErrorAlert, ErrorBoundary } from '@perses-dev/components';
 // LOGZ.IO CHANGE:: Item-level repeat scopes each instance to one variable value
-import { useVariableValues, VariableContext } from '@perses-dev/plugin-system';
+import { PanelGroupId, useVariableValues, VariableContext } from '@perses-dev/plugin-system';
 // LOGZ.IO CHANGE:: Item-level repeat expands over the dashboard's values, not the enclosing row's
 import { useDashboardVariableValues } from '../../context';
 import { GRID_LAYOUT_COLS, GRID_LAYOUT_SMALL_BREAKPOINT } from '../../constants';

@@ -53,7 +53,8 @@ import {
   VariableState,
   useResolveListVariableValues,
 } from '@perses-dev/plugin-system';
-import { InfoTooltip, Action } from '@perses-dev/components';
+import { InfoTooltip } from '@perses-dev/components';
+import { Action } from '@perses-dev/client';
 import { ExternalVariableDefinition } from '../../model/VariableDefinition';
 import { useDiscardChangesConfirmationDialog, VariableProvider } from '../../context';
 import { hydrateVariableDefinitionStates } from '../../context/VariableProvider/hydrationUtils';
@@ -95,7 +96,8 @@ export function VariableEditor(props: {
   const [variableState] = useMemo(() => {
     return [hydrateVariableDefinitionStates(variableDefinitions, {}, externalVariableDefinitions)];
   }, [externalVariableDefinitions, variableDefinitions]);
-  const currentEditingVariableDefinition = typeof variableEditIdx === 'number' && variableDefinitions[variableEditIdx];
+  const currentEditingVariableDefinition: VariableDefinition | undefined =
+    variableEditIdx !== null ? variableDefinitions[variableEditIdx] : undefined;
 
   const { openDiscardChangesConfirmationDialog, closeDiscardChangesConfirmationDialog } =
     useDiscardChangesConfirmationDialog();
@@ -188,7 +190,7 @@ export function VariableEditor(props: {
 
   return (
     <>
-      {currentEditingVariableDefinition && (
+      {variableEditIdx !== null && currentEditingVariableDefinition && (
         <VariableEditorFormWithContext
           variableDefinitions={variableDefinitions}
           externalVariableDefinitions={externalVariableDefinitions}

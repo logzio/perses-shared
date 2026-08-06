@@ -74,6 +74,8 @@ function useDefaultQueryDefinition(
 
   return {
     defaultInitialQueryDefinition,
+    // LOGZ.IO CHANGE:: keep the useMemo above — `defaultInitialQueryDefinition` is a useEffect dep
+    // below ("replace incompatible queries"), so an unmemoized object literal loops that effect.
     isLoading: isMetadataLoading || isPluginLoading,
   };
 }

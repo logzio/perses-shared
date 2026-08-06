@@ -14,7 +14,7 @@
 // LOGZ.IO ADDITION:: guards the chart teardown path — pending tooltip timers and sync-group linkage
 // must be released before dispose, otherwise unmounted charts survive GC (memory leak). [unidash-perf]
 
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { EChart } from './EChart';
 
 const fakeChart = {
@@ -44,6 +44,42 @@ class ResizeObserverStub {
 }
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver = ResizeObserverStub;
+
+// jsdom has no IntersectionObserver (EChart observes its container to stay in the sync group only
+// while on screen). Observing reports the chart as visible, matching a rendered panel; tests drive
+// visibility changes through setIntersecting.
+const intersectionCallbacks = new Set<IntersectionObserverCallback>();
+
+function emit(callback: IntersectionObserverCallback, isIntersecting: boolean): void {
+  callback([{ isIntersecting } as IntersectionObserverEntry], null as unknown as IntersectionObserver);
+}
+
+class IntersectionObserverStub {
+  private readonly callback: IntersectionObserverCallback;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    intersectionCallbacks.add(callback);
+  }
+
+  observe(): void {
+    emit(this.callback, true);
+  }
+
+  unobserve(): void {}
+
+  disconnect(): void {
+    intersectionCallbacks.delete(this.callback);
+  }
+}
+
+(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = IntersectionObserverStub;
+
+function setIntersecting(isIntersecting: boolean): void {
+  act(() => {
+    intersectionCallbacks.forEach((callback) => emit(callback, isIntersecting));
+  });
+}
 
 describe('EChart', () => {
   it('should hide the tooltip and leave the sync group before disposing on unmount', () => {
@@ -131,5 +167,42 @@ describe('EChart', () => {
 
     removeSpy.mockRestore();
     jest.useRealTimers();
+  });
+
+  // LOGZ.IO ADDITION:: sync-group membership is limited to charts that are on screen, so hovering one
+  // panel no longer broadcasts crosshair actions to charts the user cannot see.
+  describe('sync group membership', () => {
+    it('should leave the sync group and drop its crosshair when scrolled out of view', () => {
+      fakeChart.group = '';
+      fakeChart.dispatchAction.mockClear();
+
+      render(<EChart option={{}} syncGroup="sync-group-1" />);
+
+      expect(fakeChart.group).toBe('sync-group-1');
+
+      setIntersecting(false);
+
+      expect(fakeChart.group).toBe('');
+      expect(fakeChart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
+    });
+
+    it('should rejoin the sync group when scrolled back into view', () => {
+      fakeChart.group = '';
+
+      render(<EChart option={{}} syncGroup="sync-group-1" />);
+
+      setIntersecting(false);
+      setIntersecting(true);
+
+      expect(fakeChart.group).toBe('sync-group-1');
+    });
+
+    it('should not join any group when no syncGroup is configured', () => {
+      fakeChart.group = '';
+
+      render(<EChart option={{}} />);
+
+      expect(fakeChart.group).toBe('');
+    });
   });
 });

@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export * from './annotations';
 export * from './builtin-variables';
 export * from './datasources';
 export * from './plugin-registry';
@@ -23,7 +24,6 @@ export * from './alerts-queries';
 export * from './silences-queries';
 export * from './item-actions';
 export * from './DataQueriesProvider';
-export * from './QueryCountProvider';
 export * from './RouterProvider';
 export * from './UsageMetricsProvider';
 // LOGZ.IO CHANGE START:: Export log query runtime [APPZ-1695]
