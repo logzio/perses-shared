@@ -36,6 +36,9 @@ export interface ColumnarTimeChart {
   source: Record<string, Float64Array>;
   /** The input series with `values` replaced by row-aligned lazy tuple views. */
   viewData: TimeSeries[];
+  // LOGZ.IO CHANGE:: Max of the visible values, tracked for free inside the build loop, so the Y-axis
+  // auto-scale/thinning gate doesn't need a second pass over the data. `undefined` when there is none.
+  valueMax: number | undefined;
 }
 
 function createTupleView(time: Float64Array, column: Float64Array): TimeSeriesValueTuple[] {
@@ -95,6 +98,7 @@ export function buildColumnarTimeChart(data: TimeSeries[], timeScale: TimeScale)
 
   const source: Record<string, Float64Array> = { [TIME_COLUMN_KEY]: time };
   const viewData: TimeSeries[] = new Array(data.length);
+  let valueMax = -Infinity; // LOGZ.IO CHANGE:: track the visible value max in this same loop [unidash-perf]
 
   for (let seriesIndex = 0; seriesIndex < data.length; seriesIndex++) {
     const series = data[seriesIndex] as TimeSeries;
@@ -109,6 +113,7 @@ export function buildColumnarTimeChart(data: TimeSeries[], timeScale: TimeScale)
 
       if (row >= 0 && row < rowCount) {
         column[row] = value;
+        if (value > valueMax) valueMax = value; // LOGZ.IO CHANGE:: free axis max [unidash-perf]
       }
     }
 
@@ -116,6 +121,6 @@ export function buildColumnarTimeChart(data: TimeSeries[], timeScale: TimeScale)
     viewData[seriesIndex] = { ...series, values: createTupleView(time, column) };
   }
 
-  return { source, viewData };
+  return { source, viewData, valueMax: valueMax === -Infinity ? undefined : valueMax };
 }
 // LOGZ.IO CHANGE END:: columnar chart data [unidash-perf]

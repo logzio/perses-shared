@@ -73,6 +73,54 @@ describe('buildColumnarTimeChart', () => {
     expect(column.filter(Number.isNaN)).toHaveLength(4);
   });
 
+  it('should report the max of visible values as valueMax', () => {
+    const { valueMax } = buildColumnarTimeChart(SERIES, TIME_SCALE);
+
+    expect(valueMax).toBe(60);
+  });
+
+  it('should exclude out-of-range and null samples from valueMax', () => {
+    const { valueMax } = buildColumnarTimeChart(
+      [
+        {
+          name: 's',
+          values: [
+            [900, 1_000], // before the range — excluded despite being the largest
+            [1_030, null],
+            [1_045, 7],
+            [2_000, 9_000], // after the range — excluded
+          ],
+        },
+      ],
+      TIME_SCALE
+    );
+
+    expect(valueMax).toBe(7);
+  });
+
+  it('should return undefined valueMax when there are no visible values', () => {
+    const { valueMax } = buildColumnarTimeChart([{ name: 'empty', values: [] }], TIME_SCALE);
+
+    expect(valueMax).toBeUndefined();
+  });
+
+  it('should exclude NaN values from valueMax', () => {
+    const { valueMax } = buildColumnarTimeChart(
+      [
+        {
+          name: 's',
+          values: [
+            [1_000, 5],
+            [1_045, Number.NaN],
+          ],
+        },
+      ],
+      TIME_SCALE
+    );
+
+    expect(valueMax).toBe(5);
+  });
+
   it('should expose row-aligned tuple views that read like the old tuple arrays', () => {
     const { viewData } = buildColumnarTimeChart(SERIES, TIME_SCALE);
     const gappy = viewData[1]?.values ?? [];
