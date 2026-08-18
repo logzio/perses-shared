@@ -15,6 +15,14 @@ import merge from 'lodash/merge';
 import type { XAXisComponentOption, YAXisComponentOption } from 'echarts';
 import { FormatOptions, formatValue } from '../model';
 
+// LOGZ.IO CHANGE START:: Always render the axis extremes (top/bottom); hideOverlap thins only the middle.
+const EXTREME_VALUE_AXIS_LABEL = {
+  showMinLabel: true,
+  showMaxLabel: true,
+  hideOverlap: true,
+};
+// LOGZ.IO CHANGE END::
+
 export interface YAxisConfig {
   format?: FormatOptions;
   position?: 'left' | 'right';
@@ -50,8 +58,9 @@ function estimateLabelWidth(format: FormatOptions | undefined, maxValue: number)
 export function getFormattedAxis(axis?: YAXisComponentOption | XAXisComponentOption, unit?: FormatOptions): unknown[] {
   const AXIS_DEFAULT = {
     type: 'value',
-    boundaryGap: [0, '10%'],
     axisLabel: {
+      // LOGZ.IO CHANGE:: preserve extreme labels + even spacing
+      ...EXTREME_VALUE_AXIS_LABEL,
       formatter: (value: number): string => {
         return formatValue(value, unit);
       },
@@ -83,8 +92,9 @@ export function getFormattedMultipleYAxes(
     {
       type: 'value',
       position: 'left',
-      boundaryGap: [0, '10%'],
       axisLabel: {
+        // LOGZ.IO CHANGE:: preserve extreme labels + even spacing
+        ...EXTREME_VALUE_AXIS_LABEL,
         formatter: (value: number): string => {
           return formatValue(value, baseFormat);
         },
@@ -106,8 +116,9 @@ export function getFormattedMultipleYAxes(
       position: 'right',
       // Dynamic offset based on cumulative width of preceding axis labels
       offset: cumulativeOffset,
-      boundaryGap: [0, '10%'],
       axisLabel: {
+        // LOGZ.IO CHANGE:: preserve extreme labels + even spacing
+        ...EXTREME_VALUE_AXIS_LABEL,
         formatter: (value: number): string => {
           return formatValue(value, format);
         },
