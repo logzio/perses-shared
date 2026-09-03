@@ -79,13 +79,16 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
     triggerOnce: true,
     root: scrollRoot,
     // LOGZ.IO CHANGE:: prefetch further ahead than we render — the query + transform is the expensive
-    // part of a panel scrolling into view, so give it a ~1.5-viewport head start over the scroll.
-    // Rendering (mounting ECharts) stays at the tighter margin below. [unidash-perf]
+    // part of a panel scrolling into view, so give it a head start over the scroll. Rendering follows
+    // at the slightly tighter margin below. [unidash-perf]
     rootMargin: '1600px 0px',
   });
 
   const { ref: renderRef, inView: shouldRender } = useInView({
-    threshold: 0.2,
+    // LOGZ.IO CHANGE:: a tall panel needs this fraction of its own box inside the margin before it
+    // mounts, so a high threshold makes tall and short panels appear at different distances from the
+    // fold. Kept low to make the trigger point depend on the margin rather than on panel height.
+    threshold: 0.1,
     initialInView: false,
     // LOGZ.IO CHANGE START:: keep panels mounted once rendered [unidash-perf]
     // Un-mounting panels that scroll past the margin disposed their ECharts instance and re-created
@@ -95,7 +98,10 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
     triggerOnce: true,
     // LOGZ.IO CHANGE END:: keep panels mounted once rendered [unidash-perf]
     root: scrollRoot,
-    rootMargin: '600px 0px',
+    // LOGZ.IO CHANGE:: close to the query margin above. The data is already fetched by the time a panel
+    // reaches this line and panels never unmount, so mounting earlier costs little and stops panels
+    // from popping in at the edge of the viewport.
+    rootMargin: '1600px 0px',
   });
 
   const mergedRef = useForkRef(renderRef, queryRef, findScrollRootRef);
