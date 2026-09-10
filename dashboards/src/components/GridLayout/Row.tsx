@@ -160,7 +160,8 @@ export function Row({
     <GridContainer
       sx={{
         display: isGridDisplayed ? 'block' : 'none',
-        height: itemLayoutViewed ? `${panelFullHeight}px` : 'unset',
+        // LOGZ.IO CHANGE:: The height is measured, so it is absent until the dashboard box is observed
+        height: itemLayoutViewed && panelFullHeight !== undefined ? `${panelFullHeight}px` : 'unset',
         overflow: itemLayoutViewed ? 'hidden' : 'unset',
       }}
     >
