@@ -27,7 +27,7 @@ const SCROLLED_BOX_TOP = -643;
 jest.mock('use-resize-observer', () => ({
   __esModule: true,
   default: (): { ref: () => void; width: number; height: number } => ({
-    ref: () => {},
+    ref: (): void => {},
     width: 1200,
     height: DASHBOARD_BOX_HEIGHT,
   }),
