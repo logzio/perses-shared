@@ -14,7 +14,7 @@
 import { Column, ColumnSizingInfoState, ColumnSizingState, flexRender, HeaderGroup, Row } from '@tanstack/react-table';
 import { Box, TablePagination, TableRow as MuiTableRow } from '@mui/material';
 import { TableComponents, TableVirtuoso, TableVirtuosoHandle, TableVirtuosoProps } from 'react-virtuoso';
-import { ReactElement, useMemo, useRef } from 'react';
+import { ReactElement, useMemo, useRef, useState } from 'react';
 import { TableToolbar, TableToolbarProps } from './TableToolbar';
 import { TableRow } from './TableRow';
 import { TableBody } from './TableBody';
@@ -112,17 +112,25 @@ export function VirtualizedTable<TableData>({
     return 'none';
   };
 
-  const VirtuosoTableComponents: TableComponents<TableData> = useMemo(() => {
+  // LOGZ.IO CHANGE START:: Build the virtuoso component map once
+  // Rebuilding it hands React different component *types*, so React tears down and rebuilds
+  // the whole <table> — losing any state a cell renderer holds. The map is built once (a
+  // lazy useState initializer, since useMemo may discard its cache) and the components read
+  // the current render's values through a ref.
+  const latest = useRef({ width, density, rows, onRowClick, onRowMouseOver, onRowMouseOut, keyboardNav });
+  latest.current = { width, density, rows, onRowClick, onRowMouseOver, onRowMouseOut, keyboardNav };
+
+  const [virtuosoTableComponents] = useState<TableComponents<TableData>>(() => {
     return {
       Scroller: VirtualizedTableContainer,
       Table: (props): ReactElement => {
         return (
           <InnerTable
             {...props}
-            width={width}
-            density={density}
-            onKeyDown={keyboardNav.onTableKeyDown}
-            onBlur={keyboardNav.onTableBlur}
+            width={latest.current.width}
+            density={latest.current.density}
+            onKeyDown={latest.current.keyboardNav.onTableKeyDown}
+            onBlur={latest.current.keyboardNav.onTableBlur}
           />
         );
       },
@@ -130,6 +138,7 @@ export function VirtualizedTable<TableData>({
       TableFoot,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       TableRow: ({ item, ...props }): ReactElement | null => {
+        const { rows, density, onRowClick, onRowMouseOver, onRowMouseOut } = latest.current;
         const index = props['data-index'];
         const row = rows[index];
         if (!row) {
@@ -154,16 +163,8 @@ export function VirtualizedTable<TableData>({
       },
       TableBody,
     };
-  }, [
-    density,
-    keyboardNav.onTableKeyDown,
-    keyboardNav.onTableBlur,
-    onRowClick,
-    onRowMouseOut,
-    onRowMouseOver,
-    rows,
-    width,
-  ]);
+  });
+  // LOGZ.IO CHANGE END:: Build the virtuoso component map once
 
   const handleChangePage = (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number): void => {
     if (!pagination || !onPaginationChange) return;
@@ -202,7 +203,7 @@ export function VirtualizedTable<TableData>({
       <TableVirtuoso
         ref={virtuosoRef}
         totalCount={rows.length}
-        components={VirtuosoTableComponents}
+        components={virtuosoTableComponents}
         // Note: this value is impacted by overscan. See this issue if overscan
         // is added.
         // https://github.com/petyosi/react-virtuoso/issues/118#issuecomment-642156138
