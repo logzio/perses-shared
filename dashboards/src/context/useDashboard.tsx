@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { createPanelRef, DashboardSpec, DurationString, GridDefinition } from '@perses-dev/spec';
+import { createPanelRef, DurationString, GridDefinition } from '@perses-dev/spec';
 import { DashboardResource } from '@perses-dev/client';
 import { PanelGroupId } from '@perses-dev/plugin-system';
 import { PanelGroupDefinition, RepeatableGridItemDefinition } from '../model';
@@ -20,7 +20,10 @@ import { useDashboardStore } from './DashboardProvider';
 import { useVariableDefinitionActions, useVariableDefinitions } from './VariableProvider';
 import { useAnnotationActions, useAnnotationSpecs } from './AnnotationProvider';
 
-type DashboardType = Omit<DashboardResource, 'spec'> & { spec: DashboardSpec & { ttl?: DurationString } };
+// LOGZ.IO CHANGE:: build the spec on DashboardResource['spec'] so dashboard-wide settings survive the round trip
+type DashboardType = Omit<DashboardResource, 'spec'> & {
+  spec: DashboardResource['spec'] & { ttl?: DurationString };
+};
 export function useDashboard(): {
   dashboard: DashboardType;
   setDashboard: (dashboardResource: DashboardResource) => void;
@@ -39,6 +42,7 @@ export function useDashboard(): {
     datasources,
     links,
     ttl,
+    settings, // LOGZ.IO CHANGE
   } = useDashboardStore(
     ({
       panels,
@@ -54,6 +58,7 @@ export function useDashboard(): {
       datasources,
       links,
       ttl,
+      settings, // LOGZ.IO CHANGE
     }) => ({
       panels,
       panelGroups,
@@ -68,6 +73,7 @@ export function useDashboard(): {
       datasources,
       links,
       ttl,
+      settings, // LOGZ.IO CHANGE
     })
   );
   const { setVariableDefinitions } = useVariableDefinitionActions();
@@ -92,6 +98,7 @@ export function useDashboard(): {
             refreshInterval,
             datasources,
             links,
+            settings, // LOGZ.IO CHANGE
           },
         }
       : {
@@ -108,6 +115,7 @@ export function useDashboard(): {
             datasources,
             links,
             ttl,
+            settings, // LOGZ.IO CHANGE
           },
         };
 

@@ -60,6 +60,7 @@ export interface DashboardAppProps {
   toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Support AdHoc filters
   dashboardControlsComponent?: JSX.Element; // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
   timeRangePicker?: TimeRangePickerComponent; // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+  dashboardEditControlsComponent?: ReactNode; // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
   onDashboardChange?: (dashboard: DashboardResource) => void; // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
 }
 
@@ -90,6 +91,7 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     dashboardControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
     toolbarAddonComponent, // LOGZ.IO CHANGE:: Support AdHoc filters
     timeRangePicker, // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+    dashboardEditControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
     onDashboardChange, // LOGZ.IO CHANGE:: Alert users when trying to navigate out of dashboard in edit mode that has changes
   } = props;
 
@@ -182,6 +184,7 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
         dashboardControlsComponent={dashboardControlsComponent}
         toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters
         timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+        dashboardEditControlsComponent={dashboardEditControlsComponent} // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
       />
       <Box
         sx={{

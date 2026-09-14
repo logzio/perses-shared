@@ -16,8 +16,16 @@ import { DashboardSpec } from '@perses-dev/spec';
 
 export type DashboardKind = 'Dashboard' | 'EphemeralDashboard';
 
+// LOGZ.IO CHANGE START
+/**
+ * Dashboard-wide settings that panels and queries inherit unless they set their own value.
+ * Opaque here on purpose: the host application owns the concrete shape.
+ */
+export type DashboardSettings = Record<string, unknown>;
+// LOGZ.IO CHANGE END
+
 export interface DashboardResource {
   kind: DashboardKind;
-  spec: DashboardSpec;
+  spec: DashboardSpec & { settings?: DashboardSettings }; // LOGZ.IO CHANGE
   metadata: ProjectMetadata;
 }
