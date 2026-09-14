@@ -149,9 +149,11 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
     <Portal container={containerElement}>
       <Box
         ref={tooltipRef}
-        sx={(theme) => getTooltipStyles(theme, pinnedPos, maxHeight)}
+        sx={(theme) => getTooltipStyles(theme, pinnedPos, maxHeight, containerElement)}
         style={{
           transform: transform.current,
+          // LOGZ.IO CHANGE:: hide until measured
+          visibility: height && width ? 'visible' : 'hidden',
         }}
       >
         <Stack spacing={0}>

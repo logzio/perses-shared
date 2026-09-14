@@ -21,6 +21,17 @@ import { getNearbySeriesData } from './nearby-series';
 import { useMousePosition } from './tooltip-model';
 import { NearbySeriesArray } from './types';
 
+// jsdom has no layout engine, so the real hook never reports a size and the tooltip renders
+// `visibility: hidden` — which drops the whole subtree from the accessibility tree, out of reach of
+// getByRole. Report a measured box so these tests exercise the normal, visible path.
+jest.mock('use-resize-observer', () => {
+  const ref = (): void => undefined;
+
+  return {
+    __esModule: true,
+    default: (): { width: number; height: number; ref: () => void } => ({ width: 400, height: 200, ref }),
+  };
+});
 jest.mock('./nearby-series');
 jest.mock('./tooltip-model', () => ({
   ...jest.requireActual('./tooltip-model'),
