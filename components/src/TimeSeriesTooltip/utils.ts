@@ -76,8 +76,14 @@ export function assembleTransform(
 
   if (mousePos.plotCanvas.x === undefined) return undefined;
 
-  let x = mousePos.page.x + cursorPaddingX; // Default to right side of the cursor
-  let y = mousePos.page.y + cursorPaddingY;
+  // LOGZ.IO CHANGE START:: viewport-pinned tooltip uses client coords and clamps an unmeasured box to the CSS max
+  const isViewportPinned = !containerElement;
+  const boundedHeight = isViewportPinned ? tooltipHeight || TOOLTIP_MAX_HEIGHT : tooltipHeight;
+  const boundedWidth = isViewportPinned ? tooltipWidth || TOOLTIP_MAX_WIDTH : tooltipWidth;
+  const anchor = isViewportPinned ? mousePos.client : mousePos.page;
+
+  let x = anchor.x + cursorPaddingX; // Default to right side of the cursor
+  let y = anchor.y + cursorPaddingY;
 
   // If containerElement is defined, adjust coordinates relative to the container
   if (containerElement) {
@@ -87,20 +93,21 @@ export function assembleTransform(
 
     // Ensure tooltip does not go out of the container's bottom
     const containerBottom = containerRect.top + containerElement.scrollHeight;
-    if (y + tooltipHeight > containerBottom) {
-      y = Math.max(containerBottom - tooltipHeight - cursorPaddingY, TOOLTIP_PADDING / 2);
+    if (y + boundedHeight > containerBottom) {
+      y = Math.max(containerBottom - boundedHeight - cursorPaddingY, TOOLTIP_PADDING / 2);
     }
   } else {
     // Ensure tooltip does not go out of the screen on the bottom
-    if (y + tooltipHeight > window.innerHeight + window.scrollY) {
-      y = Math.max(window.innerHeight + window.scrollY - tooltipHeight - cursorPaddingY, TOOLTIP_PADDING / 2);
+    if (y + boundedHeight > window.innerHeight) {
+      y = Math.max(window.innerHeight - boundedHeight - cursorPaddingY, TOOLTIP_PADDING / 2);
     }
   }
 
   // Ensure tooltip does not go out of the screen on the right
-  if (x + tooltipWidth > window.innerWidth) {
-    x = mousePos.page.x - tooltipWidth - cursorPaddingX; // Move to the left of the cursor
+  if (x + boundedWidth > window.innerWidth) {
+    x = anchor.x - boundedWidth - cursorPaddingX; // Move to the left of the cursor
   }
+  // LOGZ.IO CHANGE END:: viewport-pinned tooltip uses client coords and clamps an unmeasured box to the CSS max
 
   // Ensure tooltip does not go out of the screen on the left
   if (x < cursorPaddingX) {
@@ -121,7 +128,8 @@ export function assembleTransform(
 export function getTooltipStyles(
   theme: Theme,
   pinnedPos: CursorCoordinates | null,
-  maxHeight?: number
+  maxHeight?: number,
+  containerElement?: Element | null
 ): Record<string, unknown> {
   const adjustedMaxHeight = maxHeight ? maxHeight - TOOLTIP_PADDING : undefined;
   return {
@@ -129,7 +137,8 @@ export function getTooltipStyles(
     maxWidth: TOOLTIP_MAX_WIDTH,
     maxHeight: adjustedMaxHeight ?? TOOLTIP_MAX_HEIGHT,
     padding: 0,
-    position: 'absolute',
+    // LOGZ.IO CHANGE:: body portal is position:fixed
+    position: containerElement ? 'absolute' : 'fixed',
     top: 0,
     left: 0,
     borderRadius: '6px',
@@ -139,7 +148,8 @@ export function getTooltipStyles(
     // LOGZ.IO CHANGE END:: Increase tooltip font readability
     visibility: 'visible',
     opacity: 1,
-    transition: 'all 0.1s ease-out',
+    // LOGZ.IO CHANGE:: do not transition transform
+    transition: 'opacity 0.1s ease-out',
     // LOGZ.IO CHANGE START:: Drilldown panel
     backgroundColor: theme.palette.background.paper ?? TOOLTIP_BG_COLOR_FALLBACK,
     color: theme.palette.text.primary,
