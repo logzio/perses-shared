@@ -13,7 +13,9 @@
 
 import { Box, BoxProps } from '@mui/material';
 import { ErrorBoundary, ErrorAlert } from '@perses-dev/components';
-import { ReactElement, useRef } from 'react';
+import { ReactElement } from 'react';
+// LOGZ.IO CHANGE:: Size a viewed panel by this box
+import useResizeObserver from 'use-resize-observer';
 import { usePanelGroupIds } from '../../context';
 import { GridLayout } from '../GridLayout';
 import { EmptyDashboard, EmptyDashboardProps } from '../EmptyDashboard';
@@ -28,17 +30,15 @@ export type DashboardProps = BoxProps & {
   emptyDashboardProps?: EmptyDashboardProps;
   panelOptions?: PanelOptions;
 };
-const HEADER_HEIGHT = 165; // Approximate height of the header in dashboard view (including the navbar and variables toolbar)
 
 /**
  * Renders a Dashboard for the provided Dashboard spec.
  */
 export function Dashboard({ emptyDashboardProps, panelOptions, ...boxProps }: DashboardProps): ReactElement {
   const panelGroupIds = usePanelGroupIds();
-  const boxRef = useRef<HTMLDivElement>(null);
+  // LOGZ.IO CHANGE:: Size a viewed panel by this box — the host app sizes it to the room available
+  const { ref: boxRef, height: panelFullHeight } = useResizeObserver<HTMLDivElement>();
   const isEmpty = !panelGroupIds.length;
-  const dashboardTopPosition = boxRef.current?.getBoundingClientRect().top ?? HEADER_HEIGHT;
-  const panelFullHeight = window.innerHeight - dashboardTopPosition - window.scrollY;
 
   return (
     <Box {...boxProps} sx={{ height: '100%' }} ref={boxRef}>
