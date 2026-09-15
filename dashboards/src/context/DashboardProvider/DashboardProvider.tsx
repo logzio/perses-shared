@@ -36,6 +36,7 @@ import { createPanelDefinition } from './common';
 import { createViewPanelSlice, ViewPanelSlice, VirtualPanelRef } from './view-panel-slice';
 import { assignRef, MutableRef } from './assign-ref';
 import { createLinksSlice, LinksSlice } from './links-slice';
+import { createSettingsSlice, SettingsSlice } from './settings-slice'; // LOGZ.IO CHANGE
 
 export interface DashboardStoreState
   extends PanelGroupSlice,
@@ -49,7 +50,8 @@ export interface DashboardStoreState
     EditJsonDialogSlice,
     SaveChangesConfirmationDialogSlice,
     ViewPanelSlice,
-    LinksSlice {
+    LinksSlice,
+    SettingsSlice {
   isEditMode: boolean;
   setEditMode: (isEditMode: boolean) => void;
   setDashboard: (dashboard: DashboardResource) => void;
@@ -139,6 +141,7 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
       datasources,
       layouts = [],
       panels = {},
+      settings, // LOGZ.IO CHANGE
     },
   } = dashboardResource;
 
@@ -163,6 +166,8 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
           ...createViewPanelSlice(viewPanelRef, setViewPanelRef)(...args),
           /* Links */
           ...createLinksSlice(links)(...args),
+          /* Settings */
+          ...createSettingsSlice(settings)(...args), // LOGZ.IO CHANGE
           /* General */
           ...createDiscardChangesDialogSlice(...args),
           ...createEditJsonDialogSlice(...args),
@@ -191,6 +196,7 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
               datasources = {},
               links = [],
               timezone,
+              settings, // LOGZ.IO CHANGE
             },
           }): void => {
             set((state) => {
@@ -206,6 +212,7 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
               state.refreshInterval = refreshInterval ?? DEFAULT_REFRESH_INTERVAL;
               state.datasources = datasources;
               state.links = links;
+              state.settings = settings; // LOGZ.IO CHANGE
               // TODO: add ttl here to e.g allow edition from JSON view, but probably requires quite some refactoring
             });
           },

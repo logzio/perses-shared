@@ -45,6 +45,7 @@ export interface DashboardToolbarProps {
   dashboardControlsComponent?: JSX.Element; // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
   toolbarAddonComponent?: ReactNode; // LOGZ.IO CHANGE:: Add support for toolbarAddonComponent
   timeRangePicker?: TimeRangePickerComponent; // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+  dashboardEditControlsComponent?: ReactNode; // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
 }
 
 export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => {
@@ -64,6 +65,7 @@ export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => 
     dashboardControlsComponent,
     toolbarAddonComponent,
     timeRangePicker, // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+    dashboardEditControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
   } = props;
 
   const { isEditMode } = useEditMode();
@@ -110,6 +112,7 @@ export const DashboardToolbar = (props: DashboardToolbarProps): ReactElement => 
                 {isLinksEnabled && <EditDashboardLinksButton />}
                 <AddPanelButton />
                 <AddGroupButton />
+                {dashboardEditControlsComponent}
               </Stack>
               <SaveDashboardButton onSave={onSave} isDisabled={isReadonly} />
               <Button variant="outlined" onClick={onCancelButtonClick}>

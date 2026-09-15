@@ -69,6 +69,7 @@ export function ViewDashboard(props: ViewDashboardProps): ReactElement {
     dashboardControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
     toolbarAddonComponent, // LOGZ.IO CHANGE:: Support AdHoc filters
     timeRangePicker, // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+    dashboardEditControlsComponent, // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
     ...others
   } = props;
   const { spec } = dashboardResource;
@@ -167,6 +168,7 @@ export function ViewDashboard(props: ViewDashboardProps): ReactElement {
                     dashboardControlsComponent={dashboardControlsComponent} // LOGZ.IO CHANGE:: Add support for dashboardControlsComponent
                     toolbarAddonComponent={toolbarAddonComponent} // LOGZ.IO CHANGE:: Support AdHoc filters
                     timeRangePicker={timeRangePicker} // LOGZ.IO CHANGE:: Allow swapping the built-in time-range picker
+                    dashboardEditControlsComponent={dashboardEditControlsComponent} // LOGZ.IO CHANGE:: Add support for dashboardEditControlsComponent
                   />
                 </ErrorBoundary>
               </Box>
