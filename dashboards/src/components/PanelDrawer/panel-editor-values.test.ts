@@ -26,6 +26,7 @@ describe('restoreValuesStrippedByValidation', () => {
         plugin: { kind: 'TimeSeriesChart', spec: {} },
         timeFrom: '1h',
         hideTimeOverride: false,
+        maxDataPoints: 300,
         queries: [
           {
             kind: 'TimeSeriesQuery',
@@ -60,6 +61,7 @@ describe('restoreValuesStrippedByValidation', () => {
     expect(getQuerySpec(validated, 0)).not.toHaveProperty('hidden');
     expect(validated.panelDefinition.spec).not.toHaveProperty('timeFrom');
     expect(validated.panelDefinition.spec).not.toHaveProperty('hideTimeOverride');
+    expect(validated.panelDefinition.spec).not.toHaveProperty('maxDataPoints');
   });
 
   // Regression test for the "Hide from chart doesn't persist after Apply" bug: run the values
@@ -95,6 +97,23 @@ describe('restoreValuesStrippedByValidation', () => {
 
     expect(restoredSpec.timeFrom).toBe('1h');
     expect(restoredSpec.hideTimeOverride).toBe(false);
+  });
+
+  it('should restore max data points when the panel asks for a point count', () => {
+    const validated = panelEditorSchema.parse(RAW_VALUES) as PanelEditorValues;
+
+    const restored = restoreValuesStrippedByValidation(validated, RAW_VALUES);
+
+    expect((restored.panelDefinition.spec as { maxDataPoints?: number }).maxDataPoints).toBe(300);
+  });
+
+  it('should drop max data points when the field was cleared in the editor', () => {
+    const raw = JSON.parse(JSON.stringify(RAW_VALUES)) as PanelEditorValues;
+    delete (raw.panelDefinition.spec as { maxDataPoints?: number }).maxDataPoints;
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect(restored.panelDefinition.spec).not.toHaveProperty('maxDataPoints');
   });
 
   // LOGZ.IO CHANGE START:: Item-level repeat rides alongside panelDefinition and is stripped too

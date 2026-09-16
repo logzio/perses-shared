@@ -14,11 +14,14 @@
 // LOGZ.IO FILE:: APPZ-955-math-on-queries-formulas
 
 import { TimeSeriesData } from '@perses-dev/core';
+import { TimeSeriesQueryDefinition } from '@perses-dev/spec';
+import { TimeSeriesQueryContext } from '../model';
 import {
   areDependenciesResolved,
   areMapsEqual,
   detectCircularDependency,
   formatCyclePath,
+  getQueryOptions,
 } from './time-series-queries-utils';
 
 describe('areDependenciesResolved', () => {
@@ -214,3 +217,30 @@ describe('areMapsEqual', () => {
     expect(areMapsEqual(map1, map2)).toBe(false);
   });
 });
+
+// LOGZ.IO CHANGE START:: Panel-level "Max data points" [APPZ-3369]
+describe('getQueryOptions', () => {
+  const definition = {
+    kind: 'TimeSeriesQuery',
+    spec: { plugin: { kind: 'LuceneQuery', spec: { query: 'test_field_1: test_value_1' } } },
+  } as TimeSeriesQueryDefinition;
+
+  const createContext = (maxDataPoints?: number): TimeSeriesQueryContext =>
+    ({
+      timeRange: { start: new Date('2026-09-01T00:00:00.000Z'), end: new Date('2026-09-02T00:00:00.000Z') },
+      variableState: {},
+      suggestedStepMs: 300000,
+      maxDataPoints,
+    }) as TimeSeriesQueryContext;
+
+  // The logs path sizes its own buckets from `maxDataPoints`, so nothing else in the key moves when
+  // it changes — without it in the key the panel would keep serving the previous buckets.
+  test('keys the query on the requested max data points', () => {
+    const withoutMax = getQueryOptions(undefined, definition, createContext());
+    const withMax = getQueryOptions(undefined, definition, createContext(120));
+
+    expect(withMax.queryKey).toContain(120);
+    expect(withMax.queryKey).not.toEqual(withoutMax.queryKey);
+  });
+});
+// LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
