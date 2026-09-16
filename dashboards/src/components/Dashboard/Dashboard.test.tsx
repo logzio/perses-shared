@@ -20,20 +20,22 @@ import { defaultDatasourceProps, getTestDashboard, renderWithContext } from '../
 import { Dashboard } from './Dashboard';
 
 const DASHBOARD_BOX_HEIGHT = 537;
-// What a viewed panel used to be sized against, which left it several times too tall.
 const WINDOW_HEIGHT = 799;
 const SCROLLED_BOX_TOP = -643;
+
+let mockObservedHeight = DASHBOARD_BOX_HEIGHT;
 
 jest.mock('use-resize-observer', () => ({
   __esModule: true,
   default: (): { ref: () => void; width: number; height: number } => ({
     ref: (): void => {},
     width: 1200,
-    height: DASHBOARD_BOX_HEIGHT,
+    height: mockObservedHeight,
   }),
 }));
 
-const renderViewedPanel = (): void => {
+const renderViewedPanel = ({ observedHeight = DASHBOARD_BOX_HEIGHT }: { observedHeight?: number } = {}): void => {
+  mockObservedHeight = observedHeight;
   Object.defineProperty(window, 'innerHeight', { value: WINDOW_HEIGHT, configurable: true });
   Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
   Element.prototype.getBoundingClientRect = (): DOMRect => ({ top: SCROLLED_BOX_TOP, height: 0 }) as DOMRect;
@@ -65,6 +67,12 @@ describe('Dashboard', () => {
     renderViewedPanel();
 
     expect(getViewedPanelHeight()).toBeLessThanOrEqual(DASHBOARD_BOX_HEIGHT);
+  });
+
+  it('should keep a viewed panel within the window when the host leaves the dashboard box content-sized', () => {
+    renderViewedPanel({ observedHeight: 1880 });
+
+    expect(getViewedPanelHeight()).toBeLessThanOrEqual(WINDOW_HEIGHT);
   });
 });
 
