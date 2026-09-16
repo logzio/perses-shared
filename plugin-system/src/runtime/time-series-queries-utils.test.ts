@@ -14,7 +14,8 @@
 // LOGZ.IO FILE:: APPZ-955-math-on-queries-formulas
 
 import { TimeSeriesData } from '@perses-dev/core';
-import { TimeSeriesQueryContext, TimeSeriesQueryDefinition } from '../model';
+import { TimeSeriesQueryDefinition } from '@perses-dev/spec';
+import { TimeSeriesQueryContext } from '../model';
 import {
   areDependenciesResolved,
   areMapsEqual,
