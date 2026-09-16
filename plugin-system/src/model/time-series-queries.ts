@@ -47,14 +47,14 @@ export type TimeSeriesQueryMode = 'instant' | 'range';
  */
 export interface TimeSeriesQueryContext {
   suggestedStepMs?: number;
-  // LOGZ.IO CHANGE START:: Panel-level "Max data points" [APPZ-3369]
+  // LOGZ.IO CHANGE START:: Panel-level "Max data points"
   /**
    * Points the panel asked for, when its author set one. `suggestedStepMs` is already derived
    * from it, so only plugins that pick their own bucket size (the logs path, which sizes a
    * bucket budget rather than a step) need to read this.
    */
   maxDataPoints?: number;
-  // LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+  // LOGZ.IO CHANGE END:: Panel-level "Max data points"
   mode?: TimeSeriesQueryMode;
   timeRange: AbsoluteTimeRange;
   variableState: VariableStateMap;

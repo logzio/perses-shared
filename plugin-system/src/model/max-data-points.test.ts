@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE START:: Panel-level "Max data points"
 import { MAX_MAX_DATA_POINTS, parseMaxDataPointsInput, resolveMaxDataPoints } from './max-data-points';
 
 describe('resolveMaxDataPoints', () => {
@@ -46,4 +46,4 @@ describe('parseMaxDataPointsInput', () => {
     expect(parseMaxDataPointsInput(input)).toBe(expected);
   });
 });
-// LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE END:: Panel-level "Max data points"

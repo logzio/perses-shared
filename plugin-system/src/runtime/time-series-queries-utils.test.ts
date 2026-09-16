@@ -218,7 +218,7 @@ describe('areMapsEqual', () => {
   });
 });
 
-// LOGZ.IO CHANGE START:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE START:: Panel-level "Max data points"
 describe('getQueryOptions', () => {
   const definition = {
     kind: 'TimeSeriesQuery',
@@ -243,4 +243,4 @@ describe('getQueryOptions', () => {
     expect(withMax.queryKey).not.toEqual(withoutMax.queryKey);
   });
 });
-// LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE END:: Panel-level "Max data points"
