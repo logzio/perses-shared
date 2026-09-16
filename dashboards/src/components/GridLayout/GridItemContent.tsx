@@ -13,7 +13,13 @@
 
 import { Box, useForkRef } from '@mui/material';
 import { useInView } from 'react-intersection-observer';
-import { DataQueriesProvider, usePlugin, useSuggestedStepMs } from '@perses-dev/plugin-system';
+import {
+  DataQueriesProvider,
+  // LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+  resolveMaxDataPoints,
+  usePlugin,
+  useSuggestedStepMs,
+} from '@perses-dev/plugin-system';
 import React, { ReactElement, useCallback, useMemo, useState } from 'react';
 import { PanelDefinition } from '@perses-dev/spec';
 import { isPanelGroupItemIdEqual, PanelGroupItemId } from '../../model'; // TODO
@@ -209,8 +215,12 @@ function GridItemContentBody({
   viewQueriesHandler,
   panelOptions,
 }: GridItemContentBodyProps): ReactElement {
+  // LOGZ.IO CHANGE START:: Panel-level "Max data points" — the author's point count stands in for
+  // the panel width, which is how Grafana derives the interval too [APPZ-3369]
+  const maxDataPoints = resolveMaxDataPoints((panelDefinition.spec as { maxDataPoints?: unknown }).maxDataPoints);
   // map TimeSeriesQueryDefinition to Definition<UnknownSpec>
-  const suggestedStepMs = useSuggestedStepMs(width);
+  const suggestedStepMs = useSuggestedStepMs(maxDataPoints ?? width);
+  // LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
 
   const { data: plugin } = usePlugin('Panel', panelDefinition.spec.plugin.kind);
 
@@ -227,7 +237,7 @@ function GridItemContentBody({
   return (
     <DataQueriesProvider
       definitions={definitions}
-      options={{ suggestedStepMs, ...pluginQueryOptions }}
+      options={{ suggestedStepMs, maxDataPoints, ...pluginQueryOptions }}
       queryOptions={{ enabled: shouldQuery }}
     >
       {shouldRender && (

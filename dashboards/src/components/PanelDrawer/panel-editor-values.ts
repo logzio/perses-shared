@@ -15,10 +15,11 @@ import { QueryDefinition } from '@perses-dev/spec';
 import { PanelEditorValues } from '@perses-dev/plugin-system';
 import { RepeatablePanelEditorValues } from '../../model';
 
-interface PanelSpecTimeOverrides {
+interface PanelSpecExtensions {
   timeFrom?: string;
   timeShift?: string;
   hideTimeOverride?: boolean;
+  maxDataPoints?: number;
 }
 
 /**
@@ -27,6 +28,7 @@ interface PanelSpecTimeOverrides {
  * spec — and Zod objects strip unknown keys during parsing, so the Logz.io extension fields are
  * missing from the validated values `react-hook-form` hands to the submit handler:
  * - panel spec: `timeFrom` / `timeShift` / `hideTimeOverride` (panel time override, APPZ-2474)
+ * - panel spec: `maxDataPoints` (points the panel asks for, APPZ-3369)
  * - query spec: `hidden` ("Hide from chart", APPZ-955)
  * - top level: `repeat` (item-level repeat) — a layout value, not part of the panel
  *
@@ -39,7 +41,7 @@ export function restoreValuesStrippedByValidation(
   validated: RepeatablePanelEditorValues,
   raw: RepeatablePanelEditorValues
 ): RepeatablePanelEditorValues {
-  const rawSpec = raw.panelDefinition.spec as PanelEditorValues['panelDefinition']['spec'] & PanelSpecTimeOverrides;
+  const rawSpec = raw.panelDefinition.spec as PanelEditorValues['panelDefinition']['spec'] & PanelSpecExtensions;
 
   const queries = validated.panelDefinition.spec.queries?.map((query, index): QueryDefinition => {
     const rawHidden = (raw.panelDefinition.spec.queries?.[index]?.spec as { hidden?: boolean } | undefined)?.hidden;
@@ -61,6 +63,7 @@ export function restoreValuesStrippedByValidation(
         ...(rawSpec.timeFrom !== undefined && rawSpec.timeFrom !== '' && { timeFrom: rawSpec.timeFrom }),
         ...(rawSpec.timeShift !== undefined && rawSpec.timeShift !== '' && { timeShift: rawSpec.timeShift }),
         ...(rawSpec.hideTimeOverride !== undefined && { hideTimeOverride: rawSpec.hideTimeOverride }),
+        ...(rawSpec.maxDataPoints !== undefined && { maxDataPoints: rawSpec.maxDataPoints }),
       } as PanelEditorValues['panelDefinition']['spec'],
     },
   };

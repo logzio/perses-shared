@@ -16,6 +16,8 @@ export * from './datasource';
 export * from './legend';
 export * from './log-queries';
 export * from './log-volume-utils';
+// LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+export * from './max-data-points';
 export * from './panels';
 export * from './plugins';
 export * from './plugin-base';
