@@ -15,7 +15,7 @@ import { Box, useForkRef } from '@mui/material';
 import { useInView } from 'react-intersection-observer';
 import {
   DataQueriesProvider,
-  // LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+  // LOGZ.IO CHANGE:: Panel-level "Max data points"
   resolveMaxDataPoints,
   usePlugin,
   useSuggestedStepMs,
@@ -216,11 +216,11 @@ function GridItemContentBody({
   panelOptions,
 }: GridItemContentBodyProps): ReactElement {
   // LOGZ.IO CHANGE START:: Panel-level "Max data points" — the author's point count stands in for
-  // the panel width, which is how Grafana derives the interval too [APPZ-3369]
+  // the panel width, which is how Grafana derives the interval too
   const maxDataPoints = resolveMaxDataPoints((panelDefinition.spec as { maxDataPoints?: unknown }).maxDataPoints);
   // map TimeSeriesQueryDefinition to Definition<UnknownSpec>
   const suggestedStepMs = useSuggestedStepMs(maxDataPoints ?? width);
-  // LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+  // LOGZ.IO CHANGE END:: Panel-level "Max data points"
 
   const { data: plugin } = usePlugin('Panel', panelDefinition.spec.plugin.kind);
 

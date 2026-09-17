@@ -33,7 +33,7 @@ export function getQueryOptions(
   context: TimeSeriesQueryContext
 ): QueryOptionsResult {
   // LOGZ.IO CHANGE:: `maxDataPoints` keys the logs path, which sizes its own buckets and so
-  // doesn't move when `suggestedStepMs` does [APPZ-3369]
+  // doesn't move when `suggestedStepMs` does
   const { timeRange, suggestedStepMs, maxDataPoints, mode, variableState } = context;
 
   const dependencies = plugin?.dependsOn ? plugin.dependsOn(definition.spec.plugin.spec, context) : {};

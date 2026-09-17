@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Panel-level "Max data points" (Grafana parity) [APPZ-3369]
+// LOGZ.IO CHANGE START:: Panel-level "Max data points" (Grafana parity)
 // The panel spec's `maxDataPoints` replaces the panel's pixel width as the divisor that sets the
 // query interval (`time range / points`), matching Grafana's query option of the same name.
 // Lives in `model` because both halves need it: the editor field (plugin-system) and the two
@@ -51,4 +51,4 @@ export function parseMaxDataPointsInput(input: string): number | undefined {
 
   return trimmed === '' ? undefined : resolveMaxDataPoints(Number(trimmed));
 }
-// LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE END:: Panel-level "Max data points"
