@@ -74,14 +74,14 @@ export function clearHighlightedSeries(chart: EChartsInstance): void {
 // tooltip (and blocked pin-on-click). Cursor positions within this tolerance are clamped onto the rect.
 const GRID_EDGE_TOLERANCE_PX = 2;
 
-interface GridRect {
+export interface GridRect {
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-function getGridRect(chart: EChartsInstance): GridRect | undefined {
+export function getGridRect(chart: EChartsInstance): GridRect | undefined {
   // Reaches into the private chart model the same way enableDataZoom/getNearbySeriesData already do.
   return chart['_model']?.getComponent?.('grid')?.coordinateSystem?.getRect?.();
 }

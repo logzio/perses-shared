@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { CSSProperties, memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ECharts, EChartsCoreOption, init, connect, use } from 'echarts/core';
+import { ECharts, EChartsCoreOption, init, use } from 'echarts/core';
 import { Box, SxProps, Theme } from '@mui/material';
 import isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
@@ -42,6 +42,7 @@ import {
 import { CanvasRenderer } from 'echarts/renderers';
 import { clearNearbySeriesDispatchCache } from '../utils/chart-actions'; // LOGZ.IO CHANGE:: reset emphasis-dispatch dedup on option replace [unidash-perf]
 import { EChartsTheme } from '../model';
+import { joinCrosshairGroup } from './crosshair-sync'; // LOGZ.IO CHANGE:: share the crosshair by timestamp
 
 // Loading the ECharts extensions should happen in the respective plugins.
 // This is a workaround for https://github.com/perses/plugins/issues/83.
@@ -260,7 +261,6 @@ export const EChart = memo(function EChart<T>({
       } catch {
         // best-effort: never block dispose
       }
-      chartElement.current.group = '';
       // LOGZ.IO CHANGE END:: pre-dispose cleanup [unidash-perf]
       chartElement.current.dispose();
       chartElement.current = null;
@@ -312,13 +312,15 @@ export const EChart = memo(function EChart<T>({
     // LOGZ.IO CHANGE:: only join the group while on screen
     if (!chartElement.current || !syncGroup || !isOnScreen) return;
     const chart = chartElement.current; // LOGZ.IO CHANGE:: capture for cleanup [unidash-perf]
-    chart.group = syncGroup;
-    connect([chart]); // more info: https://echarts.apache.org/en/api.html#echarts.connect
+    // LOGZ.IO CHANGE START:: share the crosshair by timestamp rather than through echarts' `connect`
+    const leaveCrosshairGroup = joinCrosshairGroup({ chart, group: syncGroup });
+    // LOGZ.IO CHANGE END:: share the crosshair by timestamp
     // LOGZ.IO CHANGE START:: leave the sync group when it changes or the chart unmounts, so the
     // group registry never keeps a reference to a disposed chart. [unidash-perf]
     return (): void => {
+      leaveCrosshairGroup();
+
       if (!chart.isDisposed()) {
-        chart.group = '';
         // LOGZ.IO CHANGE:: a chart that leaves the group stops receiving crosshair updates, so drop
         // whatever it was showing rather than leaving it frozen for when it scrolls back into view.
         chart.dispatchAction({ type: 'hideTip' });

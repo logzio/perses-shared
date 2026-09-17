@@ -17,20 +17,65 @@
 import { act, render } from '@testing-library/react';
 import { EChart } from './EChart';
 
-const fakeChart = {
-  group: '',
-  setOption: jest.fn(),
-  dispose: jest.fn(),
-  dispatchAction: jest.fn(),
-  isDisposed: jest.fn(() => false),
-  resize: jest.fn(),
-  on: jest.fn(),
-  off: jest.fn(),
-};
+interface DOMRectLike {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface FakeChart {
+  setOption: jest.Mock;
+  dispose: jest.Mock;
+  dispatchAction: jest.Mock;
+  isDisposed: jest.Mock;
+  resize: jest.Mock;
+  on: jest.Mock;
+  off: jest.Mock;
+  convertToPixel: jest.Mock;
+  _model: { getComponent: () => { coordinateSystem: { getRect: () => DOMRectLike } } };
+  hover: (timeMs: number) => void;
+}
+
+const mockCharts: FakeChart[] = [];
+
+function mockCreateChart(): FakeChart {
+  const handlers = new Map<string, Array<(event: unknown) => void>>();
+  let disposed = false;
+
+  return {
+    setOption: jest.fn(),
+    dispose: jest.fn(() => {
+      disposed = true;
+    }),
+    dispatchAction: jest.fn(),
+    isDisposed: jest.fn(() => disposed),
+    resize: jest.fn(),
+    on: jest.fn((eventName: string, handler: (event: unknown) => void) => {
+      handlers.set(eventName, [...(handlers.get(eventName) ?? []), handler]);
+    }),
+    off: jest.fn((eventName: string, handler?: (event: unknown) => void) => {
+      const remaining = (handlers.get(eventName) ?? []).filter((entry) => entry !== handler);
+      handlers.set(eventName, handler === undefined ? [] : remaining);
+    }),
+    convertToPixel: jest.fn((_finder: unknown, value: number) => value),
+    _model: {
+      getComponent: () => ({ coordinateSystem: { getRect: () => ({ x: 0, y: 0, width: 100, height: 100 }) } }),
+    },
+    hover: (timeMs: number): void => {
+      (handlers.get('updateAxisPointer') ?? []).forEach((handler) => handler({ axesInfo: [{ value: timeMs }] }));
+    },
+  };
+}
 
 jest.mock('echarts/core', () => ({
-  init: jest.fn(() => fakeChart),
-  connect: jest.fn(),
+  init: jest.fn(() => {
+    const chart = mockCreateChart();
+
+    mockCharts.push(chart);
+
+    return chart;
+  }),
   use: jest.fn(),
 }));
 
@@ -81,31 +126,35 @@ function setIntersecting(isIntersecting: boolean): void {
   });
 }
 
+/** The chart instance created by the nth EChart rendered so far in this test file. */
+function chartAt(index: number): FakeChart {
+  const chart = mockCharts[index];
+
+  if (chart === undefined) throw new Error(`no chart was created at index ${index}`);
+
+  return chart;
+}
+
 describe('EChart', () => {
   it('should hide the tooltip and leave the sync group before disposing on unmount', () => {
-    fakeChart.group = '';
-    fakeChart.dispose.mockClear();
-    fakeChart.dispatchAction.mockClear();
-
+    const index = mockCharts.length;
     const { unmount } = render(<EChart option={{}} syncGroup="sync-group-1" />);
-
-    expect(fakeChart.group).toBe('sync-group-1');
+    const chart = chartAt(index);
 
     unmount();
 
-    expect(fakeChart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
-    expect(fakeChart.group).toBe('');
-    expect(fakeChart.dispose).toHaveBeenCalledTimes(1);
+    expect(chart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
+    expect(chart.dispose).toHaveBeenCalledTimes(1);
 
     // teardown order: tooltip timers are dropped BEFORE the instance is disposed
-    const hideTipOrder = fakeChart.dispatchAction.mock.invocationCallOrder[0] ?? Infinity;
-    const disposeOrder = fakeChart.dispose.mock.invocationCallOrder[0] ?? 0;
+    const hideTipOrder = chart.dispatchAction.mock.invocationCallOrder[0] ?? Infinity;
+    const disposeOrder = chart.dispose.mock.invocationCallOrder[0] ?? 0;
 
     expect(hideTipOrder).toBeLessThan(disposeOrder);
   });
 
   it('should dispose exactly once per mount/unmount cycle', () => {
-    fakeChart.dispose.mockClear();
+    const index = mockCharts.length;
 
     const first = render(<EChart option={{}} />);
 
@@ -115,15 +164,17 @@ describe('EChart', () => {
 
     second.unmount();
 
-    expect(fakeChart.dispose).toHaveBeenCalledTimes(2);
+    expect(chartAt(index).dispose).toHaveBeenCalledTimes(1);
+    expect(chartAt(index + 1).dispose).toHaveBeenCalledTimes(1);
   });
 
   it('should clear escaped instance refs on unmount so holders cannot retain the disposed chart', () => {
+    const index = mockCharts.length;
     const instanceRef: { current: unknown } = { current: undefined };
 
     const { unmount } = render(<EChart option={{}} _instance={instanceRef as never} />);
 
-    expect(instanceRef.current).toBe(fakeChart);
+    expect(instanceRef.current).toBe(chartAt(index));
 
     unmount();
 
@@ -172,37 +223,54 @@ describe('EChart', () => {
   // LOGZ.IO ADDITION:: sync-group membership is limited to charts that are on screen, so hovering one
   // panel no longer broadcasts crosshair actions to charts the user cannot see.
   describe('sync group membership', () => {
-    it('should leave the sync group and drop its crosshair when scrolled out of view', () => {
-      fakeChart.group = '';
-      fakeChart.dispatchAction.mockClear();
+    it('should place the crosshair on the other charts in the group at the hovered timestamp', () => {
+      const index = mockCharts.length;
 
-      render(<EChart option={{}} syncGroup="sync-group-1" />);
+      render(<EChart option={{}} syncGroup="sync-group-hover" />);
+      render(<EChart option={{}} syncGroup="sync-group-hover" />);
 
-      expect(fakeChart.group).toBe('sync-group-1');
+      chartAt(index).hover(1000);
 
-      setIntersecting(false);
-
-      expect(fakeChart.group).toBe('');
-      expect(fakeChart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
+      expect(chartAt(index + 1).dispatchAction).toHaveBeenCalledWith({ type: 'updateAxisPointer', x: 1000, y: 50 });
     });
 
-    it('should rejoin the sync group when scrolled back into view', () => {
-      fakeChart.group = '';
+    it('should stop receiving the crosshair and drop its own when scrolled out of view', () => {
+      const index = mockCharts.length;
 
-      render(<EChart option={{}} syncGroup="sync-group-1" />);
+      render(<EChart option={{}} syncGroup="sync-group-offscreen" />);
+      render(<EChart option={{}} syncGroup="sync-group-offscreen" />);
+
+      setIntersecting(false);
+      chartAt(index).hover(1000);
+
+      expect(chartAt(index + 1).dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
+      expect(chartAt(index + 1).dispatchAction).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'updateAxisPointer', x: 1000 })
+      );
+    });
+
+    it('should receive the crosshair again when scrolled back into view', () => {
+      const index = mockCharts.length;
+
+      render(<EChart option={{}} syncGroup="sync-group-rejoin" />);
+      render(<EChart option={{}} syncGroup="sync-group-rejoin" />);
 
       setIntersecting(false);
       setIntersecting(true);
+      chartAt(index).hover(1000);
 
-      expect(fakeChart.group).toBe('sync-group-1');
+      expect(chartAt(index + 1).dispatchAction).toHaveBeenCalledWith({ type: 'updateAxisPointer', x: 1000, y: 50 });
     });
 
-    it('should not join any group when no syncGroup is configured', () => {
-      fakeChart.group = '';
+    it('should not broadcast the crosshair when no syncGroup is configured', () => {
+      const index = mockCharts.length;
 
       render(<EChart option={{}} />);
+      render(<EChart option={{}} />);
 
-      expect(fakeChart.group).toBe('');
+      chartAt(index).hover(1000);
+
+      expect(chartAt(index + 1).dispatchAction).not.toHaveBeenCalled();
     });
   });
 });
