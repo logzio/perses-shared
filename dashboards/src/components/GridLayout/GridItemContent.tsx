@@ -82,7 +82,14 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
   const { ref: queryRef, inView: shouldQuery } = useInView({
     threshold: 0,
     initialInView: false,
-    triggerOnce: true,
+    // LOGZ.IO CHANGE START:: querying follows the viewport, rendering does not [unidash-perf]
+    // Panels stay mounted once rendered (see below), and with `triggerOnce` here their queries stayed
+    // enabled too — so every auto-refresh tick refetched and re-rendered every panel the user had ever
+    // scrolled past, not the handful on screen. Dropping `triggerOnce` lets a panel that is far away
+    // go quiet; scrolling back re-enables the query, which is stale and refetches, while the retained
+    // data keeps the chart drawn in the meantime.
+    triggerOnce: false,
+    // LOGZ.IO CHANGE END:: querying follows the viewport, rendering does not [unidash-perf]
     root: scrollRoot,
     // LOGZ.IO CHANGE:: prefetch further ahead than we render — the query + transform is the expensive
     // part of a panel scrolling into view, so give it a head start over the scroll. Rendering follows
@@ -125,28 +132,37 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
         };
   }, [isEditMode, queries]);
 
-  const readHandlers = {
-    isPanelViewed: isPanelGroupItemIdEqual(viewPanelGroupItemId, panelGroupItemId),
-    onViewPanelClick: function (): void {
-      if (viewPanelGroupItemId === undefined) {
-        viewPanel(panelGroupItemId);
-      } else {
-        viewPanel(undefined);
-      }
-    },
-  };
+  // LOGZ.IO CHANGE START:: memoize the handler objects [unidash-perf]
+  // Rebuilt as object literals, these changed identity on every render of this component and defeated
+  // the memo on Panel, so anything that re-rendered the grid re-rendered every panel body and legend.
+  const isPanelViewed = isPanelGroupItemIdEqual(viewPanelGroupItemId, panelGroupItemId);
+
+  const readHandlers = useMemo(
+    () => ({
+      isPanelViewed,
+      onViewPanelClick: (): void => {
+        viewPanel(viewPanelGroupItemId === undefined ? panelGroupItemId : undefined);
+      },
+    }),
+    [isPanelViewed, viewPanelGroupItemId, panelGroupItemId, viewPanel]
+  );
 
   // Provide actions to the panel when in edit mode
-  let editHandlers: PanelProps['editHandlers'] = undefined;
   // LOGZ.IO CHANGE:: A repeated copy is derived, so editing/duplicating/deleting it is meaningless —
   // the change would be discarded on the next expansion. Grafana hides the same actions.
-  if (isEditMode && !props.noEditActions) {
-    editHandlers = {
-      onEditPanelClick: openEditPanel,
-      onDuplicatePanelClick: duplicatePanel,
-      onDeletePanelClick: openDeletePanelDialog,
-    };
-  }
+  const canEdit = isEditMode && !props.noEditActions;
+  const editHandlers: PanelProps['editHandlers'] = useMemo(
+    () =>
+      canEdit
+        ? {
+            onEditPanelClick: openEditPanel,
+            onDuplicatePanelClick: duplicatePanel,
+            onDeletePanelClick: openDeletePanelDialog,
+          }
+        : undefined,
+    [canEdit, openEditPanel, duplicatePanel, openDeletePanelDialog]
+  );
+  // LOGZ.IO CHANGE END:: memoize the handler objects [unidash-perf]
 
   // LOGZ.IO CHANGE:: upstream computes suggestedStepMs/plugin/pluginQueryOptions here; we compute them
   // inside GridItemContentBody instead, so they resolve against the panel-level time-range override
@@ -224,7 +240,10 @@ function GridItemContentBody({
 
   const { data: plugin } = usePlugin('Panel', panelDefinition.spec.plugin.kind);
 
-  const definitions = panelDefinition.spec.queries ?? [];
+  // LOGZ.IO CHANGE START:: stable inputs for DataQueriesProvider [unidash-perf]
+  // `?? []` minted a new array and the two option literals a new object on every render, which is
+  // enough to invalidate the provider's memoized context and re-render the panel body beneath it.
+  const definitions = useMemo(() => panelDefinition.spec.queries ?? [], [panelDefinition.spec.queries]);
 
   const pluginQueryOptions = useMemo(
     () =>
@@ -234,12 +253,15 @@ function GridItemContentBody({
     [plugin, panelDefinition.spec.plugin.spec]
   );
 
+  const options = useMemo(
+    () => ({ suggestedStepMs, maxDataPoints, ...pluginQueryOptions }),
+    [suggestedStepMs, maxDataPoints, pluginQueryOptions]
+  );
+  const queryOptions = useMemo(() => ({ enabled: shouldQuery }), [shouldQuery]);
+  // LOGZ.IO CHANGE END:: stable inputs for DataQueriesProvider [unidash-perf]
+
   return (
-    <DataQueriesProvider
-      definitions={definitions}
-      options={{ suggestedStepMs, maxDataPoints, ...pluginQueryOptions }}
-      queryOptions={{ enabled: shouldQuery }}
-    >
+    <DataQueriesProvider definitions={definitions} options={options} queryOptions={queryOptions}>
       {shouldRender && (
         <Panel
           definition={panelDefinition}

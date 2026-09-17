@@ -18,7 +18,7 @@ import { ECharts as EChartsInstance } from 'echarts/core';
 import { TimeSeries } from '@perses-dev/core';
 import { TimeChartSeriesMapping } from '../model';
 import { CursorCoordinates, TOOLTIP_MAX_HEIGHT, TOOLTIP_MAX_WIDTH } from './tooltip-model';
-import { assembleTransform, gatherCandidates } from './utils';
+import { assembleTransform, gatherCandidates, readTooltipContainerGeometry } from './utils';
 
 const TIMESTAMPS = [1_000, 1_015, 1_030, 1_045, 1_060];
 
@@ -157,7 +157,10 @@ describe('assembleTransform', () => {
   it('should not clamp an unmeasured tooltip against the CSS max when portaled into a container', () => {
     setViewport(VIEWPORT);
 
-    const { x } = readOffsets(assembleTransform(buildCursor(1099, 400), null, 0, 0, document.createElement('div')));
+    const { x } = readOffsets(
+      // LOGZ.IO CHANGE:: the container's geometry is read by the caller now [unidash-perf]
+      assembleTransform(buildCursor(1099, 400), null, 0, 0, readTooltipContainerGeometry(document.createElement('div')))
+    );
 
     expect(x).toBe(1131);
   });

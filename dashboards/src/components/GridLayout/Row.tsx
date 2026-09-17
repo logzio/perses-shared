@@ -207,12 +207,9 @@ export function Row({
                 <RepeatScopedGridItem
                   binding={binding}
                   panelOptions={panelOptions}
-                  panelGroupItemId={{
-                    panelGroupId,
-                    panelGroupItemLayoutId: sourceLayoutId,
-                    repeatVariable,
-                    itemRepeatVariable: binding,
-                  }}
+                  panelGroupId={panelGroupId}
+                  panelGroupItemLayoutId={sourceLayoutId}
+                  repeatVariable={repeatVariable}
                   width={calculateGridItemWidth(w, gridColWidth)}
                   // LOGZ.IO CHANGE:: A copied row, or any instance past the first, is not the original
                   noEditActions={isRepeatClone || (instanceIndex !== undefined && instanceIndex > 0)}
@@ -259,26 +256,49 @@ function restoreAuthoredLayouts(
   });
 }
 
-interface RepeatScopedGridItemProps extends ComponentProps<typeof GridItemContent> {
+interface RepeatScopedGridItemProps extends Omit<ComponentProps<typeof GridItemContent>, 'panelGroupItemId'> {
   binding?: RepeatVariableBinding;
+  // LOGZ.IO CHANGE:: the id is assembled here rather than passed in, so its identity survives a
+  // re-render of the row [unidash-perf]
+  panelGroupId: PanelGroupId;
+  panelGroupItemLayoutId: string;
+  repeatVariable?: RepeatVariableBinding;
 }
 
 /**
  * Renders a grid item with the repeat variable pinned to this instance's value, so the panel's
  * queries, title and links all resolve against it. Without a binding it is just `GridItemContent`.
  */
-function RepeatScopedGridItem({ binding, ...props }: RepeatScopedGridItemProps): ReactElement {
+function RepeatScopedGridItem({
+  binding,
+  panelGroupId,
+  panelGroupItemLayoutId,
+  repeatVariable,
+  ...props
+}: RepeatScopedGridItemProps): ReactElement {
   const variables = useVariableValues();
 
-  if (!binding) {
-    return <GridItemContent {...props} />;
+  // LOGZ.IO CHANGE START:: stable identities for the props that reach the memoized Panel [unidash-perf]
+  const panelGroupItemId = useMemo(
+    () => ({ panelGroupId, panelGroupItemLayoutId, repeatVariable, itemRepeatVariable: binding }),
+    [panelGroupId, panelGroupItemLayoutId, repeatVariable, binding]
+  );
+
+  const scopedVariables = useMemo(
+    () => (binding ? { state: { ...variables, [binding[0]]: { value: binding[1], loading: false } } } : undefined),
+    [binding, variables]
+  );
+
+  if (!scopedVariables) {
+    return <GridItemContent {...props} panelGroupItemId={panelGroupItemId} />;
   }
 
   return (
-    <VariableContext.Provider value={{ state: { ...variables, [binding[0]]: { value: binding[1], loading: false } } }}>
-      <GridItemContent {...props} />
+    <VariableContext.Provider value={scopedVariables}>
+      <GridItemContent {...props} panelGroupItemId={panelGroupItemId} />
     </VariableContext.Provider>
   );
+  // LOGZ.IO CHANGE END:: stable identities [unidash-perf]
 }
 
 // LOGZ.IO CHANGE END:: Item-level repeat helpers

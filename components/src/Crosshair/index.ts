@@ -11,6 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export { useDashboardShortcuts } from './useDashboardShortcuts';
-export { DashboardShortcuts } from './DashboardShortcuts'; // LOGZ.IO ADDITION:: [unidash-perf]
-export type { UseDashboardShortcutsOptions } from './useDashboardShortcuts';
+// LOGZ.IO ADDITION:: shared DOM crosshair [unidash-perf]
+export * from './ChartCrosshair';
+export * from './crosshair-store';

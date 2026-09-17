@@ -22,6 +22,7 @@ import {
   detectCircularDependency,
   formatCyclePath,
   getQueryOptions,
+  getTimeSeriesStaleTime,
 } from './time-series-queries-utils';
 
 describe('areDependenciesResolved', () => {
@@ -244,3 +245,14 @@ describe('getQueryOptions', () => {
   });
 });
 // LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+
+// LOGZ.IO ADDITION:: stale time follows the refresh interval [unidash-perf]
+describe('getTimeSeriesStaleTime', () => {
+  it('should keep data fresh for one refresh interval when auto-refresh is on', () => {
+    expect(getTimeSeriesStaleTime(30_000)).toBe(30_000);
+  });
+
+  it('should never treat data as stale when auto-refresh is off', () => {
+    expect(getTimeSeriesStaleTime(0)).toBe(Infinity);
+  });
+});

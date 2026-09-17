@@ -16,6 +16,7 @@ import { Theme } from '@mui/material';
 import { formatValue, TimeSeries, TimeSeriesMetadata, TimeSeriesValueTuple, FormatOptions } from '@perses-dev/core';
 import { LineSeriesOption, BarSeriesOption } from 'echarts/charts';
 import { DatapointInfo, TimeChartSeriesMapping } from '../model';
+import { findClosestTimestampIndex } from '../utils/chart-actions'; // LOGZ.IO CHANGE:: [unidash-perf]
 import {
   CursorCoordinates,
   CursorData,
@@ -53,6 +54,35 @@ export function isSeriesSelectable(metadata?: TimeSeriesMetadata): boolean {
 }
 // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
 
+// LOGZ.IO CHANGE START:: pre-read container geometry [unidash-perf]
+/**
+ * The container measurements the tooltip needs, read once per frame by the caller. Reading them here
+ * instead forced a second layout flush on every mouse move.
+ */
+export interface TooltipContainerGeometry {
+  left: number;
+  top: number;
+  scrollLeft: number;
+  scrollTop: number;
+  scrollHeight: number;
+  height: number;
+}
+
+export function readTooltipContainerGeometry(containerElement?: Element | null): TooltipContainerGeometry | undefined {
+  if (!containerElement) return undefined;
+
+  const rect = containerElement.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    height: rect.height,
+    scrollLeft: containerElement.scrollLeft,
+    scrollTop: containerElement.scrollTop,
+    scrollHeight: containerElement.scrollHeight,
+  };
+}
+// LOGZ.IO CHANGE END:: pre-read container geometry [unidash-perf]
+
 /**
  * Determine position of tooltip depending on chart dimensions and the number of focused series
  */
@@ -61,7 +91,7 @@ export function assembleTransform(
   pinnedPos: CursorCoordinates | null,
   tooltipHeight: number,
   tooltipWidth: number,
-  containerElement?: Element | null
+  containerGeometry?: TooltipContainerGeometry // LOGZ.IO CHANGE:: was the element itself [unidash-perf]
 ): string | undefined {
   if (mousePos === null) {
     return undefined;
@@ -77,7 +107,7 @@ export function assembleTransform(
   if (mousePos.plotCanvas.x === undefined) return undefined;
 
   // LOGZ.IO CHANGE START:: viewport-pinned tooltip uses client coords and clamps an unmeasured box to the CSS max
-  const isViewportPinned = !containerElement;
+  const isViewportPinned = !containerGeometry;
   const boundedHeight = isViewportPinned ? tooltipHeight || TOOLTIP_MAX_HEIGHT : tooltipHeight;
   const boundedWidth = isViewportPinned ? tooltipWidth || TOOLTIP_MAX_WIDTH : tooltipWidth;
   const anchor = isViewportPinned ? mousePos.client : mousePos.page;
@@ -85,14 +115,13 @@ export function assembleTransform(
   let x = anchor.x + cursorPaddingX; // Default to right side of the cursor
   let y = anchor.y + cursorPaddingY;
 
-  // If containerElement is defined, adjust coordinates relative to the container
-  if (containerElement) {
-    const containerRect = containerElement.getBoundingClientRect();
-    x = x - containerRect.left + containerElement.scrollLeft;
-    y = y - containerRect.top + containerElement.scrollTop;
+  // If the tooltip is portalled into a container, adjust coordinates relative to it
+  if (containerGeometry) {
+    x = x - containerGeometry.left + containerGeometry.scrollLeft;
+    y = y - containerGeometry.top + containerGeometry.scrollTop;
 
     // Ensure tooltip does not go out of the container's bottom
-    const containerBottom = containerRect.top + containerElement.scrollHeight;
+    const containerBottom = containerGeometry.top + containerGeometry.scrollHeight;
     if (y + boundedHeight > containerBottom) {
       y = Math.max(containerBottom - boundedHeight - cursorPaddingY, TOOLTIP_PADDING / 2);
     }
@@ -284,7 +313,10 @@ function findDatumAtTimestamp(
 }
 
 function getAlignedRowIdx(firstTimeSeriesValues: TimeSeriesValueTuple[] | undefined, closestTimestamp: number): number {
-  return firstTimeSeriesValues?.findIndex(([ts]) => ts === closestTimestamp) ?? -1;
+  // LOGZ.IO CHANGE:: binary search — this used to walk every row through the lazy tuple view on each
+  // mousemove, right after getClosestTimestamp had already walked the same column. [unidash-perf]
+  const index = findClosestTimestampIndex(firstTimeSeriesValues, closestTimestamp);
+  return index >= 0 && firstTimeSeriesValues?.[index]?.[0] === closestTimestamp ? index : -1;
 }
 // LOGZ.IO CHANGE END:: O(1) datum lookup for row-aligned series [unidash-perf]
 

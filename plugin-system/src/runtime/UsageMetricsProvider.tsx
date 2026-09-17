@@ -13,7 +13,7 @@
 
 import { fetch } from '@perses-dev/client';
 import { QueryDefinition } from '@perses-dev/spec';
-import { createContext, ReactElement, ReactNode, useContext } from 'react';
+import { createContext, ReactElement, ReactNode, useContext, useMemo } from 'react';
 
 type QueryState = 'pending' | 'success' | 'error';
 
@@ -47,32 +47,40 @@ export const useUsageMetricsContext = (): UsageMetrics | undefined => {
 export const useUsageMetrics = (): UseUsageMetricsResults => {
   const ctx = useUsageMetricsContext();
 
-  return {
-    markQuery: (definition: QueryDefinition, newState: QueryState): void => {
-      if (ctx === undefined) {
-        return;
-      }
-
-      const definitionKey = JSON.stringify(definition);
-      if (ctx.pendingQueries.has(definitionKey) && newState === 'pending') {
-        // Never allow transitions back to pending, to avoid re-sending stats on a re-render.
-        return;
-      }
-
-      if (ctx.pendingQueries.get(definitionKey) !== newState) {
-        ctx.pendingQueries.set(definitionKey, newState);
-        if (newState === 'error') {
-          ctx.renderErrorCount += 1;
+  // LOGZ.IO CHANGE START:: stable result object [unidash-perf]
+  // DataQueriesProvider keeps this in the deps of its memoized context value. Returned as a fresh
+  // literal on every call, it invalidated that context on every render of the provider, which
+  // re-rendered every panel body on the dashboard each time the grid re-rendered.
+  return useMemo(
+    () => ({
+      markQuery: (definition: QueryDefinition, newState: QueryState): void => {
+        if (ctx === undefined) {
+          return;
         }
 
-        const allDone = [...ctx.pendingQueries.values()].every((p) => p !== 'pending');
-        if (ctx.renderDurationMs === 0 && allDone) {
-          ctx.renderDurationMs = Date.now() - ctx.startRenderTime;
-          submitMetrics(ctx);
+        const definitionKey = JSON.stringify(definition);
+        if (ctx.pendingQueries.has(definitionKey) && newState === 'pending') {
+          // Never allow transitions back to pending, to avoid re-sending stats on a re-render.
+          return;
         }
-      }
-    },
-  };
+
+        if (ctx.pendingQueries.get(definitionKey) !== newState) {
+          ctx.pendingQueries.set(definitionKey, newState);
+          if (newState === 'error') {
+            ctx.renderErrorCount += 1;
+          }
+
+          const allDone = [...ctx.pendingQueries.values()].every((p) => p !== 'pending');
+          if (ctx.renderDurationMs === 0 && allDone) {
+            ctx.renderDurationMs = Date.now() - ctx.startRenderTime;
+            submitMetrics(ctx);
+          }
+        }
+      },
+    }),
+    [ctx]
+  );
+  // LOGZ.IO CHANGE END:: stable result object [unidash-perf]
 };
 
 const submitMetrics = async (stats: UsageMetrics): Promise<void> => {

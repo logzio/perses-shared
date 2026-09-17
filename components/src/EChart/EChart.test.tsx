@@ -11,10 +11,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO ADDITION:: guards the chart teardown path — pending tooltip timers and sync-group linkage
-// must be released before dispose, otherwise unmounted charts survive GC (memory leak). [unidash-perf]
+// LOGZ.IO ADDITION:: guards the chart teardown path — pending tooltip timers must be released before
+// dispose, otherwise unmounted charts survive GC (memory leak). [unidash-perf]
 
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { EChart } from './EChart';
 
 const fakeChart = {
@@ -30,7 +30,6 @@ const fakeChart = {
 
 jest.mock('echarts/core', () => ({
   init: jest.fn(() => fakeChart),
-  connect: jest.fn(),
   use: jest.fn(),
 }));
 
@@ -45,51 +44,24 @@ class ResizeObserverStub {
 
 (globalThis as { ResizeObserver?: unknown }).ResizeObserver = ResizeObserverStub;
 
-// jsdom has no IntersectionObserver (EChart observes its container to stay in the sync group only
-// while on screen). Observing reports the chart as visible, matching a rendered panel; tests drive
-// visibility changes through setIntersecting.
-const intersectionCallbacks = new Set<IntersectionObserverCallback>();
-
-function emit(callback: IntersectionObserverCallback, isIntersecting: boolean): void {
-  callback([{ isIntersecting } as IntersectionObserverEntry], null as unknown as IntersectionObserver);
-}
-
+// jsdom has no IntersectionObserver; components under test may construct one.
 class IntersectionObserverStub {
-  private readonly callback: IntersectionObserverCallback;
-
-  constructor(callback: IntersectionObserverCallback) {
-    this.callback = callback;
-    intersectionCallbacks.add(callback);
-  }
-
-  observe(): void {
-    emit(this.callback, true);
-  }
+  observe(): void {}
 
   unobserve(): void {}
 
-  disconnect(): void {
-    intersectionCallbacks.delete(this.callback);
-  }
+  disconnect(): void {}
 }
 
 (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = IntersectionObserverStub;
 
-function setIntersecting(isIntersecting: boolean): void {
-  act(() => {
-    intersectionCallbacks.forEach((callback) => emit(callback, isIntersecting));
-  });
-}
-
 describe('EChart', () => {
-  it('should hide the tooltip and leave the sync group before disposing on unmount', () => {
+  it('should hide the tooltip before disposing on unmount', () => {
     fakeChart.group = '';
     fakeChart.dispose.mockClear();
     fakeChart.dispatchAction.mockClear();
 
-    const { unmount } = render(<EChart option={{}} syncGroup="sync-group-1" />);
-
-    expect(fakeChart.group).toBe('sync-group-1');
+    const { unmount } = render(<EChart option={{}} />);
 
     unmount();
 
@@ -169,40 +141,24 @@ describe('EChart', () => {
     jest.useRealTimers();
   });
 
-  // LOGZ.IO ADDITION:: sync-group membership is limited to charts that are on screen, so hovering one
-  // panel no longer broadcasts crosshair actions to charts the user cannot see.
-  describe('sync group membership', () => {
-    it('should leave the sync group and drop its crosshair when scrolled out of view', () => {
-      fakeChart.group = '';
-      fakeChart.dispatchAction.mockClear();
+  // LOGZ.IO ADDITION:: charts no longer join an ECharts connect group — the crosshair they used to
+  // share through it is drawn by ChartCrosshair from a shared timestamp. [unidash-perf]
+  it('should never join an ECharts connect group', () => {
+    fakeChart.group = '';
 
-      render(<EChart option={{}} syncGroup="sync-group-1" />);
+    render(<EChart option={{}} />);
 
-      expect(fakeChart.group).toBe('sync-group-1');
+    expect(fakeChart.group).toBe('');
+  });
 
-      setIntersecting(false);
+  // LOGZ.IO ADDITION:: skip the deep option compare when the option object is unchanged [unidash-perf]
+  it('should not re-apply the option when the same object is rendered again', () => {
+    const option = { series: [] };
+    const { rerender } = render(<EChart option={option} />);
 
-      expect(fakeChart.group).toBe('');
-      expect(fakeChart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
-    });
+    fakeChart.setOption.mockClear();
+    rerender(<EChart option={option} />);
 
-    it('should rejoin the sync group when scrolled back into view', () => {
-      fakeChart.group = '';
-
-      render(<EChart option={{}} syncGroup="sync-group-1" />);
-
-      setIntersecting(false);
-      setIntersecting(true);
-
-      expect(fakeChart.group).toBe('sync-group-1');
-    });
-
-    it('should not join any group when no syncGroup is configured', () => {
-      fakeChart.group = '';
-
-      render(<EChart option={{}} />);
-
-      expect(fakeChart.group).toBe('');
-    });
+    expect(fakeChart.setOption).not.toHaveBeenCalled();
   });
 });

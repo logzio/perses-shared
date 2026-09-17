@@ -69,7 +69,10 @@ export const VirtualizedSeries: React.FC<VirtualizedSeriesProps> = ({
         itemContent={(index, data) => {
           if (isNil(data) || isNil(data.datumIdx) || isNil(data.seriesIdx)) return null;
 
-          const key = data.seriesIdx.toString() + data.datumIdx.toString();
+          // LOGZ.IO CHANGE:: key on the series alone. `datumIdx` changes as the cursor moves across
+          // time buckets, so including it remounted every visible row on every frame of a hover — a
+          // series appears at most once in the list, so the series index already identifies it. [unidash-perf]
+          const key = data.seriesIdx.toString();
 
           return (
             <SeriesInfo

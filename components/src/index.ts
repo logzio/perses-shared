@@ -14,6 +14,8 @@
 export * from './AlignSelector';
 export * from './ColorPicker';
 export * from './ContentWithLegend';
+// LOGZ.IO ADDITION:: shared DOM crosshair [unidash-perf]
+export * from './Crosshair';
 export * from './controls';
 export * from './Dialog';
 export * from './DensitySelector';

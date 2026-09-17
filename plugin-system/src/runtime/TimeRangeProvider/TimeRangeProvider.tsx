@@ -11,7 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { createContext, ReactElement, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  ReactElement,
+  startTransition,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   AbsoluteTimeRange,
   DurationString,
@@ -103,12 +113,42 @@ export function TimeRangeProvider(props: TimeRangeProviderProps): ReactElement {
 
   // Auto refresh is only refreshing queries of panels
   const autoRefresh = useCallback(() => {
-    setAbsoluteTimeRange(isRelativeTimeRange(timeRange) ? toAbsoluteTimeRange(timeRange) : timeRange);
+    // LOGZ.IO CHANGE START:: don't invalidate a relative range that is already being re-keyed [unidash-perf]
+    // The new absolute range is part of every query key, so advancing it mounts a fresh set of queries
+    // that fetch on their own. Invalidating first refetched the OUTGOING keys as well: those requests
+    // started, then aborted ~400ms later when the new observers took over. Measured on a 30s refresh:
+    // 90 of 159 requests over 105s were these duplicates. The inactive keys still have to be dropped,
+    // because the range is part of the key and they would otherwise accumulate.
+    if (isRelativeTimeRange(timeRange)) {
+      // A tick re-renders every mounted panel. As a default-lane update that is one uninterruptible
+      // task (measured at 331-345ms), which is what makes the cursor stall every 30s; as a transition
+      // React yields between panels. Nobody is waiting on an auto-refresh, so it can be low priority.
+      startTransition(() => setAbsoluteTimeRange(toAbsoluteTimeRange(timeRange)));
+      return;
+    }
+    // LOGZ.IO CHANGE END:: don't invalidate a relative range that is already being re-keyed [unidash-perf]
+
+    setAbsoluteTimeRange(timeRange);
     queryClient.invalidateQueries({ queryKey: ['query'] }).finally(() => {
       queryClient.removeQueries({ queryKey: ['query'], type: 'inactive' });
       queryClient.removeQueries({ queryKey: ['variable'], type: 'inactive' }); // Timerange is in queryKey, can lead to memory leak when using relative timerange
     });
   }, [queryClient, timeRange]);
+
+  // LOGZ.IO CHANGE START:: drop the superseded range's queries once the new ones have mounted [unidash-perf]
+  // The absolute range is part of every query key, so each refresh tick leaves the previous tick's
+  // entries behind. This runs after commit, by which point the panels have subscribed to the new keys
+  // and the old ones are observer-less.
+  const isFirstRangeRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRangeRef.current) {
+      isFirstRangeRef.current = false;
+      return;
+    }
+    queryClient.removeQueries({ queryKey: ['query'], type: 'inactive' });
+    queryClient.removeQueries({ queryKey: ['variable'], type: 'inactive' });
+  }, [absoluteTimeRange, queryClient]);
+  // LOGZ.IO CHANGE END:: drop the superseded range's queries once the new ones have mounted [unidash-perf]
 
   // LOGZ.IO CHANGE:: derived from the declared range, so it survives refresh ticks [stale-timeframe]
   const rangeKey = useMemo(() => getTimeRangeKey(timeRange), [timeRange]);

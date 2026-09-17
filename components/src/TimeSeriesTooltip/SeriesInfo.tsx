@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { Box } from '@mui/material';
-import { ReactElement } from 'react';
+import { memo, ReactElement } from 'react';
 import { SeriesMarker } from './SeriesMarker';
 import { SeriesLabelsStack } from './SeriesLabelsStack';
 import { TOOLTIP_LABELS_MAX_WIDTH, EMPHASIZED_SERIES_DESCRIPTION, NEARBY_SERIES_DESCRIPTION } from './tooltip-model';
@@ -32,7 +32,9 @@ export interface SeriesInfoProps {
   wrapLabels?: boolean;
 }
 
-export function SeriesInfo(props: SeriesInfoProps): ReactElement {
+// LOGZ.IO CHANGE:: memoized — one row per nearby series, re-rendered on every frame of a hover.
+// All props are primitives except `onSelected`, which the tooltip keeps stable. [unidash-perf]
+function SeriesInfoBase(props: SeriesInfoProps): ReactElement {
   const {
     seriesName,
     formattedY,
@@ -127,3 +129,5 @@ export function SeriesInfo(props: SeriesInfoProps): ReactElement {
     </Box>
   );
 }
+
+export const SeriesInfo = memo(SeriesInfoBase); // LOGZ.IO CHANGE:: [unidash-perf]
