@@ -45,7 +45,7 @@ export { TIME_SERIES_QUERY_KEY } from './time-series-queries-utils';
 
 export interface UseTimeSeriesQueryOptions {
   suggestedStepMs?: number;
-  // LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+  // LOGZ.IO CHANGE:: Panel-level "Max data points"
   maxDataPoints?: number;
   mode?: TimeSeriesQueryMode;
 }
@@ -76,7 +76,7 @@ export const useTimeSeriesQuery = (
       const ctx: TimeSeriesQueryContext = {
         ...context,
         suggestedStepMs: options?.suggestedStepMs,
-        // LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+        // LOGZ.IO CHANGE:: Panel-level "Max data points"
         maxDataPoints: options?.maxDataPoints,
       };
       return plugin.getTimeSeriesData(definition.spec.plugin.spec, ctx, signal);
@@ -116,7 +116,7 @@ export function useTimeSeriesQueries(
       ...baseContext,
       mode: options?.mode,
       suggestedStepMs: options?.suggestedStepMs,
-      // LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+      // LOGZ.IO CHANGE:: Panel-level "Max data points"
       maxDataPoints: options?.maxDataPoints,
     }),
     [baseContext, options?.mode, options?.suggestedStepMs, options?.maxDataPoints]

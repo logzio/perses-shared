@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE START:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE START:: Panel-level "Max data points"
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactElement } from 'react';
@@ -117,4 +117,4 @@ describe('PanelTimeOverrideEditor', () => {
     expect(screen.getByTestId('committed')).toHaveTextContent('auto');
   });
 });
-// LOGZ.IO CHANGE END:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE END:: Panel-level "Max data points"

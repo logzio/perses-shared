@@ -20,7 +20,7 @@ import {
   // LOGZ.IO CHANGE:: PanelSpecChangeProvider for bidirectional panel-settings sync
   PanelSpecChangeProvider,
   PanelSpecEditor,
-  // LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+  // LOGZ.IO CHANGE:: Panel-level "Max data points"
   resolveMaxDataPoints,
   usePlugin,
   useSuggestedStepMs,
@@ -52,7 +52,7 @@ export interface PanelQueriesSharedControlsProps {
 const TIME_FROM_PATH = 'panelDefinition.spec.timeFrom' as unknown as FieldPath<PanelEditorValues>;
 const TIME_SHIFT_PATH = 'panelDefinition.spec.timeShift' as unknown as FieldPath<PanelEditorValues>;
 const HIDE_OVERRIDE_PATH = 'panelDefinition.spec.hideTimeOverride' as unknown as FieldPath<PanelEditorValues>;
-// LOGZ.IO CHANGE:: Panel-level "Max data points" [APPZ-3369]
+// LOGZ.IO CHANGE:: Panel-level "Max data points"
 const MAX_DATA_POINTS_PATH = 'panelDefinition.spec.maxDataPoints' as unknown as FieldPath<PanelEditorValues>;
 
 export function PanelQueriesSharedControls(props: PanelQueriesSharedControlsProps): ReactElement {
@@ -96,7 +96,7 @@ function PanelQueriesSharedControlsBody({
   const panelEditorContext = useContext(PanelEditorContext);
 
   // LOGZ.IO CHANGE:: Panel-level "Max data points" — mirrors GridItemContentBody so the preview
-  // resolves the same interval the dashboard panel will [APPZ-3369]
+  // resolves the same interval the dashboard panel will
   const maxDataPoints = resolveMaxDataPoints((panelDefinition.spec as { maxDataPoints?: unknown }).maxDataPoints);
   const suggestedStepMs = useSuggestedStepMs(maxDataPoints ?? panelEditorContext?.preview.previewPanelWidth);
   // LOGZ.IO CHANGE END:: Wrap editor preview/queries in panel time range override

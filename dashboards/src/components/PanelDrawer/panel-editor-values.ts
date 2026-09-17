@@ -27,9 +27,9 @@ interface PanelSpecExtensions {
  * `display` / `plugin` / `queries` / `links` on the panel spec and `name` / `plugin` on each query
  * spec — and Zod objects strip unknown keys during parsing, so the Logz.io extension fields are
  * missing from the validated values `react-hook-form` hands to the submit handler:
- * - panel spec: `timeFrom` / `timeShift` / `hideTimeOverride` (panel time override, APPZ-2474)
- * - panel spec: `maxDataPoints` (points the panel asks for, APPZ-3369)
- * - query spec: `hidden` ("Hide from chart", APPZ-955)
+ * - panel spec: `timeFrom` / `timeShift` / `hideTimeOverride` (panel time override)
+ * - panel spec: `maxDataPoints` (points the panel asks for)
+ * - query spec: `hidden` ("Hide from chart")
  * - top level: `repeat` (item-level repeat) — a layout value, not part of the panel
  *
  * We don't replace the schema (matching its typing surface globally is fragile and broke other
