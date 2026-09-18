@@ -12,9 +12,14 @@
 // limitations under the License.
 
 import { VariableDefinition } from '@perses-dev/spec';
-import { VariableStoreStateMap } from '@perses-dev/plugin-system';
+import { VariableState, VariableStoreStateMap } from '@perses-dev/plugin-system';
 import { ExternalVariableDefinition } from '../../model/VariableDefinition';
-import { checkSavedDefaultVariableStatus, mergeVariableDefinitions } from './utils';
+import {
+  areVariableOptionsEqual,
+  areVariableStateMapsEqual,
+  checkSavedDefaultVariableStatus,
+  mergeVariableDefinitions,
+} from './utils';
 
 describe('checkSavedDefaultVariableStatus', () => {
   it('should check whether saved variable definitions are out of date with current default values state', () => {
@@ -350,3 +355,84 @@ describe('checkSavedDefaultVariableStatus', () => {
     expect(mergeVariableDefinitions(localVariables, externalVariables)).toEqual(expected);
   });
 });
+
+// LOGZ.IO ADDITION START:: [unidash-perf]
+// Every panel on the dashboard subscribes to the variable state, so these two comparisons decide how
+// often a refresh of a variable's options re-renders the whole dashboard.
+
+describe('areVariableOptionsEqual', () => {
+  const options = [
+    { value: 'test_value_1', label: 'Test label 1' },
+    { value: 'test_value_2', label: 'Test label 2' },
+  ];
+
+  it('should treat a refetched list with the same contents as equal', () => {
+    expect(areVariableOptionsEqual(options, [...options.map((option) => ({ ...option }))])).toBe(true);
+  });
+
+  it('should treat the same list instance as equal', () => {
+    expect(areVariableOptionsEqual(options, options)).toBe(true);
+  });
+
+  it('should treat a changed label as different', () => {
+    expect(areVariableOptionsEqual(options, [options[0]!, { value: 'test_value_2', label: 'Test label 3' }])).toBe(
+      false
+    );
+  });
+
+  it('should treat a changed value as different', () => {
+    expect(areVariableOptionsEqual(options, [options[0]!, { value: 'test_value_3', label: 'Test label 2' }])).toBe(
+      false
+    );
+  });
+
+  it('should treat a different length as different', () => {
+    expect(areVariableOptionsEqual(options, [options[0]!])).toBe(false);
+  });
+
+  it('should treat a missing list as different from a populated one', () => {
+    expect(areVariableOptionsEqual(undefined, options)).toBe(false);
+    expect(areVariableOptionsEqual(options, undefined)).toBe(false);
+    expect(areVariableOptionsEqual(undefined, undefined)).toBe(true);
+  });
+});
+
+describe('areVariableStateMapsEqual', () => {
+  const options = [{ value: 'test_value_1', label: 'Test label 1' }];
+  const state = (overrides: Partial<VariableState> = {}): VariableState => ({
+    value: 'test_value_1',
+    loading: false,
+    options,
+    ...overrides,
+  });
+
+  it('should treat two maps holding equal states as equal', () => {
+    expect(areVariableStateMapsEqual({ cluster: state() }, { cluster: state() })).toBe(true);
+  });
+
+  it('should treat a changed loading flag as different', () => {
+    expect(areVariableStateMapsEqual({ cluster: state() }, { cluster: state({ loading: true }) })).toBe(false);
+  });
+
+  it('should treat a changed value as different', () => {
+    expect(areVariableStateMapsEqual({ cluster: state() }, { cluster: state({ value: 'test_value_2' }) })).toBe(false);
+  });
+
+  it('should compare multi-select values element by element', () => {
+    const left = { cluster: state({ value: ['test_value_1', 'test_value_2'] }) };
+    expect(areVariableStateMapsEqual(left, { cluster: state({ value: ['test_value_1', 'test_value_2'] }) })).toBe(true);
+    expect(areVariableStateMapsEqual(left, { cluster: state({ value: ['test_value_2', 'test_value_1'] }) })).toBe(
+      false
+    );
+  });
+
+  it('should treat a replaced options list as different', () => {
+    expect(areVariableStateMapsEqual({ cluster: state() }, { cluster: state({ options: [...options] }) })).toBe(false);
+  });
+
+  it('should treat a different set of variables as different', () => {
+    expect(areVariableStateMapsEqual({ cluster: state() }, { cluster: state(), region: state() })).toBe(false);
+    expect(areVariableStateMapsEqual({ cluster: state() }, { region: state() })).toBe(false);
+  });
+});
+// LOGZ.IO ADDITION END:: [unidash-perf]

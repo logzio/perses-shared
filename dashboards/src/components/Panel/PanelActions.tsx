@@ -77,6 +77,22 @@ const ConditionalBox = styled(Box)({
   justifyContent: 'flex-end',
 });
 
+const HoverActions = styled(Box)({
+  display: 'var(--panel-hover, none)',
+  alignItems: 'center',
+  flexShrink: 0,
+});
+
+// By default, the panel header shows certain icons only on hover if the panel is in non-editing, non-fullscreen mode
+// LOGZ.IO CHANGE START:: `OnHover` lives at module level [unidash-perf]
+// It used to be declared inside `PanelActions`, so every render produced a new component type. React
+// cannot match an existing element to a new type, so it unmounted and remounted every action below
+// it: ~5,200 fibers per dashboard-wide render on a 32-panel dashboard, which was most of the
+// main-thread work of an auto-refresh tick.
+const OnHover = ({ showIcons, children }: PropsWithChildren<{ showIcons: PanelOptions['showIcons'] }>): ReactElement =>
+  showIcons === 'hover' ? <HoverActions>{children}</HoverActions> : <>{children}</>;
+// LOGZ.IO CHANGE END:: `OnHover` lives at module level [unidash-perf]
+
 export const PanelActions: React.FC<PanelActionsProps> = ({
   editHandlers,
   readHandlers,
@@ -257,16 +273,6 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
 
   const divider = <Box sx={{ flexGrow: 1 }}></Box>;
 
-  // By default, the panel header shows certain icons only on hover if the panel is in non-editing, non-fullscreen mode
-  // LOGZ.IO CHANGE START
-  const OnHover = ({ children }: PropsWithChildren): ReactNode =>
-    showIcons === 'hover' ? (
-      <Box sx={{ display: 'var(--panel-hover, none)', alignItems: 'center', flexShrink: 0 }}>{children}</Box>
-    ) : (
-      <>{children}</>
-    );
-  // LOGZ.IO CHANGE END
-
   return (
     <>
       {/* small panel width: move all icons except move/grab to overflow menu */}
@@ -276,7 +282,7 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         })}
       >
         {divider}
-        <OnHover>
+        <OnHover showIcons={showIcons}>
           <OverflowMenu title={title}>
             {descriptionAction} {linksAction} {queryStateIndicator} {noticesIndicator} {extraActions} {viewQueryAction}
             {readActions} {pluginActions} {itemActions}
@@ -294,12 +300,12 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           },
         })}
       >
-        <OnHover>
+        <OnHover showIcons={showIcons}>
           {descriptionAction} {linksAction}
         </OnHover>
         {divider} {queryStateIndicator}
         {noticesIndicator}
-        <OnHover>
+        <OnHover showIcons={showIcons}>
           {extraActions}
           {readActions}
           <OverflowMenu title={title}>
@@ -317,12 +323,12 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           [theme.containerQueries(HEADER_ACTIONS_CONTAINER_NAME).down(HEADER_MEDIUM_WIDTH)]: { display: 'none' },
         })}
       >
-        <OnHover>
+        <OnHover showIcons={showIcons}>
           {descriptionAction} {linksAction}
         </OnHover>
         {divider} {queryStateIndicator}
         {noticesIndicator}
-        <OnHover>
+        <OnHover showIcons={showIcons}>
           {extraActions}
           {viewQueryAction}
           {readActions} {editActions}

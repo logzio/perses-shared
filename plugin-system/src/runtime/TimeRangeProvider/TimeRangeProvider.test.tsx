@@ -46,7 +46,7 @@ function renderProvider(timeRange: TimeRangeValue): { queryClient: QueryClient }
 }
 
 describe('TimeRangeProvider auto refresh', () => {
-  it('should advance a relative range without invalidating the queries it is about to re-key', () => {
+  it('should advance a relative range without invalidating the panel queries it is about to re-key', () => {
     // Invalidating first refetched the outgoing keys, whose requests were then aborted once the
     // panels subscribed to the new range — over half of all requests on a 30s dashboard.
     jest.useFakeTimers();
@@ -62,8 +62,29 @@ describe('TimeRangeProvider auto refresh', () => {
         jest.advanceTimersByTime(REFRESH_INTERVAL_MS);
       });
 
-      expect(invalidateQueries).not.toHaveBeenCalled();
+      expect(invalidateQueries).not.toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['query'] }));
       expect(screen.getByTestId('range').textContent).not.toBe(before);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('should refresh the variable options a relative range does not re-key', () => {
+    // Variable options are keyed by the declared range so that a tick does not re-key them, which is
+    // what used to make every variable report itself as loading twice a tick. Refreshing them is
+    // therefore an invalidation of the key they already hold.
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+
+    try {
+      const { queryClient } = renderProvider({ pastDuration: '1h' });
+      const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+
+      act(() => {
+        jest.advanceTimersByTime(REFRESH_INTERVAL_MS);
+      });
+
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['variable'] });
     } finally {
       jest.useRealTimers();
     }
