@@ -36,8 +36,11 @@ export type DashboardProps = BoxProps & {
  */
 export function Dashboard({ emptyDashboardProps, panelOptions, ...boxProps }: DashboardProps): ReactElement {
   const panelGroupIds = usePanelGroupIds();
-  // LOGZ.IO CHANGE:: Size a viewed panel by this box — the host app sizes it to the room available
-  const { ref: boxRef, height: panelFullHeight } = useResizeObserver<HTMLDivElement>();
+  // LOGZ.IO CHANGE START:: Size a viewed panel by this box, capped at the window if the host leaves it content-sized
+  const { ref: boxRef, height: measuredHeight } = useResizeObserver<HTMLDivElement>();
+
+  const panelFullHeight = measuredHeight === undefined ? undefined : Math.min(measuredHeight, window.innerHeight);
+  // LOGZ.IO CHANGE END:: Size a viewed panel by this box
   const isEmpty = !panelGroupIds.length;
 
   return (
