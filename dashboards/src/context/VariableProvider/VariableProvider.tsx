@@ -39,7 +39,13 @@ import {
   intervalToDuration,
 } from '@perses-dev/spec';
 import { ExternalVariableDefinition } from '../../model/VariableDefinition';
-import { checkSavedDefaultVariableStatus, findVariableDefinitionByName, mergeVariableDefinitions } from './utils';
+import {
+  areVariableOptionsEqual,
+  areVariableStateMapsEqual,
+  checkSavedDefaultVariableStatus,
+  findVariableDefinitionByName,
+  mergeVariableDefinitions,
+} from './utils';
 import { hydrateVariableDefinitionStates as hydrateVariableDefinitionStates } from './hydrationUtils';
 import { getInitalValuesFromQueryParameters, getURLQueryParamName, useVariableQueryParams } from './query-params';
 
@@ -149,9 +155,9 @@ export function useVariableDefinitionStates(variableNames?: string[]): VariableS
 
       return varStates;
     },
-    (left, right) => {
-      return JSON.stringify(left) === JSON.stringify(right);
-    }
+    // LOGZ.IO CHANGE:: was `JSON.stringify(left) === JSON.stringify(right)`, which serialised every
+    // option of every variable on every write to the store. [unidash-perf]
+    areVariableStateMapsEqual
   );
 }
 
@@ -396,6 +402,11 @@ function createVariableDefinitionStore({
             (state) => {
               const varState = state.variableState.get({ name, source });
               if (!varState) {
+                return;
+              }
+              // LOGZ.IO CHANGE:: a refresh returns the same options as a new array; writing it
+              // produces a new state and notifies every consumer for nothing. [unidash-perf]
+              if (areVariableOptionsEqual(varState.options, options)) {
                 return;
               }
               varState.options = options;

@@ -107,13 +107,21 @@ const getVariableQueryConfig = (
   variablePluginCtx: GetVariableOptionsContext,
   variablePlugin: VariablePlugin | undefined,
   enabled: boolean,
+  // LOGZ.IO CHANGE:: identifies the selected window, see the query key below [unidash-perf]
+  rangeKey: string,
   onFetched?: (name: string, options: VariableOption[], definition: ListVariableDefinition) => void
 ): UseQueryOptions<VariableOption[]> => {
   // LOGZ.IO CHANGE:: empty OR invalid capturing regex is treated as "no filter" (see safeParseCapturingRegexp)
   const capturingRegexp = safeParseCapturingRegexp(definition.spec.capturingRegexp);
   const variablesValueKey = getVariableValuesKey(variablePluginCtx.variables);
   return {
-    queryKey: ['variable', definition, variablePluginCtx.timeRange, variablesValueKey],
+    // LOGZ.IO CHANGE:: keyed by the *declared* range, not the absolute one it resolves to. An auto
+    // refresh advances the absolute range every tick, and a query keyed by it is a different query
+    // each time: it cannot be served from cache, and while it runs the variable counts as loading,
+    // which re-renders every panel and disables everything that depends on the variable. The plugin
+    // still receives the current absolute range through `variablePluginCtx`, and a tick still
+    // refreshes the options by invalidating this key. [unidash-perf]
+    queryKey: ['variable', definition, rangeKey, variablesValueKey],
     queryFn: async ({ signal }): Promise<VariableOption[]> => {
       const resp = await variablePlugin?.getVariableOptions(definition.spec.plugin.spec, variablePluginCtx, signal);
       if (!resp?.data?.length) {
@@ -149,6 +157,7 @@ export function useListVariablePluginValues(definition: ListVariableDefinition):
   const { data: variablePlugin } = usePlugin('Variable', definition.spec.plugin.kind);
 
   const variablePluginCtx = useVariablePluginContext();
+  const { rangeKey } = useTimeRange(); // LOGZ.IO CHANGE:: [unidash-perf]
 
   const dependsOnVariables = resolveDependsOnVariables(variablePlugin, variablePluginCtx, definition);
 
@@ -157,7 +166,7 @@ export function useListVariablePluginValues(definition: ListVariableDefinition):
 
   const ctx = { ...variablePluginCtx, variables: dependentVariables };
 
-  return useQuery(getVariableQueryConfig(definition, ctx, variablePlugin, !!variablePlugin && !waitToLoad));
+  return useQuery(getVariableQueryConfig(definition, ctx, variablePlugin, !!variablePlugin && !waitToLoad, rangeKey));
 }
 
 function resolveDefaultValue(definition: ListVariableDefinition, options: VariableOption[]): VariableValue {
@@ -181,6 +190,7 @@ export function useResolveListVariableValues(variableDefinitions: VariableDefini
   isLoading: boolean;
 } {
   const { timeRange, datasourceStore, variables: outerVariableValues } = useVariablePluginContext();
+  const { rangeKey } = useTimeRange(); // LOGZ.IO CHANGE:: [unidash-perf]
 
   const listVariables = useMemo(
     () => variableDefinitions.filter((v): v is ListVariableDefinition => v.kind === 'ListVariable'),
@@ -242,7 +252,7 @@ export function useResolveListVariableValues(variableDefinitions: VariableDefini
       }
 
       const ctx = { timeRange, datasourceStore, variables: dependentVariables };
-      return getVariableQueryConfig(definition, ctx, plugin, !hasPendingDeps && !isPluginLoading, onFetched);
+      return getVariableQueryConfig(definition, ctx, plugin, !hasPendingDeps && !isPluginLoading, rangeKey, onFetched);
     }),
   });
 

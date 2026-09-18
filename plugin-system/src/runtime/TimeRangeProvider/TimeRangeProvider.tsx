@@ -124,6 +124,11 @@ export function TimeRangeProvider(props: TimeRangeProviderProps): ReactElement {
       // task (measured at 331-345ms), which is what makes the cursor stall every 30s; as a transition
       // React yields between panels. Nobody is waiting on an auto-refresh, so it can be low priority.
       startTransition(() => setAbsoluteTimeRange(toAbsoluteTimeRange(timeRange)));
+      // Variable options are keyed by the declared range, so unlike panel queries they are not
+      // re-keyed by the new absolute range and an invalidation is what refreshes them. Refetching
+      // the key they already hold keeps the options on screen while it runs, so the variable never
+      // reports itself as loading and the dashboard is not re-rendered for the round trip.
+      queryClient.invalidateQueries({ queryKey: ['variable'] });
       return;
     }
     // LOGZ.IO CHANGE END:: don't invalidate a relative range that is already being re-keyed [unidash-perf]

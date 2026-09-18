@@ -21,8 +21,8 @@ import {
   useId,
 } from '@perses-dev/components';
 import { PanelDefinition } from '@perses-dev/spec';
-import { ActionOptions, useDataQueriesContext, usePluginRegistry } from '@perses-dev/plugin-system';
-import { ReactNode, memo, useEffect, useMemo, useState } from 'react';
+import { ActionOptions, useDataQueriesContext, usePlugin } from '@perses-dev/plugin-system';
+import { ComponentType, ReactNode, memo, useMemo, useState } from 'react';
 import useResizeObserver from 'use-resize-observer';
 import { PanelGroupItemId } from '../../model';
 import { PanelContent } from './PanelContent';
@@ -74,6 +74,10 @@ export type PanelExtraProps = {
  *   <PanelContent>         // renders loading, error or panel based on the queries' status
  *     <PanelPluginLoader>  // loads a panel plugin from the plugin registry and renders the PanelComponent with data from props.queryResults
  */
+// LOGZ.IO ADDITION:: one empty list for every panel without actions, so the memo below keeps its
+// identity and the header does not re-render for a new `[]`. [unidash-perf]
+const NO_PLUGIN_ACTIONS: ReactNode[] = [];
+
 export const Panel = memo(function Panel(props: PanelProps) {
   const {
     definition,
@@ -102,7 +106,6 @@ export const Panel = memo(function Panel(props: PanelProps) {
   }, [width, height]);
 
   const { queryResults } = useDataQueriesContext();
-  const { getPlugin } = usePluginRegistry();
 
   const panelPropsForActions = useMemo(() => {
     return {
@@ -116,57 +119,30 @@ export const Panel = memo(function Panel(props: PanelProps) {
     };
   }, [definition, contentDimensions, queryResults]);
 
-  // Load plugin actions from the plugin
-  const [pluginActions, setPluginActions] = useState<ReactNode[]>([]);
+  // LOGZ.IO CHANGE START:: resolve the plugin's header actions during render [unidash-perf]
+  // This used to await `getPlugin` in an effect and keep the rendered elements in state, so every
+  // render that changed `queryResults` identity committed twice: once for the render, once for the
+  // actions the effect then produced. Between the two the header showed actions built from the
+  // previous render's props. The plugin is already in the query cache — `PanelContent` loads it
+  // through the same key — so reading it here costs no request.
+  const { data: panelPlugin } = usePlugin('Panel', definition.spec.plugin.kind);
 
-  useEffect(() => {
-    const loadPluginActions = async (): Promise<void> => {
-      const panelPluginKind = definition.spec.plugin.kind;
+  const pluginActions = useMemo((): ReactNode[] => {
+    const actions = panelPlugin?.actions;
+    if (actions === undefined || actions.length === 0) {
+      return NO_PLUGIN_ACTIONS;
+    }
 
-      if (!panelPluginKind || !panelPropsForActions || !getPlugin || typeof getPlugin !== 'function') {
-        setPluginActions([]);
-        return;
-      }
-
-      try {
-        const plugin = await getPlugin({ kind: 'Panel', name: panelPluginKind });
-
-        // More defensive checking for plugin and actions
-        if (
-          !plugin ||
-          typeof plugin !== 'object' ||
-          !plugin.actions ||
-          !Array.isArray(plugin.actions) ||
-          plugin.actions.length === 0
-        ) {
-          setPluginActions([]);
-          return;
-        }
-
-        // Render plugin actions in header location
-        const headerActions = plugin.actions
-          .filter((action) => !action.location || action.location === 'header')
-          .map((action, index): ReactNode | null => {
-            const ActionComponent = action.component;
-            try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              return <ActionComponent key={`plugin-action-${index}`} {...(panelPropsForActions as any)} />;
-            } catch (error) {
-              console.warn(`Failed to render plugin action ${index}:`, error);
-              return null;
-            }
-          })
-          .filter((item): item is ReactNode => Boolean(item));
-
-        setPluginActions(headerActions);
-      } catch (error) {
-        console.warn('Failed to load plugin actions:', error);
-        setPluginActions([]);
-      }
-    };
-
-    loadPluginActions();
-  }, [definition.spec.plugin.kind, panelPropsForActions, getPlugin]);
+    return actions
+      .filter((action) => action.location === undefined || action.location === 'header')
+      .map((action, index) => {
+        // The plugin declares its action components against its own spec type, which this generic
+        // panel cannot name; the props are the ones every panel plugin receives.
+        const ActionComponent = action.component as ComponentType<typeof panelPropsForActions>;
+        return <ActionComponent key={`plugin-action-${index}`} {...panelPropsForActions} />;
+      });
+  }, [panelPlugin, panelPropsForActions]);
+  // LOGZ.IO CHANGE END:: resolve the plugin's header actions during render [unidash-perf]
 
   const handleMouseEnter: CardProps['onMouseEnter'] = (e) => {
     onMouseEnter?.(e);
