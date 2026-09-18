@@ -456,6 +456,18 @@ describe('table', () => {
       });
     });
 
+    // LOGZ.IO ADDITION:: a rendered cell reached the `title` attribute as "[object Object]", and
+    // because the element identity changes every render React rewrote it on every pass [unidash-perf]
+    test('table cell element does not carry a stringified element as its title', () => {
+      const dataRows = 3;
+      const data = generateMockTableData(dataRows);
+      renderTable({ data, height: dataRows * MOCK_ITEM_HEIGHT });
+
+      for (let i = 1; i <= dataRows; i++) {
+        expect(getTableCellByIndex(i, columnWithComplexCell)).not.toHaveAttribute('title');
+      }
+    });
+
     describe('when `cellDescription` is `true`', () => {
       test('table cell does not have a description because the `cell` result cannot be put in a `title`', () => {
         const columns = COLUMNS.map((col, i) => {

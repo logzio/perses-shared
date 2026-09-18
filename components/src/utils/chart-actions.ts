@@ -34,6 +34,10 @@ export function enableDataZoom(chart: EChartsInstance): void {
         type: 'takeGlobalCursor',
         key: 'dataZoomSelect',
         dataZoomSelectActive: true,
+        // LOGZ.IO CHANGE:: arming drag-to-zoom is local to this chart, but ECharts registers
+        // takeGlobalCursor with `update: 'update'` and a connect group re-dispatches it to every
+        // member — so without this each panel entry ran a full update on every synced chart. [unidash-perf]
+        escapeConnect: true,
       });
     }
   }
@@ -55,14 +59,19 @@ export function restoreChart(chart: EChartsInstance): void {
  */
 export function clearHighlightedSeries(chart: EChartsInstance): void {
   if (chart.dispatchAction !== undefined) {
+    // LOGZ.IO CHANGE:: `escapeConnect` on both — this runs when the cursor leaves THIS panel, so
+    // broadcasting it forced every other synced chart to reprocess emphasis state and repaint on
+    // every panel boundary the cursor crossed. [unidash-perf]
     // Clear any selected data points
     chart.dispatchAction({
       type: 'unselect',
+      escapeConnect: true,
     });
 
     // Clear any highlighted series
     chart.dispatchAction({
       type: 'downplay',
+      escapeConnect: true,
     });
   }
 }
@@ -74,14 +83,15 @@ export function clearHighlightedSeries(chart: EChartsInstance): void {
 // tooltip (and blocked pin-on-click). Cursor positions within this tolerance are clamped onto the rect.
 const GRID_EDGE_TOLERANCE_PX = 2;
 
-interface GridRect {
+export interface GridRect {
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-function getGridRect(chart: EChartsInstance): GridRect | undefined {
+// LOGZ.IO CHANGE:: exported for the DOM crosshair, which clips the line to the plot rect [unidash-perf]
+export function getGridRect(chart: EChartsInstance): GridRect | undefined {
   // Reaches into the private chart model the same way enableDataZoom/getNearbySeriesData already do.
   return chart['_model']?.getComponent?.('grid')?.coordinateSystem?.getRect?.();
 }
@@ -127,7 +137,42 @@ export function getPointInGrid(cursorCoordX: number, cursorCoordY: number, chart
 // even when the payload is identical to the previous move (cursor traveling within one time bucket).
 // Remember the last dispatched payload per chart and skip exact repeats. The cache must be cleared
 // whenever the chart's option is replaced (setOption resets state), see clearNearbySeriesDispatchCache.
-const lastDispatchSignatures = new WeakMap<EChartsInstance, string>();
+interface DispatchSignature {
+  nearbySeriesIndexes: number[];
+  emphasizedSeriesIndexes: number[];
+  nonEmphasizedSeriesIndexes: number[];
+  emphasizedDatapoints: DatapointInfo[];
+  duplicateDatapoints: DatapointInfo[];
+}
+
+const lastDispatchSignatures = new WeakMap<EChartsInstance, DispatchSignature>();
+
+function isSameNumbers(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+function isSameDatapoints(a: DatapointInfo[], b: DatapointInfo[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]?.seriesIndex !== b[i]?.seriesIndex || a[i]?.dataIndex !== b[i]?.dataIndex) return false;
+  }
+  return true;
+}
+
+function isSameDispatchSignature(previous: DispatchSignature | undefined, next: DispatchSignature): boolean {
+  if (previous === undefined) return false;
+  return (
+    isSameNumbers(previous.nearbySeriesIndexes, next.nearbySeriesIndexes) &&
+    isSameNumbers(previous.emphasizedSeriesIndexes, next.emphasizedSeriesIndexes) &&
+    isSameNumbers(previous.nonEmphasizedSeriesIndexes, next.nonEmphasizedSeriesIndexes) &&
+    isSameDatapoints(previous.emphasizedDatapoints, next.emphasizedDatapoints) &&
+    isSameDatapoints(previous.duplicateDatapoints, next.duplicateDatapoints)
+  );
+}
 
 export function clearNearbySeriesDispatchCache(chart: EChartsInstance): void {
   lastDispatchSignatures.delete(chart);
@@ -148,14 +193,16 @@ export function batchDispatchNearbySeriesActions(
   duplicateDatapoints: DatapointInfo[]
 ): void {
   // LOGZ.IO CHANGE START:: skip re-dispatching an unchanged emphasis state [unidash-perf]
-  const signature = JSON.stringify([
+  // Compared element-wise rather than through JSON.stringify: this runs on every frame of a hover and
+  // the arrays grow with the series count, so serializing them was allocating on the hot path.
+  const signature: DispatchSignature = {
     nearbySeriesIndexes,
     emphasizedSeriesIndexes,
     nonEmphasizedSeriesIndexes,
-    emphasizedDatapoints.map((d) => [d.seriesIndex, d.dataIndex]),
-    duplicateDatapoints.map((d) => [d.seriesIndex, d.dataIndex]),
-  ]);
-  if (lastDispatchSignatures.get(chart) === signature) {
+    emphasizedDatapoints,
+    duplicateDatapoints,
+  };
+  if (isSameDispatchSignature(lastDispatchSignatures.get(chart), signature)) {
     return;
   }
   lastDispatchSignatures.set(chart, signature);
@@ -238,23 +285,46 @@ export function checkCrosshairPinnedStatus(seriesMapping: TimeChartSeriesMapping
  * Find closest timestamp to logical x coordinate returned from echartsInstance.convertFromPixel
  * Used to find nearby series in time series tooltip.
  */
-export function getClosestTimestamp(timeSeriesValues?: TimeSeriesValueTuple[], cursorX?: number): number | null {
-  if (timeSeriesValues === undefined || cursorX === undefined) {
-    return null;
+// LOGZ.IO CHANGE START:: binary search over the time column [unidash-perf]
+// Time series values are ordered by timestamp, so the closest row can be found in O(log n). This runs
+// on every frame of a hover, twice (once for the timestamp, once for its row index), and `values` is
+// a lazy tuple view whose every read materializes a tuple — so a linear walk cost one allocation per
+// row per frame. Returns -1 when there is nothing to search.
+export function findClosestTimestampIndex(timeSeriesValues?: TimeSeriesValueTuple[], cursorX?: number): number {
+  if (timeSeriesValues === undefined || cursorX === undefined || timeSeriesValues.length === 0) {
+    return -1;
   }
 
-  let currentClosestTimestamp: number | null = null;
-  let currentClosestDistance = Infinity;
+  let low = 0;
+  let high = timeSeriesValues.length - 1;
 
-  for (const [timestamp] of timeSeriesValues) {
-    const distance = Math.abs(timestamp - cursorX);
-    if (distance < currentClosestDistance) {
-      currentClosestTimestamp = timestamp;
-      currentClosestDistance = distance;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    const midTimestamp = timeSeriesValues[mid]?.[0];
+    if (midTimestamp === undefined) break;
+
+    if (midTimestamp < cursorX) {
+      low = mid + 1;
+    } else {
+      high = mid;
     }
   }
-  return currentClosestTimestamp;
+
+  // `low` is the first row at or after the cursor; its predecessor may still be nearer.
+  const candidate = timeSeriesValues[low]?.[0];
+  const previous = low > 0 ? timeSeriesValues[low - 1]?.[0] : undefined;
+
+  if (candidate === undefined) return previous === undefined ? -1 : low - 1;
+  if (previous === undefined) return low;
+
+  return Math.abs(previous - cursorX) <= Math.abs(candidate - cursorX) ? low - 1 : low;
 }
+
+export function getClosestTimestamp(timeSeriesValues?: TimeSeriesValueTuple[], cursorX?: number): number | null {
+  const index = findClosestTimestampIndex(timeSeriesValues, cursorX);
+  return index < 0 ? null : (timeSeriesValues?.[index]?.[0] ?? null);
+}
+// LOGZ.IO CHANGE END:: binary search over the time column [unidash-perf]
 
 /*
  * Find closest timestamp in full dataset, used to snap crosshair into place onClick when tooltip is pinned.

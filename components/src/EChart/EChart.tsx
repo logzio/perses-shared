@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { CSSProperties, memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ECharts, EChartsCoreOption, init, connect, use } from 'echarts/core';
+import { CSSProperties, memo, useEffect, useLayoutEffect, useRef } from 'react';
+import { ECharts, EChartsCoreOption, init, use } from 'echarts/core';
 import { Box, SxProps, Theme } from '@mui/material';
 import isEqual from 'lodash/isEqual';
 import debounce from 'lodash/debounce';
@@ -210,7 +210,6 @@ export interface EChartsProps<T> {
   style?: CSSProperties;
   onEvents?: OnEventsType<T>;
   _instance?: React.MutableRefObject<ECharts | undefined>;
-  syncGroup?: string;
   onChartInitialized?: (instance: ECharts) => void;
 }
 
@@ -222,7 +221,6 @@ export const EChart = memo(function EChart<T>({
   style,
   onEvents,
   _instance,
-  syncGroup,
   onChartInitialized,
 }: EChartsProps<T>) {
   const initialOption = useRef<EChartsCoreOption>(option);
@@ -283,52 +281,20 @@ export const EChart = memo(function EChart<T>({
   // LOGZ.IO CHANGE END:: suspend chart hit-testing while the page scrolls [unidash-perf]
 
   // LOGZ.IO CHANGE START
-  // Track whether the chart is on screen. A connect group broadcasts every dispatched action to all
-  // of its members, so a dashboard that puts every panel in one group makes a single mouse move
-  // re-render charts the user cannot see. Membership is therefore limited to visible charts below.
-  const [isOnScreen, setIsOnScreen] = useState(false);
-
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (container === null || !syncGroup) return;
-
-    const observer = new IntersectionObserver((entries) => {
-      const latest = entries[entries.length - 1];
-
-      if (latest !== undefined) {
-        setIsOnScreen(latest.isIntersecting);
-      }
-    });
-
-    observer.observe(container);
-
-    return (): void => observer.disconnect();
-  }, [syncGroup]);
   // LOGZ.IO CHANGE END
 
-  // When syncGroup is explicitly set, charts within same group share interactions such as crosshair
-  useEffect(() => {
-    // LOGZ.IO CHANGE:: only join the group while on screen
-    if (!chartElement.current || !syncGroup || !isOnScreen) return;
-    const chart = chartElement.current; // LOGZ.IO CHANGE:: capture for cleanup [unidash-perf]
-    chart.group = syncGroup;
-    connect([chart]); // more info: https://echarts.apache.org/en/api.html#echarts.connect
-    // LOGZ.IO CHANGE START:: leave the sync group when it changes or the chart unmounts, so the
-    // group registry never keeps a reference to a disposed chart. [unidash-perf]
-    return (): void => {
-      if (!chart.isDisposed()) {
-        chart.group = '';
-        // LOGZ.IO CHANGE:: a chart that leaves the group stops receiving crosshair updates, so drop
-        // whatever it was showing rather than leaving it frozen for when it scrolls back into view.
-        chart.dispatchAction({ type: 'hideTip' });
-      }
-    };
-    // LOGZ.IO CHANGE END:: leave the sync group [unidash-perf]
-  }, [syncGroup, chartElement, isOnScreen]);
+  // LOGZ.IO CHANGE:: `echarts.connect` is gone. It re-dispatched every action — above all the
+  // per-pointer-event `updateAxisPointer` — to every member of the group, and each member answered by
+  // repainting all of its series. The only thing the group was used for was the shared crosshair,
+  // which `ChartCrosshair` now draws in the DOM from a shared timestamp. [unidash-perf]
 
   // Update chart data when option changes
   useEffect(() => {
+    // LOGZ.IO CHANGE:: reference check before the deep compare [unidash-perf]
+    // `option.dataset[0].source` holds a Float64Array per series, and lodash walks them element by
+    // element — on every render of every chart that reaches this effect. The option memo upstream
+    // returns the same object when nothing changed, so identity settles the common case for free.
+    if (prevOption.current === option) return;
     if (prevOption.current === undefined || isEqual(prevOption.current, option)) return;
     if (!chartElement.current) return;
     chartElement.current.setOption(option, true);

@@ -70,30 +70,26 @@ export function DataQueriesProvider(props: DataQueriesProviderProps): ReactEleme
   const usageMetrics = useUsageMetrics();
 
   // Filter definitions for time series query and other future query plugins
-  const timeSeriesQueries = definitions.filter(
-    (definition) => definition.kind === 'TimeSeriesQuery'
-  ) as TimeSeriesQueryDefinition[];
+  // LOGZ.IO CHANGE START:: derived once per `definitions` identity [unidash-perf]
+  // Six fresh arrays per render made the context value below change on every render of this provider,
+  // so any re-render of the grid re-rendered every panel body through the context.
+  const { timeSeriesQueries, traceQueries, profileQueries, logQueries, alertsQueries, silencesQueries } = useMemo(
+    () => ({
+      timeSeriesQueries: definitions.filter((d) => d.kind === 'TimeSeriesQuery') as TimeSeriesQueryDefinition[],
+      traceQueries: definitions.filter((d) => d.kind === 'TraceQuery') as TraceQueryDefinition[],
+      profileQueries: definitions.filter((d) => d.kind === 'ProfileQuery') as ProfileQueryDefinition[],
+      logQueries: definitions.filter((d) => d.kind === 'LogQuery') as LogQueryDefinition[],
+      alertsQueries: definitions.filter((d) => d.kind === 'AlertsQuery') as AlertsQueryDefinition[],
+      silencesQueries: definitions.filter((d) => d.kind === 'SilencesQuery') as SilencesQueryDefinition[],
+    }),
+    [definitions]
+  );
+  // LOGZ.IO CHANGE END:: derived once per `definitions` identity [unidash-perf]
   const timeSeriesResults = useTimeSeriesQueries(timeSeriesQueries, options, queryOptions);
-
-  const traceQueries = definitions.filter((definition) => definition.kind === 'TraceQuery') as TraceQueryDefinition[];
   const traceResults = useTraceQueries(traceQueries);
-
-  const profileQueries = definitions.filter(
-    (definition) => definition.kind === 'ProfileQuery'
-  ) as ProfileQueryDefinition[];
   const profileResults = useProfileQueries(profileQueries);
-
-  const logQueries = definitions.filter((definition) => definition.kind === 'LogQuery') as LogQueryDefinition[];
   const logResults = useLogQueries(logQueries);
-
-  const alertsQueries = definitions.filter(
-    (definition) => definition.kind === 'AlertsQuery'
-  ) as AlertsQueryDefinition[];
   const alertsResults = useAlertsQueries(alertsQueries);
-
-  const silencesQueries = definitions.filter(
-    (definition) => definition.kind === 'SilencesQuery'
-  ) as SilencesQueryDefinition[];
   const silencesResults = useSilencesQueries(silencesQueries);
 
   const refetchAll = useCallback(() => {

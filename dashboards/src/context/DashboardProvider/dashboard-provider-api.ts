@@ -311,12 +311,17 @@ export function usePanelActions(panelGroupItemId: PanelGroupItemId): {
   viewPanel: (panelGroupItemId?: PanelGroupItemId) => void;
 } {
   const { openEditPanel, openDeletePanelDialog, duplicatePanel, setViewPanel } = useDashboardStore(selectPanelActions);
-  return {
-    openEditPanel: () => openEditPanel(panelGroupItemId),
-    openDeletePanelDialog: () => openDeletePanelDialog(panelGroupItemId),
-    duplicatePanel: () => duplicatePanel(panelGroupItemId),
-    viewPanel: (panelGroupItemId?: PanelGroupItemId) => setViewPanel(panelGroupItemId),
-  };
+  // LOGZ.IO CHANGE:: memoized so callers can keep the handler objects they build from these stable,
+  // which is what lets the memo on Panel actually hold [unidash-perf]
+  return useMemo(
+    () => ({
+      openEditPanel: () => openEditPanel(panelGroupItemId),
+      openDeletePanelDialog: () => openDeletePanelDialog(panelGroupItemId),
+      duplicatePanel: () => duplicatePanel(panelGroupItemId),
+      viewPanel: (viewedPanelGroupItemId?: PanelGroupItemId) => setViewPanel(viewedPanelGroupItemId),
+    }),
+    [openEditPanel, openDeletePanelDialog, duplicatePanel, setViewPanel, panelGroupItemId]
+  );
 }
 
 const selectPanelEditor: (state: DashboardStoreState) => PanelEditorState | undefined = (state: DashboardStoreState) =>

@@ -16,7 +16,10 @@ import { ECharts as EChartsInstance } from 'echarts/core';
 import { DatapointInfo } from '../model';
 import {
   batchDispatchNearbySeriesActions,
+  clearHighlightedSeries,
   clearNearbySeriesDispatchCache,
+  enableDataZoom,
+  findClosestTimestampIndex,
   getClosestTimestamp,
   getClosestTimestampInFullDataset,
   getPointInGrid,
@@ -138,6 +141,96 @@ describe('getClosestTimestamp', () => {
 
   it('should return null when undefined cursorX param', () => {
     expect(getClosestTimestamp(TEST_TIME_SERIES_VALUES)).toEqual(null);
+  });
+});
+
+// LOGZ.IO ADDITION:: binary search over the sorted time column [unidash-perf]
+describe('findClosestTimestampIndex', () => {
+  it('should find the row at an exact timestamp', () => {
+    expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES, 1690381155000)).toBe(2);
+  });
+
+  it('should round to the nearer neighbour on both sides of the midpoint', () => {
+    // Rows are 15s apart; 1690381147000 sits 7s after row 1 and 8s before row 2.
+    expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES, 1690381147000)).toBe(1);
+    expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES, 1690381148000)).toBe(2);
+  });
+
+  it('should clamp to the first and last rows outside the range', () => {
+    expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES, 0)).toBe(0);
+    expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES, Number.MAX_SAFE_INTEGER)).toBe(
+      TEST_TIME_SERIES_VALUES.length - 1
+    );
+  });
+
+  it('should agree with a linear scan for every position across the column', () => {
+    const linearClosest = (cursorX: number): number => {
+      let bestIdx = -1;
+      let bestDistance = Infinity;
+      TEST_TIME_SERIES_VALUES.forEach(([timestamp], idx) => {
+        const distance = Math.abs(timestamp - cursorX);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIdx = idx;
+        }
+      });
+      return bestIdx;
+    };
+
+    const first = TEST_TIME_SERIES_VALUES[0]?.[0] ?? 0;
+    const last = TEST_TIME_SERIES_VALUES[TEST_TIME_SERIES_VALUES.length - 1]?.[0] ?? 0;
+
+    for (let cursorX = first - 20_000; cursorX <= last + 20_000; cursorX += 1_000) {
+      expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES, cursorX)).toBe(linearClosest(cursorX));
+    }
+  });
+
+  it('should read only a handful of rows rather than the whole column', () => {
+    // The lazy tuple views the tooltip passes here materialize a tuple per read, so a linear walk
+    // allocated one object per row per frame. Reads must stay logarithmic.
+    const reads: number[] = [];
+    const instrumented = new Proxy(TEST_TIME_SERIES_VALUES, {
+      get(target, prop, receiver): unknown {
+        if (typeof prop === 'string' && /^\d+$/.test(prop)) reads.push(Number(prop));
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    findClosestTimestampIndex(instrumented, 1690381320276);
+
+    expect(reads.length).toBeLessThan(TEST_TIME_SERIES_VALUES.length);
+  });
+
+  it('should return -1 when there is nothing to search', () => {
+    expect(findClosestTimestampIndex([], 1)).toBe(-1);
+    expect(findClosestTimestampIndex(TEST_TIME_SERIES_VALUES)).toBe(-1);
+  });
+});
+
+// LOGZ.IO ADDITION:: local actions must not reach the other charts on the dashboard [unidash-perf]
+describe('escapeConnect on chart-local actions', () => {
+  it('should not broadcast the cursor-exit cleanup to other charts', () => {
+    const dispatchAction = jest.fn();
+    const chart = { dispatchAction } as unknown as EChartsInstance;
+
+    clearHighlightedSeries(chart);
+
+    expect(dispatchAction).toHaveBeenCalledWith({ type: 'unselect', escapeConnect: true });
+    expect(dispatchAction).toHaveBeenCalledWith({ type: 'downplay', escapeConnect: true });
+  });
+
+  it('should not broadcast arming drag-to-zoom to other charts', () => {
+    const dispatchAction = jest.fn();
+    const chart = {
+      dispatchAction,
+      _model: { option: { toolbox: [{ feature: { dataZoom: { iconStatus: { zoom: 'normal' } } } }] } },
+    } as unknown as EChartsInstance;
+
+    enableDataZoom(chart);
+
+    expect(dispatchAction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'takeGlobalCursor', escapeConnect: true })
+    );
   });
 });
 

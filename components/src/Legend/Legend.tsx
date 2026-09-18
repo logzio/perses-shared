@@ -13,7 +13,7 @@
 
 import { Box } from '@mui/material';
 import { produce } from 'immer';
-import { ReactElement, ReactNode } from 'react';
+import { memo, ReactElement, ReactNode } from 'react';
 import { getLegendMode } from '../model';
 import { ListLegend } from './ListLegend';
 import { CompactLegend } from './CompactLegend';
@@ -63,7 +63,10 @@ export interface LegendProps {
 // future as people test this out on different machines.
 const NEED_VIRTUALIZATION_LIMIT = 500;
 
-export function Legend({
+// LOGZ.IO CHANGE:: memoized — a legend can hold hundreds of rows, and without this boundary every
+// render of the panel re-rendered all of them (the dominant DOM churn on panel crossings and on each
+// auto-refresh tick). Callers must keep `data`, `tableProps` and the handlers stable. [unidash-perf]
+function LegendBase({
   width,
   height,
   options,
@@ -174,3 +177,5 @@ export function Legend({
     </Box>
   );
 }
+
+export const Legend = memo(LegendBase); // LOGZ.IO CHANGE:: [unidash-perf]

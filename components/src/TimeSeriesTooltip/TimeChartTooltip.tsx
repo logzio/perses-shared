@@ -18,7 +18,7 @@ import { TimeSeries, TimeSeriesMetadata } from '@perses-dev/spec';
 import useResizeObserver from 'use-resize-observer';
 import { FormatOptions, TimeChartSeriesMapping } from '../model';
 import { CursorCoordinates, PointAction, useMousePosition } from './tooltip-model';
-import { assembleTransform, getTooltipStyles, isSeriesSelectable } from './utils';
+import { assembleTransform, getTooltipStyles, isSeriesSelectable, readTooltipContainerGeometry } from './utils';
 import { getNearbySeriesData } from './nearby-series';
 import { TooltipHeader } from './TooltipHeader';
 import { TooltipContent } from './TooltipContent';
@@ -95,10 +95,13 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   // LOGZ.IO CHANGE END:: per-chart scoped mouse position [unidash-perf]
 
   const containerElement = containerId ? document.querySelector(containerId) : undefined;
+  // LOGZ.IO CHANGE:: one layout read per frame instead of two — the max height and the transform both
+  // need the container box, and each used to call getBoundingClientRect separately. [unidash-perf]
+  const containerGeometry = readTooltipContainerGeometry(containerElement);
   // if tooltip is attached to a container, set max height to the height of the container so tooltip does not get cut off
-  const maxHeight = containerElement ? containerElement.getBoundingClientRect().height : undefined;
+  const maxHeight = containerGeometry?.height;
 
-  transform.current = assembleTransform(mousePos, pinnedPos, height ?? 0, width ?? 0, containerElement);
+  transform.current = assembleTransform(mousePos, pinnedPos, height ?? 0, width ?? 0, containerGeometry);
 
   // Get series nearby the cursor and pass into tooltip content children.
   const nearbySeries = getNearbySeriesData({

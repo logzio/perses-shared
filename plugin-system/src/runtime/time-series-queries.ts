@@ -37,6 +37,7 @@ import {
   buildResolvedResults,
   createQueryConfig,
   areMapsEqual,
+  getTimeSeriesStaleTime, // LOGZ.IO CHANGE:: [unidash-perf]
 } from './time-series-queries-utils';
 // LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas
 
@@ -99,7 +100,16 @@ export function useTimeSeriesQueries(
   const { getPlugin } = usePluginRegistry();
   const baseContext = useTimeSeriesQueryContext();
   // LOGZ.IO CHANGE:: scopes retained data to the selected window [stale-timeframe]
-  const { rangeKey } = useTimeRange();
+  const { rangeKey, refreshIntervalInMs } = useTimeRange();
+
+  // LOGZ.IO CHANGE START:: re-enabled panels reuse cached data instead of refetching [unidash-perf]
+  const staleTime = getTimeSeriesStaleTime(refreshIntervalInMs);
+  const effectiveQueryOptions = useMemo(
+    () => ({ staleTime, ...queryOptions }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryOptions is memoized by every caller (GridItemContentBody)
+    [staleTime, queryOptions]
+  );
+  // LOGZ.IO CHANGE END:: re-enabled panels reuse cached data instead of refetching [unidash-perf]
 
   const context = useMemo(
     () => ({
@@ -131,12 +141,12 @@ export function useTimeSeriesQueries(
         context,
         queryIndex: idx,
         getPlugin,
-        queryOptions,
+        queryOptions: effectiveQueryOptions, // LOGZ.IO CHANGE:: [unidash-perf]
         resolvedResults,
         dependencies,
       })
     );
-  }, [definitions, pluginLoaderResponse, context, dependencies, getPlugin, queryOptions, resolvedResults]);
+  }, [definitions, pluginLoaderResponse, context, dependencies, getPlugin, effectiveQueryOptions, resolvedResults]);
 
   // LOGZ.IO CHANGE:: Performance optimization [APPZ-359] useStableQueries()
   const results = useStableQueries({ queries }) as Array<UseQueryResult<TimeSeriesData>>;
@@ -174,11 +184,18 @@ function useTimeSeriesQueryContext(): TimeSeriesQueryContext {
   const variableState = useAllVariableValues();
   const datasourceStore = useDatasourceStore();
 
-  return {
-    timeRange: absoluteTimeRange,
-    variableState,
-    datasourceStore,
-  };
+  // LOGZ.IO CHANGE:: a fresh object here rebuilds `context`, `dependencies` and `queries` in every
+  // caller on every render, so each panel re-creates its query configs and re-hashes its query keys
+  // (the app-ui `queryKeyHashFn` stringifies the whole query definition). All three inputs are
+  // already reference-stable. [unidash-perf]
+  return useMemo(
+    () => ({
+      timeRange: absoluteTimeRange,
+      variableState,
+      datasourceStore,
+    }),
+    [absoluteTimeRange, variableState, datasourceStore]
+  );
 }
 
 /**

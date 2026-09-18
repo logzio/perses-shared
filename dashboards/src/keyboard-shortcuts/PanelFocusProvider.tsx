@@ -23,20 +23,30 @@ import React, {
   useState,
 } from 'react';
 
-interface PanelFocusContextValue {
-  focusedPanelKey: string | null;
+// LOGZ.IO CHANGE START:: split the focus context in two [unidash-perf]
+// The focused key changes on every panel enter and leave, but the only consumer that reads it is
+// useDashboardShortcuts. When the setters and the key shared one context value, every GridItemContent
+// on the dashboard re-rendered on each crossing (measured: 3-4 React tasks of 60-110ms, and a scroll
+// past mounted panels is a stream of crossings). Splitting keeps the handler subscribers on a value
+// that never changes.
+interface PanelFocusSetters {
   setFocusedPanel: (panelKey: string) => void;
   clearFocusedPanel: () => void;
 }
 
-const PanelFocusContext = createContext<PanelFocusContextValue | undefined>(undefined);
+const NO_PROVIDER = Symbol('no-panel-focus-provider');
 
-function usePanelFocusContext(): PanelFocusContextValue {
-  const ctx = useContext(PanelFocusContext);
-  if (ctx === undefined) {
-    throw new Error('Panel focus hooks must be used within a PanelFocusProvider');
+const PanelFocusSettersContext = createContext<PanelFocusSetters | typeof NO_PROVIDER>(NO_PROVIDER);
+const FocusedPanelKeyContext = createContext<string | null | typeof NO_PROVIDER>(NO_PROVIDER);
+
+const MISSING_PROVIDER_ERROR = 'Panel focus hooks must be used within a PanelFocusProvider';
+
+function usePanelFocusSetters(): PanelFocusSetters {
+  const setters = useContext(PanelFocusSettersContext);
+  if (setters === NO_PROVIDER) {
+    throw new Error(MISSING_PROVIDER_ERROR);
   }
-  return ctx;
+  return setters;
 }
 
 /** Tracks which dashboard panel is currently focused (hovered) for panel-scoped shortcuts. */
@@ -55,21 +65,29 @@ export function PanelFocusProvider({ children }: { children: ReactNode }): React
     setFocusedPanelKeyState(null);
   }, []);
 
-  const value = useMemo(
-    (): PanelFocusContextValue => ({
-      focusedPanelKey,
+  const setters = useMemo(
+    (): PanelFocusSetters => ({
       setFocusedPanel,
       clearFocusedPanel,
     }),
-    [focusedPanelKey, setFocusedPanel, clearFocusedPanel]
+    [setFocusedPanel, clearFocusedPanel]
   );
 
-  return <PanelFocusContext.Provider value={value}>{children}</PanelFocusContext.Provider>;
+  return (
+    <PanelFocusSettersContext.Provider value={setters}>
+      <FocusedPanelKeyContext.Provider value={focusedPanelKey}>{children}</FocusedPanelKeyContext.Provider>
+    </PanelFocusSettersContext.Provider>
+  );
 }
 
 export function useFocusedPanel(): string | null {
-  return usePanelFocusContext().focusedPanelKey;
+  const focusedPanelKey = useContext(FocusedPanelKeyContext);
+  if (focusedPanelKey === NO_PROVIDER) {
+    throw new Error(MISSING_PROVIDER_ERROR);
+  }
+  return focusedPanelKey;
 }
+// LOGZ.IO CHANGE END:: split the focus context in two [unidash-perf]
 
 const PANEL_FOCUS_DEBOUNCE_MS = 50;
 
@@ -78,7 +96,7 @@ export function usePanelFocusHandlers(panelKey: string): {
   onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
   onMouseLeave: () => void;
 } {
-  const { setFocusedPanel, clearFocusedPanel } = usePanelFocusContext();
+  const { setFocusedPanel, clearFocusedPanel } = usePanelFocusSetters(); // LOGZ.IO CHANGE:: setters only [unidash-perf]
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onMouseEnter = useCallback(

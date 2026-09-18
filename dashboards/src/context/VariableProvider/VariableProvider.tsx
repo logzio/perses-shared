@@ -338,9 +338,16 @@ function PluginProvider({ children, builtinVariables }: PluginProviderProps): Re
     return result;
   }, [absoluteTimeRange, builtinVariables]);
 
+  // LOGZ.IO CHANGE START:: context values as literals re-render every consumer whenever this
+  // provider's parent renders, even when no variable changed — and a context read bypasses `memo`,
+  // so that reaches every panel. Both inputs are already memoized. [unidash-perf]
+  const builtinVariableContextValue = useMemo(() => ({ variables: allBuiltinVariables }), [allBuiltinVariables]);
+  const variableContextValue = useMemo(() => ({ state: values }), [values]);
+  // LOGZ.IO CHANGE END:: memoized context values [unidash-perf]
+
   return (
-    <BuiltinVariableContext.Provider value={{ variables: allBuiltinVariables }}>
-      <VariableContext.Provider value={{ state: values }}>{children}</VariableContext.Provider>
+    <BuiltinVariableContext.Provider value={builtinVariableContextValue}>
+      <VariableContext.Provider value={variableContextValue}>{children}</VariableContext.Provider>
     </BuiltinVariableContext.Provider>
   );
 }

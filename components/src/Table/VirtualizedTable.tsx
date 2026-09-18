@@ -342,11 +342,18 @@ export function VirtualizedTable<TableData>({
                     {}
                   );
 
+                // LOGZ.IO CHANGE:: `cellContent` is whatever the column's cell renderer returned, which
+                // for a rendered column is a React element — it reached the `title` attribute as the
+                // string "[object Object]", and React rewrote it on every render because the element
+                // identity changed. Only a string is usable as a title. [unidash-perf]
+                const cellTitle =
+                  description || cellConfig?.text || (typeof cellContent === 'string' ? cellContent : undefined);
+
                 return (
                   <TableCell
                     key={cell.id}
                     data-testid={cell.id}
-                    title={description || cellConfig?.text || cellContent}
+                    title={cellTitle}
                     width={
                       cell.column.getCanResize()
                         ? `calc(var(--col-${cell.column.id}-size) * 1px)`

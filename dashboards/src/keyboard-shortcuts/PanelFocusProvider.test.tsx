@@ -154,6 +154,47 @@ describe('PanelFocusProvider', () => {
     });
   });
 
+  // LOGZ.IO CHANGE START:: split focus context regression [unidash-perf]
+  describe('render isolation', () => {
+    it('should not re-render handler-only consumers when the focused panel changes', () => {
+      const renderCount = { current: 0 };
+
+      function HandlersOnly({ panelKey }: { panelKey: string }): ReactElement {
+        renderCount.current += 1;
+        const { onMouseEnter, onMouseLeave } = usePanelFocusHandlers(panelKey);
+        return <div data-testid={panelKey} tabIndex={-1} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />;
+      }
+
+      jest.useFakeTimers();
+      try {
+        render(
+          <PanelFocusProvider>
+            <HandlersOnly panelKey="panel-1" />
+            <PanelFocusTest panelKey="panel-2" />
+          </PanelFocusProvider>
+        );
+
+        const rendersAfterMount = renderCount.current;
+
+        act(() => {
+          fireEvent.mouseEnter(screen.getByTestId('panel-target'));
+          jest.advanceTimersByTime(50);
+        });
+        expect(screen.getByTestId('focused-panel').textContent).toBe('panel-2');
+
+        act(() => {
+          fireEvent.mouseLeave(screen.getByTestId('panel-target'));
+        });
+        expect(screen.getByTestId('focused-panel').textContent).toBe('none');
+
+        expect(renderCount.current).toBe(rendersAfterMount);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+  });
+  // LOGZ.IO CHANGE END:: split focus context regression [unidash-perf]
+
   describe('error handling', () => {
     it('should throw when hooks are used outside PanelFocusProvider', () => {
       // Suppress console.error during expected error

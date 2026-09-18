@@ -27,7 +27,7 @@ import { DashboardResource } from '@perses-dev/client';
 import {
   PanelDrawer,
   Dashboard,
-  useDashboardShortcuts,
+  DashboardShortcuts,
   PanelGroupDialog,
   DeletePanelGroupDialog,
   DashboardDiscardChangesConfirmationDialog,
@@ -148,13 +148,15 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
     }
   };
 
-  useDashboardShortcuts({
-    onSave,
-    isReadonly,
-    onEditButtonClick,
-    onCancelButtonClick,
-    disabled: disableShortcuts,
-  });
+  // LOGZ.IO CHANGE:: shortcuts live in a null-rendering leaf below; calling the hook here subscribed
+  // this whole component to the focused-panel key, re-rendering every panel on each crossing [unidash-perf]
+
+  // LOGZ.IO CHANGE:: stable object — a literal here re-rendered Dashboard on every render of this component [unidash-perf]
+  const dashboardEmptyProps = useMemo(
+    () => ({ onEditButtonClick, ...emptyDashboardProps }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onEditButtonClick is recreated each render; it only closes over setters and `dashboard`
+    [emptyDashboardProps, dashboard]
+  );
 
   const toolBarTimezone = useMemo((): string => {
     return dashboardResource.spec.timezone || userPreferenceTimezone || 'local';
@@ -169,6 +171,14 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
         height: '100%',
       }}
     >
+      {/* LOGZ.IO CHANGE:: see note above [unidash-perf] */}
+      <DashboardShortcuts
+        onSave={onSave}
+        isReadonly={isReadonly}
+        onEditButtonClick={onEditButtonClick}
+        onCancelButtonClick={onCancelButtonClick}
+        disabled={disableShortcuts}
+      />
       <DashboardToolbar
         dashboardName={dashboardResource.metadata.name}
         timezone={toolBarTimezone}
@@ -196,12 +206,7 @@ const DashboardAppContent = (props: DashboardAppProps): ReactElement => {
         }}
       >
         <ErrorBoundary FallbackComponent={ErrorAlert}>
-          <Dashboard
-            emptyDashboardProps={{
-              onEditButtonClick,
-              ...emptyDashboardProps,
-            }}
-          />
+          <Dashboard emptyDashboardProps={dashboardEmptyProps} />
         </ErrorBoundary>
         <ChartsProvider
           chartsTheme={chartsTheme}

@@ -193,6 +193,20 @@ export interface CreateQueryConfigParams {
   dependencies: Map<number, number[]>;
 }
 
+// LOGZ.IO CHANGE START:: stale time follows the refresh interval [unidash-perf]
+/**
+ * How long a time-series result stays fresh. Panels far from the viewport have their queries
+ * disabled; when they come back the query is re-enabled and, with TanStack's default stale time of
+ * zero, refetched at once — on a dashboard with auto-refresh off that was a burst of work (measured
+ * at 2.3s of blocking under 4x CPU throttling) the panel never used to do. Data is treated as fresh
+ * for one refresh interval, or indefinitely when auto-refresh is off; the refresh button and a
+ * time-range change still fetch, because they invalidate or re-key rather than rely on staleness.
+ */
+export function getTimeSeriesStaleTime(refreshIntervalInMs: number): number {
+  return refreshIntervalInMs > 0 ? refreshIntervalInMs : Infinity;
+}
+// LOGZ.IO CHANGE END:: stale time follows the refresh interval [unidash-perf]
+
 export function createQueryConfig({
   definition,
   plugin,
