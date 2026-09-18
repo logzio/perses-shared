@@ -93,16 +93,21 @@ export function assembleTransform(
   tooltipWidth: number,
   containerGeometry?: TooltipContainerGeometry // LOGZ.IO CHANGE:: was the element itself [unidash-perf]
 ): string | undefined {
+  // LOGZ.IO CHANGE:: resolve the pinned position BEFORE the null guard. `useMousePosition` is scoped
+  // to a chart's own canvas, so it reports null as soon as the cursor moves onto the (portaled)
+  // tooltip — and a pinned tooltip must keep its anchor while the user reaches for it. Callers that
+  // coalesce `mousePos ?? pinnedPos` were masking this; ones that do not lost the transform.
+  // [unidash-perf]
+  if (pinnedPos !== null) {
+    mousePos = pinnedPos;
+  }
+
   if (mousePos === null) {
     return undefined;
   }
 
   const cursorPaddingX = 32;
   const cursorPaddingY = 16;
-
-  if (pinnedPos !== null) {
-    mousePos = pinnedPos;
-  }
 
   if (mousePos.plotCanvas.x === undefined) return undefined;
 

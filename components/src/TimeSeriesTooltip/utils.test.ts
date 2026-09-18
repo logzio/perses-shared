@@ -154,6 +154,27 @@ describe('assembleTransform', () => {
     );
   });
 
+  // LOGZ.IO ADDITION:: `useMousePosition` is scoped to a chart's own canvas, so it reports null once
+  // the cursor moves onto the (portaled) tooltip. A pinned tooltip has to keep its anchor through
+  // that move. [unidash-perf]
+  it('should keep a pinned tooltip anchored when the cursor leaves the chart canvas', () => {
+    setViewport(VIEWPORT);
+
+    const pinned = readOffsets(assembleTransform(null, buildCursor(300, 200), TOOLTIP_HEIGHT, TOOLTIP_WIDTH));
+    const hovered = readOffsets(
+      assembleTransform(buildCursor(300, 200), buildCursor(300, 200), TOOLTIP_HEIGHT, TOOLTIP_WIDTH)
+    );
+
+    expect(pinned).toEqual(hovered);
+    expect(Number.isNaN(pinned.x)).toBe(false);
+  });
+
+  it('should have no transform when nothing is pinned and the cursor is off the chart', () => {
+    setViewport(VIEWPORT);
+
+    expect(assembleTransform(null, null, TOOLTIP_HEIGHT, TOOLTIP_WIDTH)).toBeUndefined();
+  });
+
   it('should not clamp an unmeasured tooltip against the CSS max when portaled into a container', () => {
     setViewport(VIEWPORT);
 

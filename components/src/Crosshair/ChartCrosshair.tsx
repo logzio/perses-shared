@@ -51,65 +51,78 @@ export function ChartCrosshair({ chartRef, syncEnabled = true, hidden = false }:
   // Scoped to this chart's canvas, so moves over other panels do not re-render this component.
   const mousePos = useMousePosition(chartRef);
 
-  useEffect(() => {
-    if (!syncEnabled) return;
+  useEffect(
+    function publishHoveredTimestamp() {
+      if (!syncEnabled) return;
 
-    const chart = chartRef.current;
-    if (mousePos === null || chart === undefined) {
-      clearSharedCrosshair(sourceId);
-      return;
-    }
-
-    // Same conversion the tooltip uses, so the line and the tooltip always agree on the bucket.
-    const pointInGrid = getPointInGrid(mousePos.plotCanvas.x ?? Number.NaN, mousePos.plotCanvas.y ?? Number.NaN, chart);
-    const timestampMs = pointInGrid?.[0];
-    if (typeof timestampMs !== 'number' || !Number.isFinite(timestampMs)) {
-      clearSharedCrosshair(sourceId);
-      return;
-    }
-
-    setSharedCrosshair({ timestampMs, sourceId });
-  }, [mousePos, chartRef, sourceId, syncEnabled]);
-
-  // Leaving the chart for good (unmount, or the panel scrolling out) must not strand the line.
-  useEffect(() => {
-    return (): void => clearSharedCrosshair(sourceId);
-  }, [sourceId]);
-
-  useEffect(() => {
-    const draw = (): void => {
-      const element = lineRef.current;
-      if (element === null) return;
-
-      const crosshair = getSharedCrosshair();
       const chart = chartRef.current;
-      const rect = chart === undefined || chart.isDisposed() ? undefined : getGridRect(chart);
-
-      if (hidden || crosshair === null || chart === undefined || rect === undefined) {
-        element.style.visibility = 'hidden';
+      if (mousePos === null || chart === undefined) {
+        clearSharedCrosshair(sourceId);
         return;
       }
 
-      // Not `syncEnabled` means only this chart's own cursor may draw here.
-      if (!syncEnabled && crosshair.sourceId !== sourceId) {
-        element.style.visibility = 'hidden';
+      // Same conversion the tooltip uses, so the line and the tooltip always agree on the bucket.
+      const pointInGrid = getPointInGrid(
+        mousePos.plotCanvas.x ?? Number.NaN,
+        mousePos.plotCanvas.y ?? Number.NaN,
+        chart
+      );
+      const timestampMs = pointInGrid?.[0];
+      if (typeof timestampMs !== 'number' || !Number.isFinite(timestampMs)) {
+        clearSharedCrosshair(sourceId);
         return;
       }
 
-      const x = chart.convertToPixel({ xAxisIndex: 0 }, crosshair.timestampMs);
-      if (typeof x !== 'number' || !Number.isFinite(x) || x < rect.x || x > rect.x + rect.width) {
-        element.style.visibility = 'hidden';
-        return;
-      }
+      setSharedCrosshair({ timestampMs, sourceId });
+    },
+    [mousePos, chartRef, sourceId, syncEnabled]
+  );
 
-      element.style.transform = `translate(${x}px, ${rect.y}px)`;
-      element.style.height = `${rect.height}px`;
-      element.style.visibility = 'visible';
-    };
+  useEffect(
+    function releaseCrosshairOnUnmount() {
+      // Leaving the chart for good (unmount, or the panel scrolling out) must not strand the line.
+      return (): void => clearSharedCrosshair(sourceId);
+    },
+    [sourceId]
+  );
 
-    draw();
-    return subscribeToSharedCrosshair(draw);
-  }, [chartRef, hidden, sourceId, syncEnabled]);
+  useEffect(
+    function drawLineOnSharedCrosshairChange() {
+      const draw = (): void => {
+        const element = lineRef.current;
+        if (element === null) return;
+
+        const crosshair = getSharedCrosshair();
+        const chart = chartRef.current;
+        const rect = chart === undefined || chart.isDisposed() ? undefined : getGridRect(chart);
+
+        if (hidden || crosshair === null || chart === undefined || rect === undefined) {
+          element.style.visibility = 'hidden';
+          return;
+        }
+
+        // Not `syncEnabled` means only this chart's own cursor may draw here.
+        if (!syncEnabled && crosshair.sourceId !== sourceId) {
+          element.style.visibility = 'hidden';
+          return;
+        }
+
+        const x = chart.convertToPixel({ xAxisIndex: 0 }, crosshair.timestampMs);
+        if (typeof x !== 'number' || !Number.isFinite(x) || x < rect.x || x > rect.x + rect.width) {
+          element.style.visibility = 'hidden';
+          return;
+        }
+
+        element.style.transform = `translate(${x}px, ${rect.y}px)`;
+        element.style.height = `${rect.height}px`;
+        element.style.visibility = 'visible';
+      };
+
+      draw();
+      return subscribeToSharedCrosshair(draw);
+    },
+    [chartRef, hidden, sourceId, syncEnabled]
+  );
 
   return (
     <Box
