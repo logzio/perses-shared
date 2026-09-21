@@ -17,6 +17,9 @@
 import { render } from '@testing-library/react';
 import { EChart } from './EChart';
 
+// LOGZ.IO ADDITION:: the zrender instance, whose flush paints the pending option [APPZ-3382]
+const fakeZr = { flush: jest.fn() };
+
 const fakeChart = {
   group: '',
   setOption: jest.fn(),
@@ -26,6 +29,10 @@ const fakeChart = {
   resize: jest.fn(),
   on: jest.fn(),
   off: jest.fn(),
+  getZr: jest.fn(() => fakeZr), // LOGZ.IO ADDITION:: [APPZ-3382]
+  // LOGZ.IO ADDITION:: `enableDataZoom` reads the toolbox state off the model, the same way the real
+  // chart exposes it. An unrendered toolbox has no `iconStatus`. [APPZ-3382]
+  _model: { option: { toolbox: [{ feature: { dataZoom: {} } }] } },
 };
 
 jest.mock('echarts/core', () => ({
@@ -161,4 +168,75 @@ describe('EChart', () => {
 
     expect(fakeChart.setOption).not.toHaveBeenCalled();
   });
+
+  // LOGZ.IO ADDITION START:: drag-to-zoom is armed with the option [APPZ-3382]
+  // Applying an option rebuilds the component views, and the armed state of the zoom toolbox lives
+  // on the view that is thrown away — so the arm belongs to the option, not to the chart instance.
+  describe('drag-to-zoom arming', () => {
+    const ZOOM_OPTION = { toolbox: { feature: { dataZoom: { yAxisIndex: 'none' } } }, series: [] };
+    const NO_DATA_OPTION = { title: { text: 'No data' }, xAxis: { show: false } };
+    const armingAction = expect.objectContaining({ type: 'takeGlobalCursor', dataZoomSelectActive: true });
+
+    const clearCalls = (): void => {
+      fakeChart.setOption.mockClear();
+      fakeChart.dispatchAction.mockClear();
+      fakeZr.flush.mockClear();
+    };
+
+    it('should arm drag-to-zoom in the same chart update as the option it belongs to', () => {
+      clearCalls();
+
+      render(<EChart option={ZOOM_OPTION} enableDataZoomSelect />);
+
+      // A lazy option leaves the update pending; the dispatch that follows is what carries it out,
+      // so the chart renders once instead of twice.
+      expect(fakeChart.setOption).toHaveBeenCalledWith(ZOOM_OPTION, { notMerge: true, lazyUpdate: true });
+      expect(fakeChart.dispatchAction).toHaveBeenCalledWith(armingAction);
+      expect(fakeChart.dispatchAction.mock.invocationCallOrder[0]).toBeGreaterThan(
+        fakeChart.setOption.mock.invocationCallOrder[0] ?? Infinity
+      );
+    });
+
+    // A plain `setOption` paints before it returns; the dispatch that carries out a lazy one does
+    // not, which would leave a backgrounded chart showing the previous frame.
+    it('should paint the lazily applied option rather than leave it for a later frame', () => {
+      clearCalls();
+
+      render(<EChart option={ZOOM_OPTION} enableDataZoomSelect />);
+
+      expect(fakeZr.flush).toHaveBeenCalledTimes(1);
+      expect(fakeZr.flush.mock.invocationCallOrder[0]).toBeGreaterThan(
+        fakeChart.dispatchAction.mock.invocationCallOrder[0] ?? Infinity
+      );
+    });
+
+    it('should re-arm drag-to-zoom on every option replacement, not once per chart', () => {
+      const { rerender } = render(<EChart option={ZOOM_OPTION} enableDataZoomSelect />);
+
+      clearCalls();
+      rerender(<EChart option={{ ...ZOOM_OPTION, series: [{ type: 'line' }] }} enableDataZoomSelect />);
+
+      expect(fakeChart.setOption).toHaveBeenCalledTimes(1);
+      expect(fakeChart.dispatchAction).toHaveBeenCalledWith(armingAction);
+    });
+
+    it('should apply an option with no zoom toolbox outright, since there is nothing to arm', () => {
+      clearCalls();
+
+      render(<EChart option={NO_DATA_OPTION} enableDataZoomSelect />);
+
+      expect(fakeChart.setOption).toHaveBeenCalledWith(NO_DATA_OPTION, true);
+      expect(fakeChart.dispatchAction).not.toHaveBeenCalled();
+    });
+
+    it('should not touch the global cursor of a chart that did not ask for drag-to-zoom', () => {
+      clearCalls();
+
+      render(<EChart option={ZOOM_OPTION} />);
+
+      expect(fakeChart.setOption).toHaveBeenCalledWith(ZOOM_OPTION, true);
+      expect(fakeChart.dispatchAction).not.toHaveBeenCalled();
+    });
+  });
+  // LOGZ.IO ADDITION END:: drag-to-zoom is armed with the option [APPZ-3382]
 });

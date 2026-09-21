@@ -23,6 +23,7 @@ import {
   getClosestTimestamp,
   getClosestTimestampInFullDataset,
   getPointInGrid,
+  hasDataZoomToolbox,
 } from './chart-actions';
 
 const TEST_TIME_SERIES_VALUES: TimeSeriesValueTuple[] = [
@@ -231,6 +232,74 @@ describe('escapeConnect on chart-local actions', () => {
     expect(dispatchAction).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'takeGlobalCursor', escapeConnect: true })
     );
+  });
+});
+
+// LOGZ.IO ADDITION:: ECharts rebuilds the toolbox that holds the armed state with every option it
+// applies, so arming has to work against a toolbox that has not rendered yet [APPZ-3382]
+describe('enableDataZoom', () => {
+  const buildChart = (dataZoom: unknown): { chart: EChartsInstance; dispatchAction: jest.Mock<void, [unknown]> } => {
+    const dispatchAction = jest.fn<void, [unknown]>();
+    const chart = {
+      dispatchAction,
+      _model: { option: { toolbox: [{ feature: { dataZoom } }] } },
+    } as unknown as EChartsInstance;
+
+    return { chart, dispatchAction };
+  };
+
+  it('should arm a toolbox that has not rendered yet, which is how a lazily applied option arrives', () => {
+    const { chart, dispatchAction } = buildChart({});
+
+    enableDataZoom(chart);
+
+    expect(dispatchAction).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'takeGlobalCursor', key: 'dataZoomSelect', dataZoomSelectActive: true })
+    );
+  });
+
+  it('should arm a rendered toolbox that reports itself unarmed', () => {
+    const { chart, dispatchAction } = buildChart({ iconStatus: { zoom: 'normal' } });
+
+    enableDataZoom(chart);
+
+    expect(dispatchAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('should leave an already armed toolbox alone', () => {
+    const { chart, dispatchAction } = buildChart({ iconStatus: { zoom: 'emphasis' } });
+
+    enableDataZoom(chart);
+
+    expect(dispatchAction).not.toHaveBeenCalled();
+  });
+
+  it('should do nothing when the chart has no zoom toolbox to arm', () => {
+    const dispatchAction = jest.fn();
+    const chart = { dispatchAction, _model: { option: {} } } as unknown as EChartsInstance;
+
+    enableDataZoom(chart);
+
+    expect(dispatchAction).not.toHaveBeenCalled();
+  });
+});
+
+// LOGZ.IO ADDITION:: [APPZ-3382]
+describe('hasDataZoomToolbox', () => {
+  it('should recognise the zoom toolbox on an authored option', () => {
+    expect(hasDataZoomToolbox({ toolbox: { feature: { dataZoom: { yAxisIndex: 'none' } } } })).toBe(true);
+  });
+
+  it('should recognise it in the array form ECharts normalises the option into', () => {
+    expect(hasDataZoomToolbox({ toolbox: [{ feature: { dataZoom: {} } }] })).toBe(true);
+  });
+
+  it('should reject an option with no toolbox, as the "no data" option has none', () => {
+    expect(hasDataZoomToolbox({ title: { text: 'No data' }, xAxis: { show: false } })).toBe(false);
+  });
+
+  it('should reject a toolbox without the dataZoom feature', () => {
+    expect(hasDataZoomToolbox({ toolbox: { feature: { saveAsImage: {} } } })).toBe(false);
   });
 });
 
