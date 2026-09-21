@@ -47,7 +47,7 @@ interface TestParams {
     allowAllValue: boolean;
     value: VariableValue;
     isFetchingOptions: boolean;
-    fetchedOptions: VariableOption[];
+    fetchedOptions?: VariableOption[];
   };
   output: {
     value: VariableValue;
@@ -61,7 +61,10 @@ interface TestParams {
 describe('useListVariableState', () => {
   it.each([
     {
-      description: '[!ALL][!MULTIPLE] is fetching',
+      // LOGZ.IO CHANGE:: a refresh of options the variable already holds is not "loading" — the
+      // value cannot change under it, and reporting it re-renders every panel on the dashboard and
+      // disables everything that depends on this variable. [unidash-perf]
+      description: '[!ALL][!MULTIPLE] is refreshing options it already has',
       input: {
         allowMultiple: false,
         allowAllValue: false,
@@ -71,10 +74,28 @@ describe('useListVariableState', () => {
       },
       output: {
         value: 'hello',
-        loading: true,
+        loading: false,
         options: [option('hello')],
         selectedOptions: option('hello'),
         viewOptions: [option('hello')],
+      },
+    },
+    {
+      // LOGZ.IO ADDITION:: the other half of the contract above [unidash-perf]
+      description: '[!ALL][!MULTIPLE] is fetching its first options',
+      input: {
+        allowMultiple: false,
+        allowAllValue: false,
+        value: 'hello',
+        isFetchingOptions: true,
+        fetchedOptions: undefined,
+      },
+      output: {
+        value: 'hello',
+        loading: true,
+        options: [],
+        selectedOptions: { label: '', value: '' },
+        viewOptions: [],
       },
     },
     {

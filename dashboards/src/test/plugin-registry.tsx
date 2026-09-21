@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { UnknownSpec } from '@perses-dev/spec';
-import { PanelPlugin, MockPlugin } from '@perses-dev/plugin-system';
+import { PanelPlugin, MockPlugin, PanelProps } from '@perses-dev/plugin-system';
 import { ReactElement } from 'react';
 
 const FakeTimeSeriesChartOptionEditor = (): ReactElement => {
@@ -39,5 +39,30 @@ const MOCK_TIME_SERIES_PANEL: MockPlugin = {
   plugin: FakeTimeSeriesPlugin,
 };
 
+// LOGZ.IO ADDITION START:: a panel plugin that contributes a header action, for tests that care how
+// and when those actions are resolved. [unidash-perf]
+/** Every render of the fake header action, as the number of query results it was given. */
+export const fakeHeaderActionRenders: number[] = [];
+
+const FakeHeaderAction = ({ queryResults }: PanelProps<UnknownSpec>): ReactElement => {
+  fakeHeaderActionRenders.push(queryResults.length);
+
+  return <button data-testid="plugin-action">{`series: ${queryResults.length}`}</button>;
+};
+
+const FakeActionsPlugin: PanelPlugin<UnknownSpec> = {
+  PanelComponent: ({ queryResults }) => <div>{`ActionsChart panel: ${queryResults.length}`}</div>,
+  createInitialOptions: () => ({}),
+  supportedQueryTypes: ['TimeSeriesQuery'],
+  actions: [{ component: FakeHeaderAction, location: 'header' }],
+};
+
+const MOCK_ACTIONS_PANEL: MockPlugin = {
+  kind: 'Panel',
+  spec: { name: 'ActionsChart' },
+  plugin: FakeActionsPlugin,
+};
+// LOGZ.IO ADDITION END:: panel plugin with a header action [unidash-perf]
+
 // Array of default mock plugins added to the PluginRegistry during test renders
-export const MOCK_PLUGINS: MockPlugin[] = [MOCK_TIME_SERIES_PANEL];
+export const MOCK_PLUGINS: MockPlugin[] = [MOCK_TIME_SERIES_PANEL, MOCK_ACTIONS_PANEL];

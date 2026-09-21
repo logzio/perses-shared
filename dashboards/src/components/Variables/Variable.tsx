@@ -44,6 +44,7 @@ import { MIN_VARIABLE_WIDTH } from '../../constants'; //LOGZ.IO CHANGE
 import { ListVariableListBoxProvider, ListVariableListBox } from './ListVariableListBox';
 //LOGZ.IO CHANGE
 import { getInputFont, getOptionsWidthPx, getWidthPx } from './variable-width.util';
+import { isVariableOptionsLoading } from './variable-loading.util';
 
 type VariableProps = {
   name: VariableName;
@@ -120,7 +121,10 @@ export function useListVariableState(
   const allowMultiple = spec?.allowMultiple === true;
   const allowAllValue = spec?.allowAllValue === true;
   const sort = spec?.sort;
-  const loading = useMemo(() => variablesOptionsQuery.isFetching ?? false, [variablesOptionsQuery.isFetching]);
+  // LOGZ.IO CHANGE:: was `isFetching`, so every auto-refresh tick set this variable loading and then
+  // not loading again, and each of those writes re-rendered every panel on the dashboard and
+  // disabled, then refetched, everything depending on it. [unidash-perf]
+  const loading = useMemo(() => isVariableOptionsLoading(variablesOptionsQuery), [variablesOptionsQuery]);
   const options = useMemo(() => variablesOptionsQuery.data ?? [], [variablesOptionsQuery.data]);
 
   let value = state?.value;

@@ -68,8 +68,10 @@ jest.mock('@perses-dev/plugin-system', () => {
     useDataQueriesContext: jest.fn(() => ({
       queryResults: [],
     })),
-    usePluginRegistry: jest.fn(() => ({
-      getPlugin: jest.fn().mockResolvedValue({
+    // LOGZ.IO CHANGE:: `Panel` reads the plugin through `usePlugin` now, not `getPlugin` in an
+    // effect, and `PanelContent` and `PanelPluginLoader` read it through the same hook. [unidash-perf]
+    usePlugin: jest.fn(() => ({
+      data: {
         PanelComponent: (): JSX.Element => <div>TimeSeriesChart panel</div>,
         actions: [
           {
@@ -81,7 +83,8 @@ jest.mock('@perses-dev/plugin-system', () => {
             location: 'header',
           },
         ],
-      }),
+      },
+      isLoading: false,
     })),
   };
 });
