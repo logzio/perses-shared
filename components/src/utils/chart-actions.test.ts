@@ -235,8 +235,8 @@ describe('escapeConnect on chart-local actions', () => {
   });
 });
 
-// LOGZ.IO ADDITION:: ECharts rebuilds the toolbox that holds the armed state with every option it
-// applies, so arming has to work against a toolbox that has not rendered yet [APPZ-3382]
+// LOGZ.IO CHANGE:: ECharts rebuilds the toolbox that holds the armed state with every option it
+// applies, so arming has to work against a toolbox that has not rendered yet
 describe('enableDataZoom', () => {
   const buildChart = (dataZoom: unknown): { chart: EChartsInstance; dispatchAction: jest.Mock<void, [unknown]> } => {
     const dispatchAction = jest.fn<void, [unknown]>();
@@ -284,7 +284,7 @@ describe('enableDataZoom', () => {
   });
 });
 
-// LOGZ.IO ADDITION:: [APPZ-3382]
+// LOGZ.IO CHANGE:: the zoom-toolbox predicate the arming path needs
 describe('hasDataZoomToolbox', () => {
   it('should recognise the zoom toolbox on an authored option', () => {
     expect(hasDataZoomToolbox({ toolbox: { feature: { dataZoom: { yAxisIndex: 'none' } } } })).toBe(true);

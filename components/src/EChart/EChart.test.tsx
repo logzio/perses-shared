@@ -17,7 +17,7 @@
 import { render } from '@testing-library/react';
 import { EChart } from './EChart';
 
-// LOGZ.IO ADDITION:: the zrender instance, whose flush paints the pending option [APPZ-3382]
+// LOGZ.IO CHANGE:: the zrender instance, whose flush paints the pending option
 const fakeZr = { flush: jest.fn() };
 
 const fakeChart = {
@@ -29,9 +29,9 @@ const fakeChart = {
   resize: jest.fn(),
   on: jest.fn(),
   off: jest.fn(),
-  getZr: jest.fn(() => fakeZr), // LOGZ.IO ADDITION:: [APPZ-3382]
-  // LOGZ.IO ADDITION:: `enableDataZoom` reads the toolbox state off the model, the same way the real
-  // chart exposes it. An unrendered toolbox has no `iconStatus`. [APPZ-3382]
+  getZr: jest.fn(() => fakeZr), // LOGZ.IO CHANGE
+  // LOGZ.IO CHANGE:: `enableDataZoom` reads the toolbox state off the model, the same way the real
+  // chart exposes it. An unrendered toolbox has no `iconStatus`.
   _model: { option: { toolbox: [{ feature: { dataZoom: {} } }] } },
 };
 
@@ -169,7 +169,7 @@ describe('EChart', () => {
     expect(fakeChart.setOption).not.toHaveBeenCalled();
   });
 
-  // LOGZ.IO ADDITION START:: drag-to-zoom is armed with the option [APPZ-3382]
+  // LOGZ.IO CHANGE START:: drag-to-zoom is armed with the option
   // Applying an option rebuilds the component views, and the armed state of the zoom toolbox lives
   // on the view that is thrown away — so the arm belongs to the option, not to the chart instance.
   describe('drag-to-zoom arming', () => {
@@ -238,5 +238,5 @@ describe('EChart', () => {
       expect(fakeChart.dispatchAction).not.toHaveBeenCalled();
     });
   });
-  // LOGZ.IO ADDITION END:: drag-to-zoom is armed with the option [APPZ-3382]
+  // LOGZ.IO CHANGE END:: drag-to-zoom is armed with the option
 });

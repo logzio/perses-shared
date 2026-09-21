@@ -20,7 +20,7 @@ export interface ZoomEventData {
   end: number;
 }
 
-// LOGZ.IO ADDITION START:: [APPZ-3382]
+// LOGZ.IO CHANGE START:: the zoom-toolbox predicate the arming path needs
 /** The part of an authored option `hasDataZoomToolbox` reads; ECharts types it as `any`. */
 interface ToolboxOptionShape {
   feature?: { dataZoom?: unknown };
@@ -36,7 +36,7 @@ export function hasDataZoomToolbox(option: EChartsCoreOption): boolean {
 
   return firstToolbox?.feature?.dataZoom !== undefined;
 }
-// LOGZ.IO ADDITION END:: [APPZ-3382]
+// LOGZ.IO CHANGE END:: the zoom-toolbox predicate the arming path needs
 
 /**
  * Enable dataZoom without requring user to click toolbox icon.
@@ -45,14 +45,14 @@ export function hasDataZoomToolbox(option: EChartsCoreOption): boolean {
 export function enableDataZoom(chart: EChartsInstance): void {
   const chartModel = chart['_model'];
   if (chartModel === undefined) return;
-  // LOGZ.IO CHANGE START:: arm a toolbox that has not rendered yet too [APPZ-3382]
+  // LOGZ.IO CHANGE START:: arm a toolbox that has not rendered yet too
   // Flattened, and the icon check relaxed: `iconStatus` is written by the toolbox VIEW, so it is
   // missing until the first render — which is the case when arming rides along with a lazy
   // `setOption` (see `EChart`). Only 'emphasis' means already armed, and the old check treated
   // 'normal' as the only way of not being armed.
   if (!hasDataZoomToolbox(chartModel.option)) return;
   if (chartModel.option.toolbox[0].feature.dataZoom.iconStatus?.zoom === 'emphasis') return;
-  // LOGZ.IO CHANGE END:: arm a toolbox that has not rendered yet too [APPZ-3382]
+  // LOGZ.IO CHANGE END:: arm a toolbox that has not rendered yet too
 
   chart.dispatchAction({
     type: 'takeGlobalCursor',

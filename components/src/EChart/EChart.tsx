@@ -41,7 +41,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 // LOGZ.IO CHANGE:: reset emphasis-dispatch dedup on option replace [unidash-perf], arm drag-to-zoom
-// with the option it belongs to [APPZ-3382]
+// with the option it belongs to
 import { clearNearbySeriesDispatchCache, enableDataZoom, hasDataZoomToolbox } from '../utils/chart-actions';
 import { EChartsTheme } from '../model';
 
@@ -123,7 +123,7 @@ function registerScrollSuspendTarget(el: HTMLElement): () => void {
 }
 // LOGZ.IO CHANGE END:: suspend chart hit-testing while the page scrolls [unidash-perf]
 
-// LOGZ.IO ADDITION START:: apply an option and arm drag-to-zoom in ONE chart update [APPZ-3382]
+// LOGZ.IO CHANGE START:: apply an option and arm drag-to-zoom in ONE chart update
 // Every option here is applied with `notMerge`, which makes ECharts rebuild the component views —
 // and the armed state of the zoom toolbox lives on the view that gets thrown away. So drag-to-zoom
 // has to be armed with each option rather than once per chart instance, or it survives only until
@@ -145,7 +145,7 @@ function applyOption(chart: ECharts, option: EChartsCoreOption, armDataZoom: boo
   // would keep the previous frame for as long as it stays there. Same single paint, just not deferred.
   chart.getZr().flush();
 }
-// LOGZ.IO ADDITION END:: apply an option and arm drag-to-zoom in ONE chart update [APPZ-3382]
+// LOGZ.IO CHANGE END:: apply an option and arm drag-to-zoom in ONE chart update
 
 // see docs for info about each property: https://echarts.apache.org/en/api.html#events
 export interface MouseEventsParameters<T> {
@@ -238,9 +238,9 @@ export interface EChartsProps<T> {
   _instance?: React.MutableRefObject<ECharts | undefined>;
   onChartInitialized?: (instance: ECharts) => void;
   /**
-   * LOGZ.IO ADDITION:: arms drag-to-zoom (the `dataZoomSelect` global cursor) with every option this
+   * LOGZ.IO CHANGE:: arms drag-to-zoom (the `dataZoomSelect` global cursor) with every option this
    * chart applies, so a dragged selection zooms without the toolbox icon. Only for charts whose
-   * option carries the dataZoom toolbox feature. [APPZ-3382]
+   * option carries the dataZoom toolbox feature.
    */
   enableDataZoomSelect?: boolean;
 }
@@ -254,7 +254,7 @@ export const EChart = memo(function EChart<T>({
   onEvents,
   _instance,
   onChartInitialized,
-  enableDataZoomSelect = false, // LOGZ.IO CHANGE:: [APPZ-3382]
+  enableDataZoomSelect = false, // LOGZ.IO CHANGE
 }: EChartsProps<T>) {
   const initialOption = useRef<EChartsCoreOption>(option);
   const prevOption = useRef<EChartsCoreOption>(option);
@@ -273,7 +273,7 @@ export const EChart = memo(function EChart<T>({
     });
     // LOGZ.IO CHANGE END:: enable dirty-rectangle rendering [unidash-perf]
     if (chartElement.current === undefined) return;
-    applyOption(chartElement.current, initialOption.current, enableDataZoomSelect); // LOGZ.IO CHANGE:: [APPZ-3382]
+    applyOption(chartElement.current, initialOption.current, enableDataZoomSelect); // LOGZ.IO CHANGE
     onChartInitialized?.(chartElement.current);
     if (_instance !== undefined) {
       _instance.current = chartElement.current;
@@ -330,7 +330,7 @@ export const EChart = memo(function EChart<T>({
     if (prevOption.current === option) return;
     if (prevOption.current === undefined || isEqual(prevOption.current, option)) return;
     if (!chartElement.current) return;
-    applyOption(chartElement.current, option, enableDataZoomSelect); // LOGZ.IO CHANGE:: [APPZ-3382]
+    applyOption(chartElement.current, option, enableDataZoomSelect); // LOGZ.IO CHANGE
     // LOGZ.IO CHANGE:: replacing the option resets series states, so the emphasis-dispatch dedup
     // cache must forget its last payload or an identical follow-up dispatch would be skipped. [unidash-perf]
     clearNearbySeriesDispatchCache(chartElement.current);
