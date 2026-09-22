@@ -40,7 +40,9 @@ import {
   MarkLineComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { clearNearbySeriesDispatchCache } from '../utils/chart-actions'; // LOGZ.IO CHANGE:: reset emphasis-dispatch dedup on option replace [unidash-perf]
+// LOGZ.IO CHANGE:: reset emphasis-dispatch dedup on option replace [unidash-perf], arm drag-to-zoom
+// with the option it belongs to
+import { clearNearbySeriesDispatchCache, enableDataZoom, hasDataZoomToolbox } from '../utils/chart-actions';
 import { EChartsTheme } from '../model';
 
 // Loading the ECharts extensions should happen in the respective plugins.
@@ -120,6 +122,30 @@ function registerScrollSuspendTarget(el: HTMLElement): () => void {
   };
 }
 // LOGZ.IO CHANGE END:: suspend chart hit-testing while the page scrolls [unidash-perf]
+
+// LOGZ.IO CHANGE START:: apply an option and arm drag-to-zoom in ONE chart update
+// Every option here is applied with `notMerge`, which makes ECharts rebuild the component views —
+// and the armed state of the zoom toolbox lives on the view that gets thrown away. So drag-to-zoom
+// has to be armed with each option rather than once per chart instance, or it survives only until
+// the first refresh tick. `takeGlobalCursor` is registered with `update: 'update'`, so dispatching
+// it on its own costs a second full render of the chart. Applying the option lazily leaves that
+// update pending and the dispatch carries it out instead: one render, armed. An option with no zoom
+// toolbox has nothing to arm and takes the plain path, rather than waiting a frame for the pending
+// update to flush on its own.
+function applyOption(chart: ECharts, option: EChartsCoreOption, armDataZoom: boolean): void {
+  if (!armDataZoom || !hasDataZoomToolbox(option)) {
+    chart.setOption(option, true);
+    return;
+  }
+
+  chart.setOption(option, { notMerge: true, lazyUpdate: true });
+  enableDataZoom(chart);
+  // A plain `setOption` ends with this flush, so that the canvas holds the new option's pixels by the
+  // time it returns; `dispatchAction` does not flush, and a chart whose tab is in the background
+  // would keep the previous frame for as long as it stays there. Same single paint, just not deferred.
+  chart.getZr().flush();
+}
+// LOGZ.IO CHANGE END:: apply an option and arm drag-to-zoom in ONE chart update
 
 // see docs for info about each property: https://echarts.apache.org/en/api.html#events
 export interface MouseEventsParameters<T> {
@@ -211,6 +237,12 @@ export interface EChartsProps<T> {
   onEvents?: OnEventsType<T>;
   _instance?: React.MutableRefObject<ECharts | undefined>;
   onChartInitialized?: (instance: ECharts) => void;
+  /**
+   * LOGZ.IO CHANGE:: arms drag-to-zoom (the `dataZoomSelect` global cursor) with every option this
+   * chart applies, so a dragged selection zooms without the toolbox icon. Only for charts whose
+   * option carries the dataZoom toolbox feature.
+   */
+  enableDataZoomSelect?: boolean;
 }
 
 export const EChart = memo(function EChart<T>({
@@ -222,6 +254,7 @@ export const EChart = memo(function EChart<T>({
   onEvents,
   _instance,
   onChartInitialized,
+  enableDataZoomSelect = false, // LOGZ.IO CHANGE
 }: EChartsProps<T>) {
   const initialOption = useRef<EChartsCoreOption>(option);
   const prevOption = useRef<EChartsCoreOption>(option);
@@ -240,7 +273,7 @@ export const EChart = memo(function EChart<T>({
     });
     // LOGZ.IO CHANGE END:: enable dirty-rectangle rendering [unidash-perf]
     if (chartElement.current === undefined) return;
-    chartElement.current.setOption(initialOption.current, true);
+    applyOption(chartElement.current, initialOption.current, enableDataZoomSelect); // LOGZ.IO CHANGE
     onChartInitialized?.(chartElement.current);
     if (_instance !== undefined) {
       _instance.current = chartElement.current;
@@ -270,7 +303,7 @@ export const EChart = memo(function EChart<T>({
       }
       // LOGZ.IO CHANGE END:: clear escaped instance refs [unidash-perf]
     };
-  }, [_instance, onChartInitialized, theme, renderer]);
+  }, [_instance, onChartInitialized, theme, renderer, enableDataZoomSelect]);
 
   // LOGZ.IO CHANGE START:: suspend chart hit-testing while the page scrolls [unidash-perf]
   useLayoutEffect(() => {
@@ -297,12 +330,12 @@ export const EChart = memo(function EChart<T>({
     if (prevOption.current === option) return;
     if (prevOption.current === undefined || isEqual(prevOption.current, option)) return;
     if (!chartElement.current) return;
-    chartElement.current.setOption(option, true);
+    applyOption(chartElement.current, option, enableDataZoomSelect); // LOGZ.IO CHANGE
     // LOGZ.IO CHANGE:: replacing the option resets series states, so the emphasis-dispatch dedup
     // cache must forget its last payload or an identical follow-up dispatch would be skipped. [unidash-perf]
     clearNearbySeriesDispatchCache(chartElement.current);
     prevOption.current = option;
-  }, [option]);
+  }, [option, enableDataZoomSelect]);
 
   // Resize chart, cleanup listener on unmount
   useLayoutEffect(() => {

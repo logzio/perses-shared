@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ECharts as EChartsInstance } from 'echarts/core';
+import { ECharts as EChartsInstance, EChartsCoreOption } from 'echarts/core';
 import { TimeSeries, TimeSeriesValueTuple } from '@perses-dev/spec';
 import { DatapointInfo, PINNED_CROSSHAIR_SERIES_NAME, TimeChartSeriesMapping } from '../model';
 
@@ -20,6 +20,24 @@ export interface ZoomEventData {
   end: number;
 }
 
+// LOGZ.IO CHANGE START:: the zoom-toolbox predicate the arming path needs
+/** The part of an authored option `hasDataZoomToolbox` reads; ECharts types it as `any`. */
+interface ToolboxOptionShape {
+  feature?: { dataZoom?: unknown };
+}
+
+/**
+ * Whether an option carries the drag-to-zoom toolbox, which is what `enableDataZoom` arms once the
+ * option is applied. A "no data" option has no toolbox at all.
+ */
+export function hasDataZoomToolbox(option: EChartsCoreOption): boolean {
+  const toolbox = option.toolbox as ToolboxOptionShape | ToolboxOptionShape[] | undefined;
+  const firstToolbox = Array.isArray(toolbox) ? toolbox[0] : toolbox;
+
+  return firstToolbox?.feature?.dataZoom !== undefined;
+}
+// LOGZ.IO CHANGE END:: the zoom-toolbox predicate the arming path needs
+
 /**
  * Enable dataZoom without requring user to click toolbox icon.
  * https://stackoverflow.com/questions/57183297/is-there-a-way-to-use-zoom-of-type-select-without-showing-the-toolbar
@@ -27,20 +45,24 @@ export interface ZoomEventData {
 export function enableDataZoom(chart: EChartsInstance): void {
   const chartModel = chart['_model'];
   if (chartModel === undefined) return;
-  if (chartModel.option.toolbox !== undefined && chartModel.option.toolbox.length > 0) {
-    // check if hidden data zoom icon is unselected (if selected it would be 'emphasis' instead of 'normal')
-    if (chartModel.option.toolbox[0].feature.dataZoom.iconStatus.zoom === 'normal') {
-      chart.dispatchAction({
-        type: 'takeGlobalCursor',
-        key: 'dataZoomSelect',
-        dataZoomSelectActive: true,
-        // LOGZ.IO CHANGE:: arming drag-to-zoom is local to this chart, but ECharts registers
-        // takeGlobalCursor with `update: 'update'` and a connect group re-dispatches it to every
-        // member — so without this each panel entry ran a full update on every synced chart. [unidash-perf]
-        escapeConnect: true,
-      });
-    }
-  }
+  // LOGZ.IO CHANGE START:: arm a toolbox that has not rendered yet too
+  // Flattened, and the icon check relaxed: `iconStatus` is written by the toolbox VIEW, so it is
+  // missing until the first render — which is the case when arming rides along with a lazy
+  // `setOption` (see `EChart`). Only 'emphasis' means already armed, and the old check treated
+  // 'normal' as the only way of not being armed.
+  if (!hasDataZoomToolbox(chartModel.option)) return;
+  if (chartModel.option.toolbox[0].feature.dataZoom.iconStatus?.zoom === 'emphasis') return;
+  // LOGZ.IO CHANGE END:: arm a toolbox that has not rendered yet too
+
+  chart.dispatchAction({
+    type: 'takeGlobalCursor',
+    key: 'dataZoomSelect',
+    dataZoomSelectActive: true,
+    // LOGZ.IO CHANGE:: arming drag-to-zoom is local to this chart, but ECharts registers
+    // takeGlobalCursor with `update: 'update'` and a connect group re-dispatches it to every
+    // member — so without this each panel entry ran a full update on every synced chart. [unidash-perf]
+    escapeConnect: true,
+  });
 }
 
 /**
