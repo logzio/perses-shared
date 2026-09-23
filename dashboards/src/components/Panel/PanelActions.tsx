@@ -26,7 +26,7 @@ import MenuIcon from 'mdi-material-ui/Menu';
 import AlertIcon from 'mdi-material-ui/Alert';
 import AlertCircleIcon from 'mdi-material-ui/AlertCircle';
 import InformationOutlineIcon from 'mdi-material-ui/InformationOutline';
-import ChartLineIcon from 'mdi-material-ui/ChartLine'; // LOGZ.IO ADDITION:: series-limit indicator
+import ChartLineIcon from 'mdi-material-ui/ChartLine'; // LOGZ.IO CHANGE:: series-limit indicator
 import LightningBoltIcon from 'mdi-material-ui/LightningBolt';
 import { Link, Notice } from '@perses-dev/spec';
 import {
@@ -323,6 +323,7 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         {divider}
         <OnHover showIcons={showIcons}>
           <OverflowMenu title={title}>
+            {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
             {descriptionAction} {linksAction} {queryStateIndicator} {seriesLimitIndicator} {noticesIndicator}{' '}
             {extraActions} {viewQueryAction}
             {readActions} {pluginActions} {itemActions}
@@ -344,6 +345,7 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           {descriptionAction} {linksAction}
         </OnHover>
         {divider} {queryStateIndicator}
+        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
         {seriesLimitIndicator}
         {noticesIndicator}
         <OnHover showIcons={showIcons}>
@@ -368,6 +370,7 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           {descriptionAction} {linksAction}
         </OnHover>
         {divider} {queryStateIndicator}
+        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
         {seriesLimitIndicator}
         {noticesIndicator}
         <OnHover showIcons={showIcons}>
