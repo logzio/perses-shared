@@ -14,7 +14,7 @@
 import { Stack, Box, CircularProgress, styled, Popper, ClickAwayListener } from '@mui/material';
 import { isValidElement, PropsWithChildren, ReactElement, ReactNode, useMemo, useState, MouseEvent } from 'react';
 import { InfoTooltip } from '@perses-dev/components';
-import { QueryData } from '@perses-dev/plugin-system';
+import { PanelNotice, QueryData, SERIES_LIMIT_NOTICE_KIND } from '@perses-dev/plugin-system';
 import DatabaseSearch from 'mdi-material-ui/DatabaseSearch';
 import ArrowCollapseIcon from 'mdi-material-ui/ArrowCollapse';
 import ArrowExpandIcon from 'mdi-material-ui/ArrowExpand';
@@ -26,6 +26,7 @@ import MenuIcon from 'mdi-material-ui/Menu';
 import AlertIcon from 'mdi-material-ui/Alert';
 import AlertCircleIcon from 'mdi-material-ui/AlertCircle';
 import InformationOutlineIcon from 'mdi-material-ui/InformationOutline';
+import ChartLineIcon from 'mdi-material-ui/ChartLine'; // LOGZ.IO CHANGE:: series-limit indicator
 import LightningBoltIcon from 'mdi-material-ui/LightningBolt';
 import { Link, Notice } from '@perses-dev/spec';
 import {
@@ -44,6 +45,19 @@ const noticeTypeToIcon: Record<Notice['type'], ReactNode> = {
   warning: <AlertIcon fontSize="inherit" color="warning" />,
   info: <InformationOutlineIcon fontSize="inherit" color="info" />,
 };
+
+// LOGZ.IO CHANGE START:: group notices by kind; the general icon uses the worst severity [series-limit-notice]
+const NOTICE_SEVERITY_RANK: Record<Notice['type'], number> = { error: 0, warning: 1, info: 2 };
+
+const mostSevereNotice = (notices: Notice[]): Notice | undefined =>
+  notices.reduce<Notice | undefined>(
+    (worst, notice) =>
+      worst === undefined || NOTICE_SEVERITY_RANK[notice.type] < NOTICE_SEVERITY_RANK[worst.type] ? notice : worst,
+    undefined
+  );
+
+const describeNotices = (notices: Notice[]): string => [...new Set(notices.map(({ message }) => message))].join('\n');
+// LOGZ.IO CHANGE END
 
 export interface PanelActionsProps {
   title?: string;
@@ -156,23 +170,48 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
     }
   }, [queryResults]);
 
-  const noticesIndicator = useMemo(() => {
-    const notices = queryResults.flatMap((q) => {
+  // LOGZ.IO CHANGE START:: one indicator per notice kind [series-limit-notice]
+  const { seriesLimitNotices, generalNotices } = useMemo(() => {
+    const notices: PanelNotice[] = queryResults.flatMap((q) => {
       return q.data?.metadata?.notices ?? [];
     });
 
-    if (notices.length > 0) {
-      const lastNotice = notices[notices.length - 1]!;
-
-      return (
-        <InfoTooltip description={lastNotice.message}>
-          <HeaderIconButton aria-label="panel notices" size="small">
-            {noticeTypeToIcon[lastNotice.type]}
-          </HeaderIconButton>
-        </InfoTooltip>
-      );
-    }
+    return {
+      seriesLimitNotices: notices.filter(({ kind }) => kind === SERIES_LIMIT_NOTICE_KIND),
+      generalNotices: notices.filter(({ kind }) => kind !== SERIES_LIMIT_NOTICE_KIND),
+    };
   }, [queryResults]);
+
+  const seriesLimitIndicator = useMemo(() => {
+    if (seriesLimitNotices.length === 0) {
+      return undefined;
+    }
+
+    return (
+      <InfoTooltip description={describeNotices(seriesLimitNotices)}>
+        <HeaderIconButton aria-label="panel series limit notices" size="small">
+          <ChartLineIcon fontSize="inherit" color="warning" />
+        </HeaderIconButton>
+      </InfoTooltip>
+    );
+  }, [seriesLimitNotices]);
+
+  const noticesIndicator = useMemo(() => {
+    const worstNotice = mostSevereNotice(generalNotices);
+
+    if (worstNotice === undefined) {
+      return undefined;
+    }
+
+    return (
+      <InfoTooltip description={describeNotices(generalNotices)}>
+        <HeaderIconButton aria-label="panel notices" size="small">
+          {noticeTypeToIcon[worstNotice.type]}
+        </HeaderIconButton>
+      </InfoTooltip>
+    );
+  }, [generalNotices]);
+  // LOGZ.IO CHANGE END:: one indicator per notice kind [series-limit-notice]
 
   const readActions = useMemo((): ReactNode | undefined => {
     if (readHandlers !== undefined) {
@@ -284,7 +323,9 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         {divider}
         <OnHover showIcons={showIcons}>
           <OverflowMenu title={title}>
-            {descriptionAction} {linksAction} {queryStateIndicator} {noticesIndicator} {extraActions} {viewQueryAction}
+            {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
+            {descriptionAction} {linksAction} {queryStateIndicator} {seriesLimitIndicator} {noticesIndicator}{' '}
+            {extraActions} {viewQueryAction}
             {readActions} {pluginActions} {itemActions}
             {editActions}
           </OverflowMenu>
@@ -304,6 +345,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           {descriptionAction} {linksAction}
         </OnHover>
         {divider} {queryStateIndicator}
+        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
+        {seriesLimitIndicator}
         {noticesIndicator}
         <OnHover showIcons={showIcons}>
           {extraActions}
@@ -327,6 +370,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           {descriptionAction} {linksAction}
         </OnHover>
         {divider} {queryStateIndicator}
+        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
+        {seriesLimitIndicator}
         {noticesIndicator}
         <OnHover showIcons={showIcons}>
           {extraActions}

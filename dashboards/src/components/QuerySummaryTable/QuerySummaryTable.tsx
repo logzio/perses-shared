@@ -61,13 +61,15 @@ export function QuerySummaryTable(props: QuerySummaryTableProps): ReactElement |
     const queryData = query.state.data;
     if (queryData && queryData.metadata?.notices) {
       const queryKey = query.queryKey as [TimeSeriesQueryDefinition<UnknownSpec>];
-      const warningMessage = queryData.metadata.notices[0]?.message;
-      if (warningMessage) {
-        warnings.push({
-          query: String(queryKey[0].spec.plugin.spec.query),
-          summary: warningMessage,
-        });
-      }
+      // LOGZ.IO CHANGE:: list every notice; a capped query also returns an annotation [series-limit-notice]
+      queryData.metadata.notices.forEach(({ message }) => {
+        if (message) {
+          warnings.push({
+            query: String(queryKey[0].spec.plugin.spec.query),
+            summary: message,
+          });
+        }
+      });
     }
   });
 
