@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { Query, QueryKey } from '@tanstack/react-query';
-import { AbsoluteTimeRange, UnknownSpec, TimeSeriesData, UnixTimeMs } from '@perses-dev/spec';
+import { AbsoluteTimeRange, Notice, UnknownSpec, TimeSeriesData, UnixTimeMs } from '@perses-dev/spec';
 import { DatasourceStore, VariableStateMap } from '../runtime';
 import { Plugin } from './plugin-base';
 
@@ -72,6 +72,12 @@ export interface TimeSeriesQueryContext {
   queryIndex?: number;
   // LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas
 }
+
+// LOGZ.IO ADDITION START:: kind lets the panel header split the series-limit indicator [series-limit-notice]
+export const SERIES_LIMIT_NOTICE_KIND = 'series-limit';
+
+export type PanelNotice = Notice & { kind?: typeof SERIES_LIMIT_NOTICE_KIND };
+// LOGZ.IO ADDITION END
 
 export type TimeSeriesDataQuery = Query<TimeSeriesData, unknown, TimeSeriesData, QueryKey>;
 
