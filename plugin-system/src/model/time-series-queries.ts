@@ -73,11 +73,11 @@ export interface TimeSeriesQueryContext {
   // LOGZ.IO CHANGE END:: APPZ-955-math-on-queries-formulas
 }
 
-// LOGZ.IO ADDITION START:: kind lets the panel header split the series-limit indicator [series-limit-notice]
+// LOGZ.IO CHANGE START:: kind lets the panel header split the series-limit indicator [series-limit-notice]
 export const SERIES_LIMIT_NOTICE_KIND = 'series-limit';
 
 export type PanelNotice = Notice & { kind?: typeof SERIES_LIMIT_NOTICE_KIND };
-// LOGZ.IO ADDITION END
+// LOGZ.IO CHANGE END
 
 export type TimeSeriesDataQuery = Query<TimeSeriesData, unknown, TimeSeriesData, QueryKey>;
 
