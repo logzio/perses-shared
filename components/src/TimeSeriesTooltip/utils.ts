@@ -54,6 +54,29 @@ export function isSeriesSelectable(metadata?: TimeSeriesMetadata): boolean {
 }
 // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
 
+// LOGZ.IO CHANGE START:: Drilldown panel [unidash-perf]
+/** The series a hovered drilldown tooltip selects: the one closest to the cursor, when it can be drilled into. */
+export function getAutoSelectedSeriesIdx(nearbySeries: NearbySeriesArray): number | null {
+  const closestSeries = nearbySeries.find((series) => series.isClosestToCursor);
+
+  if (closestSeries === undefined || !isSeriesSelectable(closestSeries.metadata)) return null;
+
+  return closestSeries.seriesIdx;
+}
+
+/** Flags the selected series. Returns `nearbySeries` itself when nothing is selected. */
+export function markSelectedSeries(
+  nearbySeries: NearbySeriesArray,
+  selectedSeriesIdx: number | null
+): NearbySeriesArray {
+  if (selectedSeriesIdx === null) return nearbySeries;
+
+  return nearbySeries.map((series) =>
+    series.seriesIdx === selectedSeriesIdx ? { ...series, isSelected: true } : series
+  );
+}
+// LOGZ.IO CHANGE END:: Drilldown panel [unidash-perf]
+
 // LOGZ.IO CHANGE START:: pre-read container geometry [unidash-perf]
 /**
  * The container measurements the tooltip needs, read once per frame by the caller. Reading them here
@@ -193,6 +216,9 @@ export function getTooltipStyles(
     // Ensure pinned tooltip shows on top of all content, especially in panel editor
     zIndex: pinnedPos !== null ? theme.zIndex.modal + 1 : theme.zIndex.tooltip,
     // LOGZ.IO CHANGE END:: Custom Drilldown preview
+    // LOGZ.IO CHANGE:: only a pinned tooltip is interactive. One following the cursor sits just beside it, so
+    // a fast move landed on it instead of the canvas, which hid it and swallowed the click that pins. [unidash-perf]
+    pointerEvents: pinnedPos !== null ? 'auto' : 'none',
     overflow: 'hidden',
     '&:hover': {
       overflowY: 'auto',
@@ -334,14 +360,12 @@ export function createBarGroupCandidates({
   seriesMapping,
   closestTimestamp,
   hoveredBarInfo,
-  selectedSeriesIdx,
   seriesMetadata,
 }: {
   data: TimeSeries[];
   seriesMapping: TimeChartSeriesMapping;
   closestTimestamp: number;
   hoveredBarInfo: { seriesIdx: number; distance: number };
-  selectedSeriesIdx?: number | null;
   seriesMetadata?: TimeSeriesMetadata[];
 }): Candidate[] {
   const candidates: Candidate[] = [];
@@ -374,9 +398,6 @@ export function createBarGroupCandidates({
           const hasValidYValue = yValue !== null && yValue !== undefined;
 
           if (hasValidYValue) {
-            const hasSelectedSeriesIdx = selectedSeriesIdx !== null && selectedSeriesIdx !== undefined;
-            const isSelected = hasSelectedSeriesIdx && seriesIdx === selectedSeriesIdx;
-
             let distance: number;
             if (seriesIdx === hoveredBarInfo.seriesIdx) {
               distance = hoveredBarInfo.distance;
@@ -422,7 +443,6 @@ export function createBarGroupCandidates({
               formattedY: '',
               visualY,
               distance,
-              isSelected,
               metadata: currentMetadata,
               id: currentId,
             });
@@ -471,7 +491,6 @@ export function gatherCandidates({
   chart,
   mousePixelX,
   seriesMetadata,
-  selectedSeriesIdx,
   cursorPixelY,
 }: {
   data: TimeSeries[];
@@ -482,7 +501,6 @@ export function gatherCandidates({
   chart: EChartsInstance;
   mousePixelX?: number;
   seriesMetadata?: TimeSeriesMetadata[];
-  selectedSeriesIdx?: number | null;
   cursorPixelY?: number;
 }): Candidate[] {
   const lineCandidates: Candidate[] = [];
@@ -586,9 +604,6 @@ export function gatherCandidates({
               }
 
               if (isWithinYBuffer) {
-                const hasSelectedSeriesIdx = selectedSeriesIdx !== null && selectedSeriesIdx !== undefined;
-                const isSelected = hasSelectedSeriesIdx && seriesIdx === selectedSeriesIdx;
-
                 lineCandidates.push({
                   seriesIdx,
                   datumIdx,
@@ -600,7 +615,6 @@ export function gatherCandidates({
                   formattedY: '',
                   visualY,
                   distance: verticalDistance,
-                  isSelected,
                   metadata: currentMetadata,
                   id: currentId,
                 });
@@ -696,7 +710,6 @@ export function gatherCandidates({
       seriesMapping,
       closestTimestamp,
       hoveredBarInfo,
-      selectedSeriesIdx,
       seriesMetadata,
     });
   }
@@ -774,7 +787,7 @@ export function processCandidates(
       markerColor: candidate.markerColor,
       isClosestToCursor,
       metadata: candidate.metadata,
-      isSelected: candidate.isSelected,
+      isSelected: false, // LOGZ.IO CHANGE:: Drilldown panel — set by markSelectedSeries [unidash-perf]
     });
   }
 

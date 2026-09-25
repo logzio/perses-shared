@@ -46,7 +46,6 @@ export function checkforNearbyTimeSeries(
   seriesMetadata?: TimeSeriesMetadata[],
   format?: FormatOptions,
   seriesFormatMap?: Map<string, FormatOptions>,
-  selectedSeriesIdx?: number | null,
   cursorPixelY?: number
 ): NearbySeriesArray {
   const cursorX: number | null = pointInGrid[0] ?? null;
@@ -75,7 +74,6 @@ export function checkforNearbyTimeSeries(
     chart,
     mousePixelX,
     seriesMetadata,
-    selectedSeriesIdx,
     cursorPixelY,
   });
 
@@ -234,10 +232,7 @@ export function getNearbySeriesData({
   format,
   seriesFormatMap,
   seriesMode = 'nearby', // LOGZ.IO CHANGE:: series mode (single/nearby/all) replaces showAllSeries
-  // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
-  seriesMetadata,
-  selectedSeriesIdx,
-  // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+  seriesMetadata, // LOGZ.IO CHANGE:: Drilldown panel
 }: {
   mousePos: CursorData['coords'];
   pinnedPos: CursorCoordinates | null;
@@ -247,10 +242,7 @@ export function getNearbySeriesData({
   format?: FormatOptions;
   seriesFormatMap?: Map<string, FormatOptions>;
   seriesMode?: 'single' | 'nearby' | 'all'; // LOGZ.IO CHANGE:: series mode replaces showAllSeries
-  // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
-  seriesMetadata?: TimeSeriesMetadata[];
-  selectedSeriesIdx?: number | null;
-  // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
+  seriesMetadata?: TimeSeriesMetadata[]; // LOGZ.IO CHANGE:: Drilldown panel
 }): NearbySeriesArray {
   if (chart === undefined || mousePos === null) return EMPTY_TOOLTIP_DATA;
 
@@ -316,7 +308,6 @@ export function getNearbySeriesData({
       seriesMetadata,
       format,
       seriesFormatMap,
-      selectedSeriesIdx,
       // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
       hasMultipleYAxes ? cursorPixelY : undefined
     );

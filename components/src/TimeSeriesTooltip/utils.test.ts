@@ -14,11 +14,20 @@
 // LOGZ.IO ADDITION:: guards the O(1) row-aligned datum lookup in the nearby-series candidate pass —
 // aligned series resolve by row index, unaligned series fall back to a scan [unidash-perf]
 
+import { createTheme } from '@mui/material';
 import { ECharts as EChartsInstance } from 'echarts/core';
 import { TimeSeries } from '@perses-dev/core';
 import { TimeChartSeriesMapping } from '../model';
 import { CursorCoordinates, TOOLTIP_MAX_HEIGHT, TOOLTIP_MAX_WIDTH } from './tooltip-model';
-import { assembleTransform, gatherCandidates, readTooltipContainerGeometry } from './utils';
+import {
+  assembleTransform,
+  gatherCandidates,
+  getAutoSelectedSeriesIdx,
+  getTooltipStyles,
+  markSelectedSeries,
+  readTooltipContainerGeometry,
+} from './utils';
+import { NearbySeriesInfo } from './types';
 
 const TIMESTAMPS = [1_000, 1_015, 1_030, 1_045, 1_060];
 
@@ -186,3 +195,70 @@ describe('assembleTransform', () => {
     expect(x).toBe(1131);
   });
 });
+
+// LOGZ.IO CHANGE START:: Drilldown panel selection and the pointer rule of a following tooltip [unidash-perf]
+function buildNearbySeries(seriesIdx: number, overrides: Partial<NearbySeriesInfo> = {}): NearbySeriesInfo {
+  return {
+    seriesIdx,
+    datumIdx: 0,
+    seriesName: `test_series_${seriesIdx}`,
+    date: TIMESTAMPS[0] ?? 0,
+    markerColor: '#000',
+    x: TIMESTAMPS[0] ?? 0,
+    y: seriesIdx,
+    formattedY: `test_value_${seriesIdx}`,
+    isClosestToCursor: false,
+    isSelected: false,
+    ...overrides,
+  };
+}
+
+describe('getAutoSelectedSeriesIdx', () => {
+  it('should select the series closest to the cursor', () => {
+    const nearbySeries = [buildNearbySeries(0), buildNearbySeries(3, { isClosestToCursor: true })];
+
+    expect(getAutoSelectedSeriesIdx(nearbySeries)).toBe(3);
+  });
+
+  it('should select nothing when the closest series cannot be drilled into', () => {
+    const nearbySeries = [
+      buildNearbySeries(0),
+      buildNearbySeries(1, { isClosestToCursor: true, metadata: { isSelectable: false } }),
+    ];
+
+    expect(getAutoSelectedSeriesIdx(nearbySeries)).toBeNull();
+  });
+
+  it('should select nothing when no series is near the cursor', () => {
+    expect(getAutoSelectedSeriesIdx([])).toBeNull();
+  });
+});
+
+describe('markSelectedSeries', () => {
+  it('should flag only the selected series when a series is selected', () => {
+    const nearbySeries = [buildNearbySeries(0), buildNearbySeries(1)];
+
+    const marked = markSelectedSeries(nearbySeries, 1);
+
+    expect(marked.map((series) => series.isSelected)).toEqual([false, true]);
+    expect(marked[0]).toBe(nearbySeries[0]);
+    expect(nearbySeries[1]?.isSelected).toBe(false);
+  });
+
+  it('should return the series untouched when nothing is selected', () => {
+    const nearbySeries = [buildNearbySeries(0)];
+
+    expect(markSelectedSeries(nearbySeries, null)).toBe(nearbySeries);
+  });
+});
+
+describe('getTooltipStyles', () => {
+  it('should let the pointer through when the tooltip follows the cursor', () => {
+    expect(getTooltipStyles(createTheme(), null).pointerEvents).toBe('none');
+  });
+
+  it('should take the pointer when the tooltip is pinned', () => {
+    expect(getTooltipStyles(createTheme(), buildCursor(10, 10)).pointerEvents).toBe('auto');
+  });
+});
+// LOGZ.IO CHANGE END:: Drilldown panel selection and the pointer rule of a following tooltip [unidash-perf]
