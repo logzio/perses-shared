@@ -11,18 +11,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { memo, MutableRefObject, useRef, useState } from 'react';
+import { memo, MutableRefObject, useEffect, useRef, useState } from 'react';
 import { Box, Portal, Stack } from '@mui/material';
 import { ECharts as EChartsInstance } from 'echarts/core';
 import { TimeSeries, TimeSeriesMetadata } from '@perses-dev/spec';
 import useResizeObserver from 'use-resize-observer';
 import { FormatOptions, TimeChartSeriesMapping } from '../model';
 import { CursorCoordinates, PointAction, useMousePosition } from './tooltip-model';
-import { assembleTransform, getTooltipStyles, isSeriesSelectable, readTooltipContainerGeometry } from './utils';
+import {
+  assembleTransform,
+  getAutoSelectedSeriesIdx,
+  getTooltipStyles,
+  markSelectedSeries,
+  readTooltipContainerGeometry,
+} from './utils';
 import { getNearbySeriesData } from './nearby-series';
 import { TooltipHeader } from './TooltipHeader';
 import { TooltipContent } from './TooltipContent';
 import { TooltipActions } from './TooltipActions';
+import { PinnedSeriesSelection } from './types';
 
 export interface TimeChartTooltipProps {
   chartRef: MutableRefObject<EChartsInstance | undefined>;
@@ -49,7 +56,7 @@ export interface TimeChartTooltipProps {
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
   pointActions?: PointAction[];
   seriesMetadata?: TimeSeriesMetadata[];
-  // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+  // LOGZ.IO CHANGE END:: Drilldown panel
 }
 
 export const TimeChartTooltip = memo(function TimeChartTooltip({
@@ -67,7 +74,7 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
   pointActions = [],
   seriesMetadata,
-  // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
+  // LOGZ.IO CHANGE END:: Drilldown panel
 }: TimeChartTooltipProps) {
   // LOGZ.IO CHANGE START:: Tooltip series mode — "Show All" toggle overrides the panel's base mode
   // The in-tooltip toggle is binary (All vs base mode). A panel defaulting to "all" seeds it on;
@@ -76,7 +83,8 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   const baseSeriesMode = defaultSeriesMode === 'all' ? 'nearby' : defaultSeriesMode;
   const seriesMode = showAllSeries ? 'all' : baseSeriesMode;
   // LOGZ.IO CHANGE END:: Tooltip series mode — "Show All" toggle overrides the panel's base mode
-  const [selectedSeriesIdx, setSelectedSeriesIdx] = useState<number | null>(null); // LOGZ.IO CHANGE:: Drilldown panel [APPZ-377]
+  // LOGZ.IO CHANGE:: Drilldown panel — the pinned tooltip's selection, see capturePinnedSelection [unidash-perf]
+  const [pinnedSelection, setPinnedSelection] = useState<PinnedSeriesSelection | null>(null);
   const transform = useRef<string | undefined>();
 
   // LOGZ.IO CHANGE START:: the mouse-position snapshot is scoped to THIS chart's canvas, so a hover
@@ -88,11 +96,53 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
 
   const isTooltipPinned = pinnedPos !== null && enablePinning;
   const mousePos = liveMousePos ?? pinnedPos;
-
-  if (mousePos === null || mousePos.target === null || data === null) return null;
-
   const chart = chartRef.current;
   // LOGZ.IO CHANGE END:: per-chart scoped mouse position [unidash-perf]
+
+  // Get series nearby the cursor and pass into tooltip content children.
+  const seriesNearCursor = getNearbySeriesData({
+    mousePos,
+    data,
+    seriesMapping,
+    pinnedPos,
+    chart,
+    format,
+    seriesFormatMap,
+    seriesMode, // LOGZ.IO CHANGE:: tooltip series mode (single/nearby/all) replaces showAllSeries
+    seriesMetadata, // LOGZ.IO CHANGE:: Drilldown panel
+  });
+
+  // LOGZ.IO CHANGE START:: Drilldown panel [unidash-perf]
+  // The selection is derived, never set during render. A render-phase update re-runs this component, and
+  // React 18 then skips the effect through which useSyncExternalStore (useMousePosition) records the
+  // snapshot it rendered: the next null snapshot (cursor off this chart) compares equal to a stale null,
+  // the re-render is skipped and the tooltip freezes in place.
+  const hasPointMenuItems = pointActions.length > 0;
+  const autoSelectedSeriesIdx = hasPointMenuItems ? getAutoSelectedSeriesIdx(seriesNearCursor) : null;
+  const currentPinnedSelection = isTooltipPinned && pinnedSelection?.pinnedPos === pinnedPos ? pinnedSelection : null;
+  const selectedSeriesIdx = currentPinnedSelection ? currentPinnedSelection.seriesIdx : autoSelectedSeriesIdx;
+  const nearbySeries = markSelectedSeries(seriesNearCursor, selectedSeriesIdx);
+  const selectedSeries = nearbySeries.find((series) => series.isSelected);
+
+  const handleSeriesSelected = (seriesIdx: number): void => {
+    if (pinnedPos === null) return;
+
+    setPinnedSelection({ pinnedPos, seriesIdx: seriesIdx === selectedSeriesIdx ? null : seriesIdx });
+  };
+
+  useEffect(
+    function capturePinnedSelection() {
+      // A pinned tooltip keeps the series selected when it got pinned, so a refresh cannot move it.
+      if (!hasPointMenuItems || !isTooltipPinned || pinnedPos === null || currentPinnedSelection !== null) return;
+
+      setPinnedSelection({ pinnedPos, seriesIdx: autoSelectedSeriesIdx });
+    },
+    [hasPointMenuItems, isTooltipPinned, pinnedPos, currentPinnedSelection, autoSelectedSeriesIdx]
+  );
+  // LOGZ.IO CHANGE END:: Drilldown panel [unidash-perf]
+
+  // LOGZ.IO CHANGE:: guard moved below the hooks above, which must run on every render [unidash-perf]
+  if (mousePos === null || mousePos.target === null || data === null) return null;
 
   const containerElement = containerId ? document.querySelector(containerId) : undefined;
   // LOGZ.IO CHANGE:: one layout read per frame instead of two — the max height and the transform both
@@ -102,44 +152,6 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   const maxHeight = containerGeometry?.height;
 
   transform.current = assembleTransform(mousePos, pinnedPos, height ?? 0, width ?? 0, containerGeometry);
-
-  // Get series nearby the cursor and pass into tooltip content children.
-  const nearbySeries = getNearbySeriesData({
-    mousePos,
-    data,
-    seriesMapping,
-    pinnedPos,
-    chart,
-    format,
-    seriesFormatMap,
-    seriesMode, // LOGZ.IO CHANGE:: tooltip series mode (single/nearby/all) replaces showAllSeries
-    // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
-    seriesMetadata,
-    selectedSeriesIdx,
-    // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
-  });
-
-  // LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377]
-  const hasPointMenuItems = pointActions.length > 0;
-
-  if (hasPointMenuItems && !isTooltipPinned) {
-    const hasOneSeries = nearbySeries.length === 1;
-    const firstSeriesClosestToCursor = nearbySeries.find((series) => series.isClosestToCursor);
-    let nextSelectedSeriesIdx: number | null = hasOneSeries ? 0 : null;
-
-    if (firstSeriesClosestToCursor) {
-      nextSelectedSeriesIdx = isSeriesSelectable(firstSeriesClosestToCursor.metadata)
-        ? firstSeriesClosestToCursor.seriesIdx
-        : null;
-    }
-
-    if (nextSelectedSeriesIdx !== selectedSeriesIdx) {
-      setSelectedSeriesIdx(nextSelectedSeriesIdx);
-    }
-  }
-
-  const selectedSeries = nearbySeries.find((series) => series.isSelected);
-  // LOGZ.IO CHANGE END:: Drilldown panel [APPZ-377]
 
   if (nearbySeries.length === 0) {
     return null;
@@ -172,11 +184,7 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
           />
           {/* LOGZ.IO CHANGE START:: Drilldown panel [APPZ-377] */}
           <TooltipContent
-            onSelected={
-              hasPointMenuItems
-                ? (seriesIdx): void => setSelectedSeriesIdx((prev) => (prev === seriesIdx ? null : seriesIdx))
-                : undefined
-            }
+            onSelected={hasPointMenuItems ? handleSeriesSelected : undefined}
             series={nearbySeries}
             wrapLabels={wrapLabels}
             allowActions={allowActions}

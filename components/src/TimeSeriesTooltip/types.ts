@@ -13,6 +13,7 @@
 
 import { ECharts as EChartsInstance } from 'echarts/core';
 import { TimeSeriesMetadata } from '@perses-dev/core';
+import type { CursorCoordinates } from './tooltip-model'; // LOGZ.IO CHANGE:: Drilldown panel
 
 export interface NearbySeriesInfo {
   seriesIdx: number | null;
@@ -30,12 +31,20 @@ export interface NearbySeriesInfo {
 
 export type NearbySeriesArray = NearbySeriesInfo[];
 
-export type Candidate = Omit<NearbySeriesInfo, 'isClosestToCursor' | 'seriesIdx' | 'datumIdx'> & {
+// LOGZ.IO CHANGE START:: Drilldown panel [unidash-perf]
+/** The drilldown series a pinned tooltip keeps, and the pin it was made on. `null` means none. */
+export interface PinnedSeriesSelection {
+  pinnedPos: CursorCoordinates;
+  seriesIdx: number | null;
+}
+// LOGZ.IO CHANGE END:: Drilldown panel [unidash-perf]
+
+// LOGZ.IO CHANGE:: Drilldown panel — selection is the tooltip's to mark, see markSelectedSeries [unidash-perf]
+export type Candidate = Omit<NearbySeriesInfo, 'isClosestToCursor' | 'isSelected' | 'seriesIdx' | 'datumIdx'> & {
   seriesIdx: number;
   datumIdx: number;
   visualY: number;
   distance: number;
-  isSelected: boolean;
   id: string;
 };
 
