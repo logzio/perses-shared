@@ -30,6 +30,7 @@ import {
   MergeColumnsTransform,
   MergeIndexedColumnsTransform,
   MergeSeriesTransform,
+  PercentageColumnTransform, // LOGZ.IO CHANGE:: percentage column transform
   Transform,
 } from '../model';
 
@@ -208,6 +209,63 @@ function MergeSeriesTransformEditor({ value, onChange }: TransformSpecEditorProp
   );
 }
 
+// LOGZ.IO CHANGE START:: percentage column transform
+function PercentageColumnTransformEditor({
+  value,
+  onChange,
+}: TransformSpecEditorProps<PercentageColumnTransform>): ReactElement {
+  return (
+    <Stack direction="row" gap={1} alignItems="center">
+      <TextField
+        id="percentage-column-column"
+        variant="outlined"
+        label="Column"
+        placeholder="Example: 'value'"
+        value={value.spec.column ?? ''}
+        sx={{ width: '100%' }}
+        onChange={(column) => {
+          onChange({
+            ...value,
+            spec: { ...value.spec, column: column },
+          });
+        }}
+        required
+      />
+      <TextField
+        id="percentage-column-name"
+        variant="outlined"
+        label="Output Name"
+        placeholder={value.spec.column ? `${value.spec.column} percentages` : 'Example: value percentages'}
+        value={value.spec.name ?? ''}
+        sx={{ width: '100%' }}
+        onChange={(name) => {
+          onChange({
+            ...value,
+            spec: { ...value.spec, name: name || undefined },
+          });
+        }}
+      />
+      <FormControlLabel
+        label="Enabled"
+        labelPlacement="start"
+        control={
+          <Switch
+            value={!value.spec.disabled}
+            checked={!value.spec.disabled}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                spec: { ...value.spec, disabled: !e.target.checked },
+              })
+            }
+          />
+        }
+      />
+    </Stack>
+  );
+}
+// LOGZ.IO CHANGE END:: percentage column transform
+
 export interface TransformEditorProps extends Omit<StackProps, 'children' | 'value' | 'onChange'> {
   value: Transform;
   onChange: (transform: Transform) => void;
@@ -246,11 +304,21 @@ export function TransformEditor({ value, onChange, ...props }: TransformEditorPr
             <Typography variant="caption">Series will be merged by their labels</Typography>
           </Stack>
         </MenuItem>
+        {/* LOGZ.IO CHANGE START:: percentage column transform */}
+        <MenuItem value="PercentageColumn">
+          <Stack>
+            <Typography>Percentage column</Typography>
+            <Typography variant="caption">Each row&apos;s share of the column total</Typography>
+          </Stack>
+        </MenuItem>
+        {/* LOGZ.IO CHANGE END:: percentage column transform */}
       </TextField>
       {value.kind === 'JoinByColumnValue' && <JoinByColumnValueTransformEditor value={value} onChange={onChange} />}
       {value.kind === 'MergeColumns' && <MergeColumnsTransformEditor value={value} onChange={onChange} />}
       {value.kind === 'MergeIndexedColumns' && <MergeIndexedColumnsTransformEditor value={value} onChange={onChange} />}
       {value.kind === 'MergeSeries' && <MergeSeriesTransformEditor value={value} onChange={onChange} />}
+      {/* LOGZ.IO CHANGE:: percentage column transform */}
+      {value.kind === 'PercentageColumn' && <PercentageColumnTransformEditor value={value} onChange={onChange} />}
     </Stack>
   );
 }

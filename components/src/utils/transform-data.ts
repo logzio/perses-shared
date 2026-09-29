@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Transform } from '../model';
+import { PercentageColumnTransform, Transform } from '../model'; // LOGZ.IO CHANGE:: percentage column transform
 
 /*
  * Join: Regroup rows with equal cell value in a column.
@@ -203,6 +203,51 @@ export function applyMergeSeriesTransform(data: Array<Record<string, unknown>>):
   return result;
 }
 
+// LOGZ.IO CHANGE START:: percentage column transform
+/*
+ * Percentage Column: adds a column holding each row's share of a column's total, as a fraction.
+ * The total sums every row with a finite number in the column; a row without one gets no share
+ * and does not count toward the total. A zero total gives every row 0.
+ *
+ * Example: Share of 'value' as 'value percentages'
+ * INPUT:
+ * | timestamp  | value | mount     |
+ * |------------|-------|-----------|
+ * | 1630000000 | 3     | /         |
+ * | 1630000000 | 1     | /boot/efi |
+ *
+ * OUTPUT:
+ * | timestamp  | value | mount     | value percentages |
+ * |------------|-------|-----------|-------------------|
+ * | 1630000000 | 3     | /         | 0.75              |
+ * | 1630000000 | 1     | /boot/efi | 0.25              |
+ */
+/** The column a PercentageColumn transform writes: the configured name, else `<column> percentages`. */
+export function getPercentageColumnName(spec: PercentageColumnTransform['spec']): string {
+  return spec.name || `${spec.column} percentages`;
+}
+
+export function applyPercentageColumnTransform(
+  data: Array<Record<string, unknown>>,
+  column: string,
+  outputName: string
+): Array<Record<string, unknown>> {
+  const isShareable = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+  const total = data.reduce((sum, row) => {
+    const value = row[column];
+    return isShareable(value) ? sum + value : sum;
+  }, 0);
+
+  return data.map((row) => {
+    const value = row[column];
+    if (!isShareable(value)) {
+      return { ...row, [outputName]: undefined };
+    }
+    return { ...row, [outputName]: total === 0 ? 0 : value / total };
+  });
+}
+// LOGZ.IO CHANGE END:: percentage column transform
+
 /*
  * Transforms query data with the given transforms
  */
@@ -235,6 +280,18 @@ export function transformData(
         }
         break;
       }
+      // LOGZ.IO CHANGE START:: percentage column transform
+      case 'PercentageColumn': {
+        if (transform.spec.column) {
+          result = applyPercentageColumnTransform(
+            result,
+            transform.spec.column,
+            getPercentageColumnName(transform.spec)
+          );
+        }
+        break;
+      }
+      // LOGZ.IO CHANGE END:: percentage column transform
       case 'MergeSeries': {
         result = applyMergeSeriesTransform(result);
         break;
