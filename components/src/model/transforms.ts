@@ -51,12 +51,23 @@ export interface MergeSeriesTransform {
   spec: TransformCommonSpec;
 }
 
+// LOGZ.IO CHANGE START:: percentage column transform
+export interface PercentageColumnTransform {
+  kind: 'PercentageColumn';
+  spec: TransformCommonSpec & {
+    column: string;
+    name?: string;
+  };
+}
+// LOGZ.IO CHANGE END:: percentage column transform
+
 export type Transform =
   | JoinByColumnValueTransform
   | MergeColumnsTransform
   | MergeIndexedColumnsTransform
   | MergeSeriesTransform
-  | ExtractColumnFieldsTransform;
+  | ExtractColumnFieldsTransform
+  | PercentageColumnTransform; // LOGZ.IO CHANGE:: percentage column transform
 
 // Can be moved somewhere else
 export const TRANSFORM_TEXT = {
@@ -65,4 +76,5 @@ export const TRANSFORM_TEXT = {
   MergeIndexedColumns: 'Merge indexed columns',
   MergeSeries: 'Merge series',
   ExtractColumnFields: 'Extract column fields',
+  PercentageColumn: 'Percentage column', // LOGZ.IO CHANGE:: percentage column transform
 };
