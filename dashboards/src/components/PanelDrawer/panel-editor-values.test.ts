@@ -27,6 +27,7 @@ describe('restoreValuesStrippedByValidation', () => {
         timeFrom: '1h',
         hideTimeOverride: false,
         maxDataPoints: 300,
+        queryMode: 'instant',
         queries: [
           {
             kind: 'TimeSeriesQuery',
@@ -62,6 +63,7 @@ describe('restoreValuesStrippedByValidation', () => {
     expect(validated.panelDefinition.spec).not.toHaveProperty('timeFrom');
     expect(validated.panelDefinition.spec).not.toHaveProperty('hideTimeOverride');
     expect(validated.panelDefinition.spec).not.toHaveProperty('maxDataPoints');
+    expect(validated.panelDefinition.spec).not.toHaveProperty('queryMode');
   });
 
   // Regression test for the "Hide from chart doesn't persist after Apply" bug: run the values
@@ -106,6 +108,50 @@ describe('restoreValuesStrippedByValidation', () => {
 
     expect((restored.panelDefinition.spec as { maxDataPoints?: number }).maxDataPoints).toBe(300);
   });
+
+  // LOGZ.IO CHANGE START:: Panel-level "Instant query" is stripped too
+  const withPanelKind = (values: PanelEditorValues, kind: string): PanelEditorValues => {
+    const copy = JSON.parse(JSON.stringify(values)) as PanelEditorValues;
+    copy.panelDefinition.spec.plugin = { kind, spec: {} };
+
+    return copy;
+  };
+
+  it('should persist the query mode through validation on a visualization that supports it', () => {
+    const raw = withPanelKind(RAW_VALUES, 'BarChart');
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect((restored.panelDefinition.spec as { queryMode?: string }).queryMode).toBe('instant');
+  });
+
+  it('should drop the query mode once the visualization changed to a kind that does not support it', () => {
+    // The switch is no longer shown for this kind, so a value left behind would be unreachable.
+    const raw = withPanelKind(RAW_VALUES, 'TimeSeriesChart');
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect(restored.panelDefinition.spec).not.toHaveProperty('queryMode');
+  });
+
+  it('should drop a hand-edited query mode that is not one of the two modes', () => {
+    const raw = withPanelKind(RAW_VALUES, 'BarChart');
+    (raw.panelDefinition.spec as { queryMode?: string }).queryMode = 'Instant';
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect(restored.panelDefinition.spec).not.toHaveProperty('queryMode');
+  });
+
+  it('should drop the query mode when the switch was turned off in the editor', () => {
+    const raw = JSON.parse(JSON.stringify(RAW_VALUES)) as PanelEditorValues;
+    delete (raw.panelDefinition.spec as { queryMode?: string }).queryMode;
+
+    const restored = restoreValuesStrippedByValidation(panelEditorSchema.parse(raw) as PanelEditorValues, raw);
+
+    expect(restored.panelDefinition.spec).not.toHaveProperty('queryMode');
+  });
+  // LOGZ.IO CHANGE END:: Panel-level "Instant query" is stripped too
 
   it('should drop max data points when the field was cleared in the editor', () => {
     const raw = JSON.parse(JSON.stringify(RAW_VALUES)) as PanelEditorValues;

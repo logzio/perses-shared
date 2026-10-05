@@ -18,6 +18,7 @@ export * from './log-queries';
 export * from './log-volume-utils';
 // LOGZ.IO CHANGE:: Panel-level "Max data points"
 export * from './max-data-points';
+export * from './query-mode'; // LOGZ.IO CHANGE:: Panel-level "Instant query"
 export * from './panels';
 export * from './plugins';
 export * from './plugin-base';
