@@ -78,7 +78,7 @@ const getMaxDataPointsInput = (): HTMLInputElement =>
   screen.getByRole('spinbutton', { name: /max data points/i }) as HTMLInputElement;
 
 describe('PanelTimeOverrideEditor', () => {
-  it('should render max data points after the other override controls', () => {
+  it('should render max data points with the fields, before the checkboxes', () => {
     renderEditor();
     expandSection();
 
@@ -86,7 +86,7 @@ describe('PanelTimeOverrideEditor', () => {
     const maxDataPoints = getMaxDataPointsInput();
 
     // eslint-disable-next-line no-bitwise
-    expect(hideOverride.compareDocumentPosition(maxDataPoints) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(maxDataPoints.compareDocumentPosition(hideOverride) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('should start expanded when only max data points is set', () => {
@@ -138,7 +138,7 @@ describe('PanelTimeOverrideEditor', () => {
 
   // LOGZ.IO CHANGE START:: Panel-level "Instant query"
   describe('instant query', () => {
-    it('should offer the switch on a bar chart, after max data points', () => {
+    it('should offer the checkbox on a bar chart, after the other controls', () => {
       renderBarEditor();
       expandSection();
 
@@ -151,7 +151,7 @@ describe('PanelTimeOverrideEditor', () => {
       ).toBeTruthy();
     });
 
-    it('should not offer the switch on a panel kind that does not support it yet', () => {
+    it('should not offer the checkbox on a panel kind that does not support it yet', () => {
       renderEditor();
       expandSection();
 
@@ -164,7 +164,7 @@ describe('PanelTimeOverrideEditor', () => {
       expect(queryInstantSwitch()).toBeChecked();
     });
 
-    it('should commit instant when switched on', () => {
+    it('should commit instant when checked', () => {
       renderBarEditor();
       expandSection();
 
@@ -173,7 +173,7 @@ describe('PanelTimeOverrideEditor', () => {
       expect(screen.getByTestId('committed-query-mode')).toHaveTextContent('instant');
     });
 
-    it('should only show help when the help icon is clicked, not toggle the switch', () => {
+    it('should only show help when the help icon is clicked, not toggle the box', () => {
       renderBarEditor();
       expandSection();
 
@@ -183,7 +183,7 @@ describe('PanelTimeOverrideEditor', () => {
       expect(screen.getByTestId('committed-query-mode')).toHaveTextContent('unset');
     });
 
-    it('should clear the setting when switched off, leaving the panel plugin to decide', () => {
+    it('should clear the setting when unchecked, leaving the panel plugin to decide', () => {
       renderBarEditor('instant');
 
       userEvent.click(queryInstantSwitch()!);

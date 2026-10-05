@@ -31,7 +31,6 @@ import {
   Collapse,
   IconButton,
   InputAdornment,
-  Switch,
   Tooltip,
 } from '@mui/material';
 import { Control, Controller, FieldPath, useWatch } from 'react-hook-form';
@@ -59,8 +58,6 @@ const TIME_SHIFT_PATH = 'panelDefinition.spec.timeShift' as unknown as FieldPath
 const HIDE_OVERRIDE_PATH = 'panelDefinition.spec.hideTimeOverride' as unknown as FieldPath<PanelEditorValues>;
 const MAX_DATA_POINTS_PATH = 'panelDefinition.spec.maxDataPoints' as unknown as FieldPath<PanelEditorValues>;
 const QUERY_MODE_PATH = 'panelDefinition.spec.queryMode' as unknown as FieldPath<PanelEditorValues>;
-
-const SMALL_INPUT_HEIGHT = 40;
 
 const MAX_DATA_POINTS_HELP =
   `The maximum data points per series (${MIN_MAX_DATA_POINTS}–${MAX_MAX_DATA_POINTS}). The query interval becomes ` +
@@ -141,12 +138,22 @@ export function PanelTimeOverrideEditor({ control, panelKind }: PanelTimeOverrid
           />
           <Controller
             control={control}
+            name={MAX_DATA_POINTS_PATH}
+            render={({ field }) => (
+              <MaxDataPointsField
+                value={field.value as number | undefined}
+                onChange={field.onChange}
+                inputRef={field.ref}
+              />
+            )}
+          />
+        </Stack>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ ml: 4 }}>
+          <Controller
+            control={control}
             name={HIDE_OVERRIDE_PATH}
             render={({ field }) => (
               <FormControlLabel
-                // Height of a `size="small"` input, so the checkbox centers on the input boxes
-                // rather than on the fields, whose helper text makes them taller.
-                sx={{ height: SMALL_INPUT_HEIGHT }}
                 control={
                   <Checkbox
                     size="small"
@@ -159,30 +166,18 @@ export function PanelTimeOverrideEditor({ control, panelKind }: PanelTimeOverrid
               />
             )}
           />
-          <Controller
-            control={control}
-            name={MAX_DATA_POINTS_PATH}
-            render={({ field }) => (
-              <MaxDataPointsField
-                value={field.value as number | undefined}
-                onChange={field.onChange}
-                inputRef={field.ref}
-              />
-            )}
-          />
           {supportsPanelQueryMode(panelKind) && (
             <Controller
               control={control}
               name={QUERY_MODE_PATH}
               render={({ field }) => (
-                // The help icon sits beside the label, not inside it, so clicking it does not toggle the switch.
-                <Stack direction="row" alignItems="center" sx={{ height: SMALL_INPUT_HEIGHT }}>
+                <Stack direction="row" alignItems="center">
                   <FormControlLabel
                     control={
-                      <Switch
+                      <Checkbox
                         size="small"
                         checked={resolvePanelQueryMode(field.value) === 'instant'}
-                        // Off means "unset": the panel plugin decides, as it does for every other kind.
+                        // Unchecked means "unset": the panel plugin decides, as it does for every other kind.
                         onChange={(e) => field.onChange(e.target.checked ? 'instant' : undefined)}
                         slotProps={{ input: { ref: field.ref } }}
                       />
