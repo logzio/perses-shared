@@ -13,7 +13,7 @@
 
 // LOGZ.IO CHANGE START:: Panel-level time range override editor (Grafana parity) [APPZ-2474]
 // Renders the react-hook-form-bound inputs for the panel-level "Relative time" / "Time shift" /
-// "Hide override" / "Max data points" fields. Lives in plugin-system because it's used
+// "Hide override" / "Max data points" / "Instant query" fields. Lives in plugin-system because it's used
 // by `PanelSpecEditor` (also plugin-system); only depends on react-hook-form + MUI
 // + plugin-system's own `PanelEditorValues` type (moved out of `@perses-dev/spec` in 0.54.0).
 //
@@ -38,18 +38,26 @@ import { ReactElement, Ref, useEffect, useState } from 'react';
 import ChevronDownIcon from 'mdi-material-ui/ChevronDown';
 import ChevronRightIcon from 'mdi-material-ui/ChevronRight';
 import InformationOutlineIcon from 'mdi-material-ui/InformationOutline';
-import { MAX_MAX_DATA_POINTS, MIN_MAX_DATA_POINTS, PanelEditorValues, parseMaxDataPointsInput } from '../../model';
+import {
+  MAX_MAX_DATA_POINTS,
+  MIN_MAX_DATA_POINTS,
+  PanelEditorValues,
+  parseMaxDataPointsInput,
+  resolvePanelQueryMode,
+  supportsPanelQueryMode,
+} from '../../model';
 
 export interface PanelTimeOverrideEditorProps {
   control: Control<PanelEditorValues>;
+  /** The panel plugin's kind: some query options are offered only on the kinds that support them. */
+  panelKind: string;
 }
 
 const TIME_FROM_PATH = 'panelDefinition.spec.timeFrom' as unknown as FieldPath<PanelEditorValues>;
 const TIME_SHIFT_PATH = 'panelDefinition.spec.timeShift' as unknown as FieldPath<PanelEditorValues>;
 const HIDE_OVERRIDE_PATH = 'panelDefinition.spec.hideTimeOverride' as unknown as FieldPath<PanelEditorValues>;
 const MAX_DATA_POINTS_PATH = 'panelDefinition.spec.maxDataPoints' as unknown as FieldPath<PanelEditorValues>;
-
-const SMALL_INPUT_HEIGHT = 40;
+const QUERY_MODE_PATH = 'panelDefinition.spec.queryMode' as unknown as FieldPath<PanelEditorValues>;
 
 const MAX_DATA_POINTS_HELP =
   `The maximum data points per series (${MIN_MAX_DATA_POINTS}–${MAX_MAX_DATA_POINTS}). The query interval becomes ` +
@@ -57,7 +65,12 @@ const MAX_DATA_POINTS_HELP =
   `the number asked for rather than exactly it. A query's own interval setting still wins where it is coarser. ` +
   `Leave empty to derive the interval from the panel's width.`;
 
-export function PanelTimeOverrideEditor({ control }: PanelTimeOverrideEditorProps): ReactElement {
+const INSTANT_QUERY_HELP =
+  'Return one value per series for the whole time range instead of a time series. Use it for a chart that ' +
+  'shows a single number per series, such as one bar per category; the Calculation setting then has nothing ' +
+  'to reduce.';
+
+export function PanelTimeOverrideEditor({ control, panelKind }: PanelTimeOverrideEditorProps): ReactElement {
   // Watch the section's fields so we can decide whether to start expanded (any
   // value already set) or collapsed (the common case for new panels). We only read the
   // values once at mount via the lazy `useState` initializer — toggling the section
@@ -67,7 +80,10 @@ export function PanelTimeOverrideEditor({ control }: PanelTimeOverrideEditorProp
   const timeShift = useWatch({ control, name: TIME_SHIFT_PATH });
   const hideOverride = useWatch({ control, name: HIDE_OVERRIDE_PATH });
   const maxDataPoints = useWatch({ control, name: MAX_DATA_POINTS_PATH });
-  const [isOpen, setIsOpen] = useState(() => Boolean(timeFrom || timeShift || hideOverride || maxDataPoints));
+  const queryMode = useWatch({ control, name: QUERY_MODE_PATH });
+  const [isOpen, setIsOpen] = useState(() =>
+    Boolean(timeFrom || timeShift || hideOverride || maxDataPoints || queryMode)
+  );
 
   return (
     <Box sx={{ pb: 2, borderBottom: 1, borderColor: (theme) => theme.palette.divider }}>
@@ -122,12 +138,22 @@ export function PanelTimeOverrideEditor({ control }: PanelTimeOverrideEditorProp
           />
           <Controller
             control={control}
+            name={MAX_DATA_POINTS_PATH}
+            render={({ field }) => (
+              <MaxDataPointsField
+                value={field.value as number | undefined}
+                onChange={field.onChange}
+                inputRef={field.ref}
+              />
+            )}
+          />
+        </Stack>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ ml: 4 }}>
+          <Controller
+            control={control}
             name={HIDE_OVERRIDE_PATH}
             render={({ field }) => (
               <FormControlLabel
-                // Height of a `size="small"` input, so the checkbox centers on the input boxes
-                // rather than on the fields, whose helper text makes them taller.
-                sx={{ height: SMALL_INPUT_HEIGHT }}
                 control={
                   <Checkbox
                     size="small"
@@ -140,17 +166,37 @@ export function PanelTimeOverrideEditor({ control }: PanelTimeOverrideEditorProp
               />
             )}
           />
-          <Controller
-            control={control}
-            name={MAX_DATA_POINTS_PATH}
-            render={({ field }) => (
-              <MaxDataPointsField
-                value={field.value as number | undefined}
-                onChange={field.onChange}
-                inputRef={field.ref}
-              />
-            )}
-          />
+          {supportsPanelQueryMode(panelKind) && (
+            <Controller
+              control={control}
+              name={QUERY_MODE_PATH}
+              render={({ field }) => (
+                <Stack direction="row" alignItems="center">
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={resolvePanelQueryMode(field.value) === 'instant'}
+                        // Unchecked means "unset": the panel plugin decides, as it does for every other kind.
+                        onChange={(e) => field.onChange(e.target.checked ? 'instant' : undefined)}
+                        slotProps={{ input: { ref: field.ref } }}
+                      />
+                    }
+                    label="Instant query"
+                    sx={{ mr: 0.5 }}
+                  />
+                  <Tooltip title={INSTANT_QUERY_HELP}>
+                    <InformationOutlineIcon
+                      fontSize="small"
+                      role="img"
+                      aria-label="About instant query"
+                      sx={{ color: 'text.secondary', cursor: 'help' }}
+                    />
+                  </Tooltip>
+                </Stack>
+              )}
+            />
+          )}
         </Stack>
       </Collapse>
     </Box>

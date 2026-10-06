@@ -12,7 +12,7 @@
 // limitations under the License.
 
 import { QueryDefinition } from '@perses-dev/spec';
-import { PanelEditorValues } from '@perses-dev/plugin-system';
+import { PanelEditorValues, resolveActivePanelQueryMode } from '@perses-dev/plugin-system';
 import { RepeatablePanelEditorValues } from '../../model';
 
 interface PanelSpecExtensions {
@@ -20,6 +20,7 @@ interface PanelSpecExtensions {
   timeShift?: string;
   hideTimeOverride?: boolean;
   maxDataPoints?: number;
+  queryMode?: string;
 }
 
 /**
@@ -29,6 +30,7 @@ interface PanelSpecExtensions {
  * missing from the validated values `react-hook-form` hands to the submit handler:
  * - panel spec: `timeFrom` / `timeShift` / `hideTimeOverride` (panel time override)
  * - panel spec: `maxDataPoints` (points the panel asks for)
+ * - panel spec: `queryMode` (instant query)
  * - query spec: `hidden` ("Hide from chart")
  * - top level: `repeat` (item-level repeat) — a layout value, not part of the panel
  *
@@ -42,6 +44,11 @@ export function restoreValuesStrippedByValidation(
   raw: RepeatablePanelEditorValues
 ): RepeatablePanelEditorValues {
   const rawSpec = raw.panelDefinition.spec as PanelEditorValues['panelDefinition']['spec'] & PanelSpecExtensions;
+  // Kept only where the switch exists, so a mode left behind by a visualization change is not saved.
+  const queryMode = resolveActivePanelQueryMode({
+    panelKind: validated.panelDefinition.spec.plugin.kind,
+    queryMode: rawSpec.queryMode,
+  });
 
   const queries = validated.panelDefinition.spec.queries?.map((query, index): QueryDefinition => {
     const rawHidden = (raw.panelDefinition.spec.queries?.[index]?.spec as { hidden?: boolean } | undefined)?.hidden;
@@ -64,6 +71,7 @@ export function restoreValuesStrippedByValidation(
         ...(rawSpec.timeShift !== undefined && rawSpec.timeShift !== '' && { timeShift: rawSpec.timeShift }),
         ...(rawSpec.hideTimeOverride !== undefined && { hideTimeOverride: rawSpec.hideTimeOverride }),
         ...(rawSpec.maxDataPoints !== undefined && { maxDataPoints: rawSpec.maxDataPoints }),
+        ...(queryMode !== undefined && { queryMode }),
       } as PanelEditorValues['panelDefinition']['spec'],
     },
   };

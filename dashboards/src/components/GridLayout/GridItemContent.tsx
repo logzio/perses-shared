@@ -17,6 +17,7 @@ import {
   DataQueriesProvider,
   // LOGZ.IO CHANGE:: Panel-level "Max data points"
   resolveMaxDataPoints,
+  resolveActivePanelQueryMode,
   usePlugin,
   useSuggestedStepMs,
 } from '@perses-dev/plugin-system';
@@ -253,10 +254,16 @@ function GridItemContentBody({
     [plugin, panelDefinition.spec.plugin.spec]
   );
 
+  // LOGZ.IO CHANGE START:: Panel-level "Instant query" fills the mode a plugin leaves open
+  const queryMode = resolveActivePanelQueryMode({
+    panelKind: panelDefinition.spec.plugin.kind,
+    queryMode: (panelDefinition.spec as { queryMode?: unknown }).queryMode,
+  });
   const options = useMemo(
-    () => ({ suggestedStepMs, maxDataPoints, ...pluginQueryOptions }),
-    [suggestedStepMs, maxDataPoints, pluginQueryOptions]
+    () => ({ suggestedStepMs, maxDataPoints, ...(queryMode && { mode: queryMode }), ...pluginQueryOptions }),
+    [suggestedStepMs, maxDataPoints, queryMode, pluginQueryOptions]
   );
+  // LOGZ.IO CHANGE END:: Panel-level "Instant query" fills the mode a plugin leaves open
   const queryOptions = useMemo(() => ({ enabled: shouldQuery }), [shouldQuery]);
   // LOGZ.IO CHANGE END:: stable inputs for DataQueriesProvider [unidash-perf]
 

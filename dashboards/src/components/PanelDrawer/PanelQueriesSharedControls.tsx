@@ -22,6 +22,7 @@ import {
   PanelSpecEditor,
   // LOGZ.IO CHANGE:: Panel-level "Max data points"
   resolveMaxDataPoints,
+  resolveActivePanelQueryMode,
   usePlugin,
   useSuggestedStepMs,
 } from '@perses-dev/plugin-system';
@@ -54,6 +55,8 @@ const TIME_SHIFT_PATH = 'panelDefinition.spec.timeShift' as unknown as FieldPath
 const HIDE_OVERRIDE_PATH = 'panelDefinition.spec.hideTimeOverride' as unknown as FieldPath<PanelEditorValues>;
 // LOGZ.IO CHANGE:: Panel-level "Max data points"
 const MAX_DATA_POINTS_PATH = 'panelDefinition.spec.maxDataPoints' as unknown as FieldPath<PanelEditorValues>;
+// LOGZ.IO CHANGE:: Panel-level "Instant query"
+const QUERY_MODE_PATH = 'panelDefinition.spec.queryMode' as unknown as FieldPath<PanelEditorValues>;
 
 export function PanelQueriesSharedControls(props: PanelQueriesSharedControlsProps): ReactElement {
   const { control, panelDefinition: basePanelDefinition } = props;
@@ -62,6 +65,7 @@ export function PanelQueriesSharedControls(props: PanelQueriesSharedControlsProp
   const timeShiftRaw = useWatch({ control, name: TIME_SHIFT_PATH }) as string | undefined;
   const hideTimeOverrideRaw = useWatch({ control, name: HIDE_OVERRIDE_PATH }) as boolean | undefined;
   const maxDataPointsRaw = useWatch({ control, name: MAX_DATA_POINTS_PATH }) as number | undefined;
+  const queryModeRaw = useWatch({ control, name: QUERY_MODE_PATH }) as string | undefined; // LOGZ.IO CHANGE:: Panel-level "Instant query"
 
   const panelDefinition = useMemo<PanelDefinition>(
     () => ({
@@ -72,9 +76,10 @@ export function PanelQueriesSharedControls(props: PanelQueriesSharedControlsProp
         ...(timeShiftRaw !== undefined && timeShiftRaw !== '' && { timeShift: timeShiftRaw }),
         ...(hideTimeOverrideRaw !== undefined && { hideTimeOverride: hideTimeOverrideRaw }),
         ...(maxDataPointsRaw !== undefined && { maxDataPoints: maxDataPointsRaw }),
+        ...(queryModeRaw !== undefined && { queryMode: queryModeRaw }), // LOGZ.IO CHANGE:: Panel-level "Instant query"
       },
     }),
-    [basePanelDefinition, timeFromRaw, timeShiftRaw, hideTimeOverrideRaw, maxDataPointsRaw]
+    [basePanelDefinition, timeFromRaw, timeShiftRaw, hideTimeOverrideRaw, maxDataPointsRaw, queryModeRaw]
   );
 
   return (
@@ -99,6 +104,11 @@ function PanelQueriesSharedControlsBody({
   // resolves the same interval the dashboard panel will
   const maxDataPoints = resolveMaxDataPoints((panelDefinition.spec as { maxDataPoints?: unknown }).maxDataPoints);
   const suggestedStepMs = useSuggestedStepMs(maxDataPoints ?? panelEditorContext?.preview.previewPanelWidth);
+  // LOGZ.IO CHANGE:: Panel-level "Instant query" — same merge as GridItemContentBody, plugin wins
+  const queryMode = resolveActivePanelQueryMode({
+    panelKind: panelDefinition.spec.plugin.kind,
+    queryMode: (panelDefinition.spec as { queryMode?: unknown }).queryMode,
+  });
   // LOGZ.IO CHANGE END:: Wrap editor preview/queries in panel time range override
 
   const pluginQueryOptions = useMemo(
@@ -138,7 +148,7 @@ function PanelQueriesSharedControlsBody({
     <PanelSpecChangeProvider value={onPluginSpecChange}>
       <DataQueriesProvider
         definitions={previewDefinition}
-        options={{ suggestedStepMs, maxDataPoints, ...pluginQueryOptions }}
+        options={{ suggestedStepMs, maxDataPoints, ...(queryMode && { mode: queryMode }), ...pluginQueryOptions }}
       >
         <Grid item xs={12}>
           <Typography variant="h4" marginBottom={1}>

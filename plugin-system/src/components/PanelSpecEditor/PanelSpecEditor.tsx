@@ -63,7 +63,7 @@ export const PanelSpecEditor = forwardRef<PluginEditorRef, PanelSpecEditorProps>
       content: (
         // LOGZ.IO CHANGE START:: Panel time range override editor sits above MultiQueryEditor (Grafana parity) [APPZ-2474]
         <Stack spacing={2}>
-          <PanelTimeOverrideEditor control={control} />
+          <PanelTimeOverrideEditor control={control} panelKind={kind} />
           <Controller
             control={control}
             name="panelDefinition.spec.queries"
