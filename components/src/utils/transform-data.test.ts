@@ -347,3 +347,100 @@ describe('Join By Column Transform', () => {
     expect(output).toEqual(result);
   });
 });
+
+// LOGZ.IO CHANGE START:: percentage column transform
+describe('Percentage Column Transform', () => {
+  function generateSharesInput(): Array<Record<string, unknown>> {
+    return [
+      { timestamp: 1630000000, value: 3, mount: '/' },
+      { timestamp: 1630000000, value: 1, mount: '/boot/efi' },
+    ];
+  }
+
+  test('output should hold each row share of the column total as a fraction', () => {
+    const output = transformData(generateSharesInput(), [{ kind: 'PercentageColumn', spec: { column: 'value' } }]);
+
+    expect(output).toEqual([
+      { timestamp: 1630000000, value: 3, mount: '/', 'value percentages': 0.75 },
+      { timestamp: 1630000000, value: 1, mount: '/boot/efi', 'value percentages': 0.25 },
+    ]);
+  });
+
+  test('output should use the configured output name', () => {
+    const output = transformData(generateSharesInput(), [
+      { kind: 'PercentageColumn', spec: { column: 'value', name: 'Share' } },
+    ]);
+
+    expect(output.map((row) => row['Share'])).toEqual([0.75, 0.25]);
+    expect(output.some((row) => 'value percentages' in row)).toBe(false);
+  });
+
+  test('output should be zero for every row when the column total is zero', () => {
+    const input: Array<Record<string, unknown>> = [
+      { timestamp: 1630000000, value: 0, mount: '/' },
+      { timestamp: 1630000000, value: 0, mount: '/boot/efi' },
+    ];
+
+    const output = transformData(input, [{ kind: 'PercentageColumn', spec: { column: 'value' } }]);
+
+    expect(output.map((row) => row['value percentages'])).toEqual([0, 0]);
+  });
+
+  test('output should leave the share undefined and out of the total for a non-numeric cell', () => {
+    const input: Array<Record<string, unknown>> = [
+      { timestamp: 1630000000, value: 3, mount: '/' },
+      { timestamp: 1630000000, value: 'n/a', mount: '/boot/efi' },
+      { timestamp: 1630000000, mount: '/data' },
+      { timestamp: 1630000000, value: 1, mount: '/home' },
+    ];
+
+    const output = transformData(input, [{ kind: 'PercentageColumn', spec: { column: 'value' } }]);
+
+    expect(output.map((row) => row['value percentages'])).toEqual([0.75, undefined, undefined, 0.25]);
+    expect(output.every((row) => 'value percentages' in row)).toBe(true);
+  });
+
+  test('output should be similar to input when the transform is disabled', () => {
+    const input = generateSharesInput();
+
+    const output = transformData(input, [{ kind: 'PercentageColumn', spec: { column: 'value', disabled: true } }]);
+
+    expect(output).toEqual(input);
+  });
+
+  test('output should be similar to input when no column is configured', () => {
+    const input = generateSharesInput();
+
+    const output = transformData(input, [{ kind: 'PercentageColumn', spec: { column: '' } }]);
+
+    expect(output).toEqual(input);
+  });
+
+  test('input rows should not be mutated', () => {
+    const input = generateSharesInput();
+
+    transformData(input, [{ kind: 'PercentageColumn', spec: { column: 'value' } }]);
+
+    expect(input).toEqual(generateSharesInput());
+  });
+
+  test('should be able to chain with a merge transform', () => {
+    const input = generateMockFlattenQueriesResult();
+
+    const output = transformData(input, [
+      { kind: 'MergeIndexedColumns', spec: { column: 'value' } },
+      { kind: 'PercentageColumn', spec: { column: 'value' } },
+    ]);
+
+    // 55 + 33 + 45 + 112 + 20 + 10 = 275
+    expect(output.map((row) => row['value percentages'])).toEqual([
+      55 / 275,
+      33 / 275,
+      45 / 275,
+      112 / 275,
+      20 / 275,
+      10 / 275,
+    ]);
+  });
+});
+// LOGZ.IO CHANGE END:: percentage column transform

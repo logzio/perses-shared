@@ -48,4 +48,18 @@ describe('TransformsEditor', () => {
     jest.advanceTimersByTime(500);
     expect(onChange).toHaveBeenCalledWith([{ kind: 'MergeIndexedColumns', spec: { column: 'MySuperName' } }]);
   });
+
+  // LOGZ.IO CHANGE START:: percentage column transform
+  it('can update the output name of a percentage column transformation', () => {
+    const onChange = jest.fn();
+    renderTableColumnsEditor([{ kind: 'PercentageColumn', spec: { column: 'value' } }], onChange);
+
+    fireEvent.click(screen.getByTestId('transform-toggle#0'));
+
+    const nameInput = screen.getByRole('textbox', { name: /Output Name/i });
+    fireEvent.change(nameInput, { target: { value: 'Share' } });
+    jest.advanceTimersByTime(500);
+    expect(onChange).toHaveBeenCalledWith([{ kind: 'PercentageColumn', spec: { column: 'value', name: 'Share' } }]);
+  });
+  // LOGZ.IO CHANGE END:: percentage column transform
 });
