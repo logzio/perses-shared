@@ -49,6 +49,13 @@ function isLineSeriesOption(series: LineSeriesOption | BarSeriesOption): series 
 // `TimeSeriesMetadata` is an open `[key: string]: unknown` bag upstream, so reading `isSelectable`
 // off it yields `unknown` (and `?? true` widens to `{}`). Selectability is our convention layered on
 // that bag, so read it explicitly: absent or non-boolean means selectable.
+// LOGZ.IO CHANGE START:: series hidden from the tooltip
+/** A series whose option sets `tooltip.show: false` is drawn in the chart but never listed in the tooltip. */
+export function isSeriesHiddenFromTooltip(series: LineSeriesOption | BarSeriesOption): boolean {
+  return series.tooltip?.show === false;
+}
+// LOGZ.IO CHANGE END:: series hidden from the tooltip
+
 export function isSeriesSelectable(metadata?: TimeSeriesMetadata): boolean {
   return typeof metadata?.isSelectable === 'boolean' ? metadata.isSelectable : true;
 }
@@ -377,7 +384,8 @@ export function createBarGroupCandidates({
   for (let seriesIdx = 0; seriesIdx < totalSeries; seriesIdx++) {
     const currentSeries = seriesMapping[seriesIdx];
     const currentId = currentSeries?.id ? currentSeries.id.toString() : '';
-    const hasCurrentSeries = currentSeries !== undefined;
+    // LOGZ.IO CHANGE:: a series hidden from the tooltip is never a candidate
+    const hasCurrentSeries = currentSeries !== undefined && !isSeriesHiddenFromTooltip(currentSeries);
 
     if (hasCurrentSeries) {
       const currentDataset = data[seriesIdx];
@@ -529,7 +537,8 @@ export function gatherCandidates({
 
   for (let seriesIdx = 0; seriesIdx < totalSeries; seriesIdx++) {
     const currentSeries = seriesMapping[seriesIdx];
-    const hasCurrentSeries = currentSeries !== undefined;
+    // LOGZ.IO CHANGE:: a series hidden from the tooltip is never a candidate
+    const hasCurrentSeries = currentSeries !== undefined && !isSeriesHiddenFromTooltip(currentSeries);
 
     if (hasCurrentSeries) {
       const currentDataset = data[seriesIdx];
