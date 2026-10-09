@@ -14,7 +14,7 @@
 import { Stack, Box, CircularProgress, styled, Popper, ClickAwayListener } from '@mui/material';
 import { isValidElement, PropsWithChildren, ReactElement, ReactNode, useMemo, useState, MouseEvent } from 'react';
 import { InfoTooltip } from '@perses-dev/components';
-import { PanelNotice, QueryData, SERIES_LIMIT_NOTICE_KIND } from '@perses-dev/plugin-system';
+import { QueryData } from '@perses-dev/plugin-system';
 import DatabaseSearch from 'mdi-material-ui/DatabaseSearch';
 import ArrowCollapseIcon from 'mdi-material-ui/ArrowCollapse';
 import ArrowExpandIcon from 'mdi-material-ui/ArrowExpand';
@@ -23,12 +23,9 @@ import DeleteIcon from 'mdi-material-ui/DeleteOutline';
 import DragIcon from 'mdi-material-ui/DragVertical';
 import ContentCopyIcon from 'mdi-material-ui/ContentCopy';
 import MenuIcon from 'mdi-material-ui/Menu';
-import AlertIcon from 'mdi-material-ui/Alert';
-import AlertCircleIcon from 'mdi-material-ui/AlertCircle';
 import InformationOutlineIcon from 'mdi-material-ui/InformationOutline';
-import ChartLineIcon from 'mdi-material-ui/ChartLine'; // LOGZ.IO CHANGE:: series-limit indicator
 import LightningBoltIcon from 'mdi-material-ui/LightningBolt';
-import { Link, Notice } from '@perses-dev/spec';
+import { Link } from '@perses-dev/spec';
 import {
   ARIA_LABEL_TEXT,
   HEADER_ACTIONS_CONTAINER_NAME,
@@ -39,25 +36,6 @@ import {
 import { LinksDisplay } from '../LinksDisplay';
 import { HeaderIconButton } from './HeaderIconButton';
 import { PanelOptions } from './Panel';
-
-const noticeTypeToIcon: Record<Notice['type'], ReactNode> = {
-  error: <AlertCircleIcon color="error" />,
-  warning: <AlertIcon fontSize="inherit" color="warning" />,
-  info: <InformationOutlineIcon fontSize="inherit" color="info" />,
-};
-
-// LOGZ.IO CHANGE START:: group notices by kind; the general icon uses the worst severity [series-limit-notice]
-const NOTICE_SEVERITY_RANK: Record<Notice['type'], number> = { error: 0, warning: 1, info: 2 };
-
-const mostSevereNotice = (notices: Notice[]): Notice | undefined =>
-  notices.reduce<Notice | undefined>(
-    (worst, notice) =>
-      worst === undefined || NOTICE_SEVERITY_RANK[notice.type] < NOTICE_SEVERITY_RANK[worst.type] ? notice : worst,
-    undefined
-  );
-
-const describeNotices = (notices: Notice[]): string => [...new Set(notices.map(({ message }) => message))].join('\n');
-// LOGZ.IO CHANGE END
 
 export interface PanelActionsProps {
   title?: string;
@@ -142,76 +120,15 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
   const linksAction = links && links.length > 0 && <LinksDisplay links={links} variant="panel" />;
   const extraActions = editHandlers === undefined && extra;
 
+  // LOGZ.IO CHANGE:: query errors moved to `PanelIndicators` before the title; only the refetch spinner stays here
   const queryStateIndicator = useMemo((): ReactNode | undefined => {
     const hasData = queryResults.some((q) => q.data);
     const isFetching = queryResults.some((q) => q.isFetching);
-    const queryErrors = queryResults.filter((q) => q.error);
 
     if (isFetching && hasData) {
       return <CircularProgress aria-label="loading" size="1.125rem" />;
-    } else if (queryErrors.length > 0) {
-      const errorTexts = queryErrors
-        .map((q) => q.error)
-        .map((e) => e.message)
-        .join('\n');
-
-      return (
-        <InfoTooltip description={errorTexts}>
-          <HeaderIconButton aria-label="panel errors" size="small">
-            <AlertIcon
-              fontSize="inherit"
-              sx={{
-                color: (theme) => theme.palette.error.main,
-              }}
-            />
-          </HeaderIconButton>
-        </InfoTooltip>
-      );
     }
   }, [queryResults]);
-
-  // LOGZ.IO CHANGE START:: one indicator per notice kind [series-limit-notice]
-  const { seriesLimitNotices, generalNotices } = useMemo(() => {
-    const notices: PanelNotice[] = queryResults.flatMap((q) => {
-      return q.data?.metadata?.notices ?? [];
-    });
-
-    return {
-      seriesLimitNotices: notices.filter(({ kind }) => kind === SERIES_LIMIT_NOTICE_KIND),
-      generalNotices: notices.filter(({ kind }) => kind !== SERIES_LIMIT_NOTICE_KIND),
-    };
-  }, [queryResults]);
-
-  const seriesLimitIndicator = useMemo(() => {
-    if (seriesLimitNotices.length === 0) {
-      return undefined;
-    }
-
-    return (
-      <InfoTooltip description={describeNotices(seriesLimitNotices)}>
-        <HeaderIconButton aria-label="panel series limit notices" size="small">
-          <ChartLineIcon fontSize="inherit" color="warning" />
-        </HeaderIconButton>
-      </InfoTooltip>
-    );
-  }, [seriesLimitNotices]);
-
-  const noticesIndicator = useMemo(() => {
-    const worstNotice = mostSevereNotice(generalNotices);
-
-    if (worstNotice === undefined) {
-      return undefined;
-    }
-
-    return (
-      <InfoTooltip description={describeNotices(generalNotices)}>
-        <HeaderIconButton aria-label="panel notices" size="small">
-          {noticeTypeToIcon[worstNotice.type]}
-        </HeaderIconButton>
-      </InfoTooltip>
-    );
-  }, [generalNotices]);
-  // LOGZ.IO CHANGE END:: one indicator per notice kind [series-limit-notice]
 
   const readActions = useMemo((): ReactNode | undefined => {
     if (readHandlers !== undefined) {
@@ -323,9 +240,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         {divider}
         <OnHover showIcons={showIcons}>
           <OverflowMenu title={title}>
-            {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
-            {descriptionAction} {linksAction} {queryStateIndicator} {seriesLimitIndicator} {noticesIndicator}{' '}
-            {extraActions} {viewQueryAction}
+            {/* LOGZ.IO CHANGE:: notices moved to `PanelIndicators` before the title */}
+            {descriptionAction} {linksAction} {queryStateIndicator} {extraActions} {viewQueryAction}
             {readActions} {pluginActions} {itemActions}
             {editActions}
           </OverflowMenu>
@@ -344,8 +260,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         <OnHover showIcons={showIcons}>
           {descriptionAction} {linksAction}
         </OnHover>
-        {/* LOGZ.IO CHANGE START:: indicators sit after the hover actions so revealing the actions does not shift them */}
-        {divider}
+        {/* LOGZ.IO CHANGE:: notices moved to `PanelIndicators` before the title */}
+        {divider} {queryStateIndicator}
         <OnHover showIcons={showIcons}>
           {extraActions}
           {readActions}
@@ -354,11 +270,6 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           </OverflowMenu>
           {moveAction}
         </OnHover>
-        {queryStateIndicator}
-        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
-        {seriesLimitIndicator}
-        {noticesIndicator}
-        {/* LOGZ.IO CHANGE END:: indicators sit after the hover actions so revealing the actions does not shift them */}
       </ConditionalBox>
 
       {/* large panel width: show all icons in panel header */}
@@ -372,8 +283,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         <OnHover showIcons={showIcons}>
           {descriptionAction} {linksAction}
         </OnHover>
-        {/* LOGZ.IO CHANGE START:: indicators sit after the hover actions so revealing the actions does not shift them */}
-        {divider}
+        {/* LOGZ.IO CHANGE:: notices moved to `PanelIndicators` before the title */}
+        {divider} {queryStateIndicator}
         <OnHover showIcons={showIcons}>
           {extraActions}
           {viewQueryAction}
@@ -391,11 +302,6 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           )}
           {moveAction}
         </OnHover>
-        {queryStateIndicator}
-        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
-        {seriesLimitIndicator}
-        {noticesIndicator}
-        {/* LOGZ.IO CHANGE END:: indicators sit after the hover actions so revealing the actions does not shift them */}
       </ConditionalBox>
     </>
   );
