@@ -342,4 +342,31 @@ describe('Panel', () => {
     await renderPanel();
     expect(screen.queryAllByLabelText('panel errors').length).toBeGreaterThan(0);
   });
+
+  // LOGZ.IO CHANGE START:: warning indicators render before the title so neither they nor the hover actions move
+  it('should render the warning indicators before the title and the hover actions after it', async () => {
+    (useDataQueriesContext as jest.Mock).mockReturnValue({
+      queryResults: [
+        { error: new Error('test error') },
+        { data: { series: [], metadata: { notices: [{ type: 'warning', message: 'test notice' }] } } },
+      ],
+    });
+
+    await renderPanel();
+
+    const title = screen.getByText(/Fake Panel Title/);
+    const precedes = (a: Element, b: Element): boolean =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    const errorIndicators = screen.getAllByRole('button', { name: 'panel errors' });
+    const noticeIndicators = screen.getAllByRole('button', { name: 'panel notices' });
+    expect(errorIndicators).toHaveLength(1);
+    expect(noticeIndicators).toHaveLength(1);
+    expect(precedes(errorIndicators[0]!, title)).toBe(true);
+    expect(precedes(noticeIndicators[0]!, title)).toBe(true);
+    // The hover actions are `display: none` until the panel is hovered, so query them by test id
+    const hoverActions = await screen.findAllByTestId('export-action');
+    hoverActions.forEach((action) => expect(precedes(title, action)).toBe(true));
+  });
+  // LOGZ.IO CHANGE END:: warning indicators render before the title so neither they nor the hover actions move
 });
