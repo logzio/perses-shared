@@ -344,10 +344,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         <OnHover showIcons={showIcons}>
           {descriptionAction} {linksAction}
         </OnHover>
-        {divider} {queryStateIndicator}
-        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
-        {seriesLimitIndicator}
-        {noticesIndicator}
+        {/* LOGZ.IO CHANGE START:: indicators sit after the hover actions so revealing the actions does not shift them */}
+        {divider}
         <OnHover showIcons={showIcons}>
           {extraActions}
           {readActions}
@@ -356,6 +354,11 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           </OverflowMenu>
           {moveAction}
         </OnHover>
+        {queryStateIndicator}
+        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
+        {seriesLimitIndicator}
+        {noticesIndicator}
+        {/* LOGZ.IO CHANGE END:: indicators sit after the hover actions so revealing the actions does not shift them */}
       </ConditionalBox>
 
       {/* large panel width: show all icons in panel header */}
@@ -369,10 +372,8 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
         <OnHover showIcons={showIcons}>
           {descriptionAction} {linksAction}
         </OnHover>
-        {divider} {queryStateIndicator}
-        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
-        {seriesLimitIndicator}
-        {noticesIndicator}
+        {/* LOGZ.IO CHANGE START:: indicators sit after the hover actions so revealing the actions does not shift them */}
+        {divider}
         <OnHover showIcons={showIcons}>
           {extraActions}
           {viewQueryAction}
@@ -390,6 +391,11 @@ export const PanelActions: React.FC<PanelActionsProps> = ({
           )}
           {moveAction}
         </OnHover>
+        {queryStateIndicator}
+        {/* LOGZ.IO CHANGE:: the series limit gets its own indicator, so a general notice cannot hide it */}
+        {seriesLimitIndicator}
+        {noticesIndicator}
+        {/* LOGZ.IO CHANGE END:: indicators sit after the hover actions so revealing the actions does not shift them */}
       </ConditionalBox>
     </>
   );

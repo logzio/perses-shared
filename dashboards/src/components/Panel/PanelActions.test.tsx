@@ -168,4 +168,27 @@ describe('PanelActions', () => {
 
     expect(text).toBe(SERIES_LIMIT_NOTICE.message);
   });
+
+  it('should place the notice indicators after the hover actions so revealing the actions does not shift them', () => {
+    renderWithContext(
+      <PanelActions
+        title={PANEL_TITLE}
+        descriptionTooltipId="test-description"
+        queryResults={queryResultsWithNotices([SERIES_LIMIT_NOTICE], [ANNOTATION_NOTICE])}
+        readHandlers={READ_HANDLERS}
+        showIcons="hover"
+      />
+    );
+
+    // One view button and one of each indicator per layout that shows them in the header (medium + large).
+    const viewButtons = getViewButtons();
+    const indicatorGroups = [SERIES_LIMIT_LABEL, NOTICES_LABEL].map((name) => screen.getAllByRole('button', { name }));
+
+    indicatorGroups.forEach((indicators) => {
+      expect(indicators).toHaveLength(viewButtons.length);
+      indicators.forEach((indicator, index) =>
+        expect(viewButtons[index]!.compareDocumentPosition(indicator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      );
+    });
+  });
 });
