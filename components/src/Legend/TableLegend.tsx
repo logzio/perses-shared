@@ -13,7 +13,7 @@
 
 import { ReactElement, useMemo } from 'react';
 import { Table, TableProps, TableColumnConfig, DEFAULT_COLUMN_WIDTH, DEFAULT_COLUMN_MIN_WIDTH } from '../Table';
-import { LegendItem } from './legend-model';
+import { LegendItem, MUTED_LEGEND_ITEM_STYLE } from './legend-model'; // LOGZ.IO CHANGE:: muted legend items
 
 export interface TableLegendProps extends Pick<TableProps<LegendItem>, 'sorting' | 'onSortingChange'> {
   items: LegendItem[];
@@ -36,7 +36,13 @@ const COLUMNS: Array<TableColumnConfig<LegendItem>> = [
     // Starting with `title` attr instead of a tooltip because it is easier to
     // implement. We should try adding a tooltip in the future, but we'll need
     // to be very careful about performance when doing so with large tables.
-    cell: ({ getValue }) => <span title={getValue()}>{getValue()}</span>,
+    // LOGZ.IO CHANGE START:: muted legend items
+    cell: ({ getValue, row }) => (
+      <span title={getValue()} style={row.original.isMuted ? MUTED_LEGEND_ITEM_STYLE : undefined}>
+        {getValue()}
+      </span>
+    ),
+    // LOGZ.IO CHANGE END:: muted legend items
   },
 ];
 
