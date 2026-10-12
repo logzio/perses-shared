@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { MouseEventHandler } from 'react';
+import { CSSProperties, MouseEventHandler } from 'react'; // LOGZ.IO CHANGE:: muted legend items
 import { LegendOptionsBase } from '../model';
 
 // This file contains legend-related model code specific to the legend component.
@@ -35,7 +35,19 @@ export interface LegendItem {
   data?: Record<string, unknown>;
 
   onClick?: MouseEventHandler<HTMLElement>;
+
+  // LOGZ.IO CHANGE START:: muted legend items
+  /**
+   * Greys the item out. The panel lists the series, with its values, but does not draw it.
+   */
+  isMuted?: boolean;
+  // LOGZ.IO CHANGE END:: muted legend items
 }
+
+// LOGZ.IO CHANGE START:: muted legend items
+/** How a muted item's text renders. Exported so the table legend columns a panel adds can match it. */
+export const MUTED_LEGEND_ITEM_STYLE: CSSProperties = { opacity: 0.5 };
+// LOGZ.IO CHANGE END:: muted legend items
 
 /**
  * State of selected items in the legend.

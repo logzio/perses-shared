@@ -21,6 +21,7 @@ import { TimeChartSeriesMapping } from '../model';
 import { CursorCoordinates, TOOLTIP_MAX_HEIGHT, TOOLTIP_MAX_WIDTH } from './tooltip-model';
 import {
   assembleTransform,
+  createBarGroupCandidates,
   gatherCandidates,
   getAutoSelectedSeriesIdx,
   getTooltipStyles,
@@ -49,6 +50,24 @@ function buildSeriesMapping(count: number): TimeChartSeriesMapping {
 const CHART = {} as unknown as EChartsInstance;
 
 describe('gatherCandidates', () => {
+  it('should leave out a series whose option hides it from the tooltip', () => {
+    const data = [buildAlignedSeries('a', 0), buildAlignedSeries('b', 10), buildAlignedSeries('c', 20)];
+    const seriesMapping = buildSeriesMapping(3).map((series, i) =>
+      i === 1 ? { ...series, tooltip: { show: false } } : series
+    );
+
+    const candidates = gatherCandidates({
+      data,
+      seriesMapping,
+      closestTimestamp: 1_060,
+      cursorY: 15,
+      yBuffer: 30,
+      chart: CHART,
+    });
+
+    expect(candidates.map((c) => c.id)).toEqual(['s0', 's2']);
+  });
+
   it('should resolve every aligned series through the shared row index at the last timestamp', () => {
     const data = [buildAlignedSeries('a', 0), buildAlignedSeries('b', 10), buildAlignedSeries('c', 20)];
 
@@ -262,3 +281,22 @@ describe('getTooltipStyles', () => {
   });
 });
 // LOGZ.IO CHANGE END:: Drilldown panel selection and the pointer rule of a following tooltip [unidash-perf]
+
+describe('createBarGroupCandidates', () => {
+  it('should leave out a bar series whose option hides it from the tooltip', () => {
+    const data = [buildAlignedSeries('a', 0), buildAlignedSeries('b', 10)];
+    const seriesMapping: TimeChartSeriesMapping = [
+      { type: 'bar', id: 's0', name: 's0', color: '#000' },
+      { type: 'bar', id: 's1', name: 's1', color: '#000', tooltip: { show: false } },
+    ];
+
+    const candidates = createBarGroupCandidates({
+      data,
+      seriesMapping,
+      closestTimestamp: 1_060,
+      hoveredBarInfo: { seriesIdx: 0, distance: 0 },
+    });
+
+    expect(candidates.map((c) => c.id)).toEqual(['s0']);
+  });
+});

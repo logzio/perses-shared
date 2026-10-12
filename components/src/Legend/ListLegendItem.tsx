@@ -15,7 +15,7 @@ import { forwardRef, memo, MouseEvent, MouseEventHandler, ReactElement, useState
 import { Box, ListItemText, ListItemProps, ListItemButton } from '@mui/material';
 import { combineSx } from '../utils';
 import { LegendColorBadge } from './LegendColorBadge';
-import { LegendItem } from './legend-model';
+import { LegendItem, MUTED_LEGEND_ITEM_STYLE } from './legend-model'; // LOGZ.IO CHANGE:: muted legend items
 
 export type LegendItemEventOpts = {
   /**
@@ -107,7 +107,11 @@ const ListLegendItemBase = forwardRef<HTMLDivElement, ListLegendItemProps>(funct
       <ListItemText
         primary={item.label}
         // LOGZ.IO CHANGE:: Re-enable text selection so the label can be copied (ButtonBase forces user-select: none)
-        primaryTypographyProps={{ noWrap: noWrap, sx: { userSelect: 'text' } }}
+        primaryTypographyProps={{
+          noWrap: noWrap,
+          sx: { userSelect: 'text' },
+          style: item.isMuted ? MUTED_LEGEND_ITEM_STYLE : undefined, // LOGZ.IO CHANGE:: muted legend items
+        }}
         onMouseOver={handleTextMouseOver}
         onMouseOut={handleTextMouseOut}
       ></ListItemText>

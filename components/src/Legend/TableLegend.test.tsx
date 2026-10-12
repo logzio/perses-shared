@@ -66,6 +66,20 @@ const renderTableLegend = ({
 };
 
 describe('TableLegend', () => {
+  // LOGZ.IO CHANGE START:: muted legend items
+  test('greys out the name of a muted item only', () => {
+    renderTableLegend({
+      items: [
+        { id: 'one', label: 'Label One', color: '#ff0000' },
+        { id: 'two', label: 'Label Two', color: '#00ff00', isMuted: true },
+      ],
+    });
+
+    expect(screen.getByText('Label Two')).toHaveStyle({ opacity: '0.5' });
+    expect(screen.getByText('Label One')).not.toHaveStyle({ opacity: '0.5' });
+  });
+  // LOGZ.IO CHANGE END:: muted legend items
+
   test('renders each legend item as a row in a table', () => {
     renderTableLegend();
     const table = screen.getByRole('table');
