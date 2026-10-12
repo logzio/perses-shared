@@ -21,6 +21,7 @@ import { HEADER_ACTIONS_CONTAINER_NAME } from '../../constants';
 import { getPanelTimeOverrideLabel } from '../../context/PanelTimeRangeOverride';
 // LOGZ.IO CHANGE END:: Panel-level time range override badge
 import { PanelActions, PanelActionsProps } from './PanelActions';
+import { PanelIndicators } from './PanelIndicators'; // LOGZ.IO CHANGE:: warning indicators before the title
 import { PanelOptions } from './Panel';
 import { useSelectionItemActions } from './useSelectionItemActions';
 
@@ -101,6 +102,8 @@ export function PanelHeader({
           disableTypography
           title={
             <Stack direction="row" alignItems="center" height="var(--panel-header-height, 30px)">
+              {/* LOGZ.IO CHANGE:: warning indicators before the title, so hover actions never move them */}
+              <PanelIndicators queryResults={queryResults} />
               <Tooltip title={title} disableHoverListener={!isEllipsisActive}>
                 <Typography
                   id={titleElementId}
@@ -199,6 +202,13 @@ export function PanelHeader({
           />
         </Stack>
       )}
+      {/* LOGZ.IO CHANGE START:: an untitled panel keeps its warning indicators in the top-left corner */}
+      {!title && (
+        <Stack sx={{ position: 'absolute', left: 0, top: 0, zIndex: 5 }}>
+          <PanelIndicators queryResults={queryResults} />
+        </Stack>
+      )}
+      {/* LOGZ.IO CHANGE END:: an untitled panel keeps its warning indicators in the top-left corner */}
       {confirmDialog}
     </>
   );
