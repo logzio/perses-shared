@@ -20,7 +20,8 @@ interface UseVirtualizedTableKeyboardNavProps extends Omit<UseTableKeyboardNavPr
     startIndex: number;
     endIndex: number;
   }>;
-  virtualTable: RefObject<TableVirtuosoHandle>;
+  // LOGZ.IO CHANGE:: add null, because the React 19 RefObject type no longer adds it
+  virtualTable: RefObject<TableVirtuosoHandle | null>;
   maxRows: number;
   maxColumns: number;
 }
