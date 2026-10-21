@@ -11,6 +11,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// LOGZ.IO CHANGE:: TypeScript 6 includes no @types package by default; this setup file uses the jest globals
+/// <reference types="jest" />
+
 // Add testing library assertions
 import '@testing-library/jest-dom/extend-expect';
 
