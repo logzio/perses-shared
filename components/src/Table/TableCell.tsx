@@ -104,8 +104,7 @@ export function TableCell({
   ...otherProps
 }: TableCellProps): ReactElement {
   const theme = useTheme();
-  // LOGZ.IO CHANGE:: give useRef an initial value, because the React 19 types require one
-  const elRef = useRef<HTMLTableCellElement>(undefined);
+  const elRef = useRef<HTMLTableCellElement>();
 
   const isHeader = variant === 'head';
 

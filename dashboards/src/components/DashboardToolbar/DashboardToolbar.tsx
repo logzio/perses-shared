@@ -14,8 +14,7 @@
 import { Typography, Stack, Button, Box, useTheme, useMediaQuery, Alert } from '@mui/material';
 import { ErrorBoundary, ErrorAlert, TimeRangePickerComponent } from '@perses-dev/components';
 import { TimeRangeControls, useTimeZoneParams } from '@perses-dev/plugin-system';
-// LOGZ.IO CHANGE:: import JSX, because the React 19 types have no global JSX namespace
-import { ReactElement, ReactNode, type JSX } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { OnSaveDashboard, useEditMode, useDashboardLinks } from '../../context';
 import { AddPanelButton } from '../AddPanelButton';
 import { AddGroupButton } from '../AddGroupButton';

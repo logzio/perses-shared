@@ -11,8 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// LOGZ.IO CHANGE:: import JSX, because the React 19 types have no global JSX namespace
-import { ReactElement, ReactNode, useEffect, useMemo, useState, type JSX } from 'react';
+import { ReactElement, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
 import {
   ChartsProvider,

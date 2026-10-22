@@ -83,8 +83,7 @@ export function TimeRangeSelector({
   const { timeZone: ctxTimeZone } = useTimeZone();
   const timeZone = timeZoneProp ?? ctxTimeZone;
 
-  // LOGZ.IO CHANGE:: give useRef an initial value, because the React 19 types require one
-  const anchorEl = useRef(undefined);
+  const anchorEl = useRef();
   const [showCustomDateSelector, setShowCustomDateSelector] = useState(false);
 
   const convertedTimeRange = useMemo(() => {

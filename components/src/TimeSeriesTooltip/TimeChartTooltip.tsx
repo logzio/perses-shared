@@ -85,8 +85,7 @@ export const TimeChartTooltip = memo(function TimeChartTooltip({
   // LOGZ.IO CHANGE END:: Tooltip series mode — "Show All" toggle overrides the panel's base mode
   // LOGZ.IO CHANGE:: Drilldown panel — the pinned tooltip's selection, see capturePinnedSelection [unidash-perf]
   const [pinnedSelection, setPinnedSelection] = useState<PinnedSeriesSelection | null>(null);
-  // LOGZ.IO CHANGE:: give useRef an initial value, because the React 19 types require one
-  const transform = useRef<string | undefined>(undefined);
+  const transform = useRef<string | undefined>();
 
   // LOGZ.IO CHANGE START:: the mouse-position snapshot is scoped to THIS chart's canvas, so a hover
   // on one panel no longer re-renders every other panel's tooltip (the store skips subscribers whose
