@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { StyledComponent } from '@emotion/styled';
+// LOGZ.IO CHANGE:: no StyledComponent import, because only the old Form annotation used it
 import {
   Button,
   ButtonProps,
@@ -80,7 +80,8 @@ const SecondaryButton = ({ children, ...props }: DialogButtonProps): ReactElemen
  * https://github.com/mui-org/material-ui/issues/13253
  * This component adds style to get expected behavior & should be used whenever we have a Form inside a Dialog
  */
-const Form: StyledComponent<React.ComponentProps<'form'>> = styled('form')({
+// LOGZ.IO CHANGE:: let TypeScript infer the type, because the React 19 form props do not fit the old annotation
+const Form = styled('form')({
   overflowY: 'auto',
   display: 'flex',
   flexDirection: 'column',
