@@ -103,7 +103,8 @@ export function TimeRangeSelector({
   const tzLabel = tzOptions.find((o) => o.value === timeZone)?.display ?? timeZone;
   const tzOffset = getGMTOffset(timeZone);
   const localOffset = getGMTOffset('local');
-  const tzAutocompleteOptions = tzOptions.map((o) => ({ id: o.value, label: o.display }));
+  // LOGZ.IO CHANGE:: explicit option type, so TypeScript 7 infers the autocomplete value type from the options and the value alike
+  const tzAutocompleteOptions: SettingsAutocompleteOption[] = tzOptions.map((o) => ({ id: o.value, label: o.display }));
   let tzAutocompleteValue: SettingsAutocompleteOption | undefined = undefined;
   {
     const current = tzOptions.find((o) => o.value === timeZone);
