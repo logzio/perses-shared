@@ -12,7 +12,8 @@
 // limitations under the License.
 
 import { Typography, Box } from '@mui/material';
-import { ReactElement, ReactNode } from 'react';
+// LOGZ.IO CHANGE:: import JSX, because the React 19 types have no global JSX namespace
+import { ReactElement, ReactNode, type JSX } from 'react';
 import { useEditMode } from '../../context';
 import { AddPanelButton } from '../AddPanelButton';
 import { EditVariablesButton } from '../Variables';
