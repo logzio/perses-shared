@@ -13,7 +13,8 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ReactNode } from 'react';
+// LOGZ.IO CHANGE:: import JSX, because the React 19 types have no global JSX namespace
+import { ReactNode, type JSX } from 'react';
 import { ItemActionsProvider, useItemActions } from './ItemActionsProvider';
 
 // Test component that exposes action state and operations

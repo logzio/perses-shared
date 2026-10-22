@@ -17,7 +17,8 @@ import { useEffect, useRef } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const useArrayMemo = <T extends any[]>(array: T): T => {
-  const ref = useRef<T>();
+  // LOGZ.IO CHANGE:: give useRef an initial value, because the React 19 types require one
+  const ref = useRef<T>(undefined);
 
   const isSame =
     ref.current && array.length === ref.current.length
