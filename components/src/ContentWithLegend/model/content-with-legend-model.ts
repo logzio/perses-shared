@@ -115,12 +115,10 @@ const LEGEND_HEIGHT_SM = 40;
 const LEGEND_HEIGHT_LG = 100;
 
 // LOGZ.IO CHANGE START:: Limit the table legend to a part of the panel, by legend size
-// The largest share of the panel height (bottom) or width (right) that a table legend takes.
 export const TABLE_LEGEND_MAX_SHARE: LegendSizeConfig = {
   medium: { bottom: 0.35, right: 0.5 },
   small: { bottom: 0.25, right: 0.35 },
 };
-// Header plus one row.
 const BOTTOM_TABLE_LEGEND_MIN_ROWS = 2;
 // LOGZ.IO CHANGE END:: Limit the table legend to a part of the panel, by legend size
 
@@ -198,7 +196,6 @@ export function getContentWithLegendLayout({
     legendHeight = position === 'bottom' ? rowsToShow * tableLayout.height : height;
 
     // LOGZ.IO CHANGE START:: Limit the table legend to a part of the panel, by legend size
-    // The limit must never show a legend that is hidden without it.
     const fitsWithoutLimit =
       position === 'right'
         ? width - legendWidth - spacing >= minChildrenWidth
