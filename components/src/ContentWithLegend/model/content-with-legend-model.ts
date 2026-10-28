@@ -14,7 +14,10 @@
 import { Theme } from '@mui/material';
 import { LegendPositions, getLegendMode, LegendSize } from '../../model';
 import { LegendProps } from '../../Legend';
-import { getTableCellLayout } from '../../Table';
+// LOGZ.IO CHANGE START:: the minimum width of a right table legend
+import { TABLE_PADDING } from '../../Legend/TableLegend';
+import { DEFAULT_COLUMN_MIN_WIDTH, getTableCellLayout } from '../../Table';
+// LOGZ.IO CHANGE END:: the minimum width of a right table legend
 
 type Dimensions = {
   width: number;
@@ -111,6 +114,14 @@ const PANEL_HEIGHT_LG_BREAKPOINT = 300;
 const LEGEND_HEIGHT_SM = 40;
 const LEGEND_HEIGHT_LG = 100;
 
+// LOGZ.IO CHANGE START:: Limit the table legend to a part of the panel, by legend size
+export const TABLE_LEGEND_MAX_SHARE: LegendSizeConfig = {
+  medium: { bottom: 0.35, right: 0.5 },
+  small: { bottom: 0.25, right: 0.35 },
+};
+const BOTTOM_TABLE_LEGEND_MIN_ROWS = 2;
+// LOGZ.IO CHANGE END:: Limit the table legend to a part of the panel, by legend size
+
 /**
  * Returns information for laying out content alongside a legend.
  */
@@ -183,6 +194,25 @@ export function getContentWithLegendLayout({
     // Use the smaller of the size-based row count or the number of legend items + 1 for the header.
     const rowsToShow = Math.min(TABLE_LEGEND_SIZE[legendSize]['bottom'], legendProps.data.length + 1);
     legendHeight = position === 'bottom' ? rowsToShow * tableLayout.height : height;
+
+    // LOGZ.IO CHANGE START:: Limit the table legend to a part of the panel, by legend size
+    const fitsWithoutLimit =
+      position === 'right'
+        ? width - legendWidth - spacing >= minChildrenWidth
+        : height - legendHeight - spacing >= minChildrenHeight;
+
+    if (fitsWithoutLimit && position === 'right') {
+      // A narrower table scrolls sideways.
+      const minTableWidth = columnsWidth + TABLE_PADDING + DEFAULT_COLUMN_MIN_WIDTH;
+      legendWidth = Math.max(Math.min(legendWidth, width * TABLE_LEGEND_MAX_SHARE[legendSize]['right']), minTableWidth);
+    } else if (fitsWithoutLimit && position === 'bottom') {
+      const rowsThatFit = Math.max(
+        BOTTOM_TABLE_LEGEND_MIN_ROWS,
+        Math.floor((height * TABLE_LEGEND_MAX_SHARE[legendSize]['bottom']) / tableLayout.height)
+      );
+      legendHeight = Math.min(rowsToShow, rowsThatFit) * tableLayout.height;
+    }
+    // LOGZ.IO CHANGE END:: Limit the table legend to a part of the panel, by legend size
   }
 
   const contentWidth = position === 'right' ? width - legendWidth - spacing : width;
