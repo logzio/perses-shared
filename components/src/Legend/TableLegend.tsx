@@ -55,7 +55,7 @@ const getCheckboxColor: TableProps<LegendItem>['getCheckboxColor'] = (data) => {
 };
 
 // This is a rough estimate of value that needs to be subtracted from the total width to avoid horizontal scrolling on initial render
-const TABLE_PADDING = 45;
+export const TABLE_PADDING = 45; // LOGZ.IO CHANGE:: exported for the minimum width of a right table legend
 
 export function TableLegend({
   items,
