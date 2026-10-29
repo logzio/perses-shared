@@ -177,8 +177,9 @@ export function PanelTimeOverrideEditor({ control, panelKind }: PanelTimeOverrid
                       <Checkbox
                         size="small"
                         checked={resolvePanelQueryMode(field.value) === 'instant'}
-                        // Unchecked means "unset": the panel plugin decides, as it does for every other kind.
-                        onChange={(e) => field.onChange(e.target.checked ? 'instant' : undefined)}
+                        // Unchecked writes `range`, never `undefined`: the form falls back from `undefined` to the
+                        // field's default, so a panel saved as instant could not be unticked.
+                        onChange={(e) => field.onChange(e.target.checked ? 'instant' : 'range')}
                         slotProps={{ input: { ref: field.ref } }}
                       />
                     }

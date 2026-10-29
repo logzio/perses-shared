@@ -183,12 +183,20 @@ describe('PanelTimeOverrideEditor', () => {
       expect(screen.getByTestId('committed-query-mode')).toHaveTextContent('unset');
     });
 
-    it('should clear the setting when unchecked, leaving the panel plugin to decide', () => {
+    it('should untick the box when a panel saved as instant is unchecked', () => {
       renderBarEditor('instant');
 
       userEvent.click(queryInstantSwitch()!);
 
-      expect(screen.getByTestId('committed-query-mode')).toHaveTextContent('unset');
+      expect(queryInstantSwitch()).not.toBeChecked();
+    });
+
+    it('should commit range when unchecked, so the saved instant mode does not come back', () => {
+      renderBarEditor('instant');
+
+      userEvent.click(queryInstantSwitch()!);
+
+      expect(screen.getByTestId('committed-query-mode')).toHaveTextContent('range');
     });
   });
   // LOGZ.IO CHANGE END:: Panel-level "Instant query"
