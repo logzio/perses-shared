@@ -13,7 +13,8 @@
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ReactNode } from 'react';
+// LOGZ.IO CHANGE:: import JSX, because the React 19 types have no global JSX namespace
+import { ReactNode, type JSX } from 'react';
 import { SelectionProvider, useSelection } from './SelectionProvider';
 
 interface TestItem {

@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// LOGZ.IO CHANGE:: import JSX, because the React 19 types have no global JSX namespace
+import type { JSX } from 'react';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PanelDefinition } from '@perses-dev/spec';
