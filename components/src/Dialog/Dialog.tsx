@@ -80,8 +80,8 @@ const SecondaryButton = ({ children, ...props }: DialogButtonProps): ReactElemen
  * https://github.com/mui-org/material-ui/issues/13253
  * This component adds style to get expected behavior & should be used whenever we have a Form inside a Dialog
  */
-// LOGZ.IO CHANGE:: let TypeScript infer the type, because the React 19 form props do not fit the old annotation
-const Form = styled('form')({
+// LOGZ.IO CHANGE:: a React type: the emotion type fails with the React 19 types, and an inferred type names the nested @mui/system copy
+const Form: React.FC<React.ComponentProps<'form'>> = styled('form')({
   overflowY: 'auto',
   display: 'flex',
   flexDirection: 'column',
