@@ -25,7 +25,8 @@ type MemoRef<T> = {
  * useMemo does not offer this guarantee, it's only a performance optimization).
  */
 export function useMemoized<T>(factory: () => T, deps: DependencyList): T {
-  const ref = useRef<MemoRef<T>>();
+  // LOGZ.IO CHANGE:: give useRef an initial value, because the React 19 types require one
+  const ref = useRef<MemoRef<T>>(undefined);
 
   let areEqual = true;
   for (let i = 0; i < deps.length; i++) {
@@ -47,7 +48,8 @@ export function useMemoized<T>(factory: () => T, deps: DependencyList): T {
  * isEqual on the dependency list.
  */
 export function useDeepMemo<T>(factory: () => T, deps: DependencyList): T {
-  const ref = useRef<MemoRef<T>>();
+  // LOGZ.IO CHANGE:: give useRef an initial value, because the React 19 types require one
+  const ref = useRef<MemoRef<T>>(undefined);
   if (ref.current === undefined || isEqual(deps, ref.current.deps) === false) {
     ref.current = { value: factory(), deps };
   }
