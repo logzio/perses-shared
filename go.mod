@@ -3,7 +3,7 @@ module github.com/perses/shared
 go 1.26.5
 
 require (
-	github.com/perses/perses v0.53.1
+	github.com/perses/perses v0.54.0-beta.3
 	github.com/sirupsen/logrus v1.9.4
 )
 
