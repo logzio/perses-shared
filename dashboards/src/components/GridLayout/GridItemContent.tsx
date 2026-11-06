@@ -31,6 +31,8 @@ import { PanelTimeRangeOverrideProvider } from '../../context/PanelTimeRangeOver
 // LOGZ.IO CHANGE END:: Panel-level time range override [APPZ-2474]
 import { Panel, PanelProps, PanelOptions } from '../Panel';
 import { QueryViewerDialog } from '../QueryViewerDialog';
+// LOGZ.IO CHANGE:: A viewed panel keeps the query width it had in the grid
+import { useGridQueryWidth } from './use-grid-query-width';
 
 export interface GridItemContentProps {
   panelGroupItemId: PanelGroupItemId;
@@ -165,6 +167,9 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
   );
   // LOGZ.IO CHANGE END:: memoize the handler objects [unidash-perf]
 
+  // LOGZ.IO CHANGE:: A viewed panel keeps the query width it had in the grid
+  const queryWidth = useGridQueryWidth(width, isPanelViewed);
+
   // LOGZ.IO CHANGE:: upstream computes suggestedStepMs/plugin/pluginQueryOptions here; we compute them
   // inside GridItemContentBody instead, so they resolve against the panel-level time-range override
   // rather than the dashboard range. [APPZ-2474]
@@ -192,7 +197,8 @@ export function GridItemContent(props: GridItemContentProps): ReactElement {
       <PanelTimeRangeOverrideProvider spec={panelDefinition.spec as { timeFrom?: string; timeShift?: string }}>
         <GridItemContentBody
           panelDefinition={panelDefinition}
-          width={width}
+          // LOGZ.IO CHANGE:: A viewed panel keeps the query width it had in the grid
+          width={queryWidth}
           shouldQuery={shouldQuery}
           shouldRender={shouldRender}
           panelGroupItemId={panelGroupItemId}
