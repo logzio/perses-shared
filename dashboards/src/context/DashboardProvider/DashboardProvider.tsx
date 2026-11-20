@@ -208,6 +208,8 @@ function initStore(props: DashboardProviderProps): StoreApi<DashboardStoreState>
               const { panelGroups, panelGroupOrder } = convertLayoutsToPanelGroups(layouts);
               state.panelGroups = panelGroups;
               state.panelGroupOrder = panelGroupOrder;
+              // LOGZ.IO CHANGE:: The new panel groups have new ids, so resolve the viewed panel from its ref again
+              state.viewPanel.panelGroupItemId = undefined;
               state.duration = duration;
               state.refreshInterval = refreshInterval ?? DEFAULT_REFRESH_INTERVAL;
               state.datasources = datasources;

@@ -13,9 +13,10 @@
 
 // LOGZ.IO CHANGE START:: Size a viewed panel by the dashboard's own box
 
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TimeRangeProviderBasic } from '@perses-dev/plugin-system';
-import { DashboardProvider, DatasourceStoreProvider, VariableProvider } from '../../context';
+import { DashboardProvider, DashboardStoreState, DatasourceStoreProvider, VariableProvider } from '../../context';
 import { defaultDatasourceProps, getTestDashboard, renderWithContext } from '../../test';
 import { Dashboard } from './Dashboard';
 
@@ -62,6 +63,27 @@ const getViewedPanelHeight = (): number => {
   return Number.parseInt(panel.style.height, 10);
 };
 
+const renderAndViewCollapsedPanel = async (): Promise<{ current: DashboardStoreState | null }> => {
+  const storeRef: { current: DashboardStoreState | null } = { current: null };
+
+  renderWithContext(
+    <DatasourceStoreProvider {...defaultDatasourceProps}>
+      <TimeRangeProviderBasic initialRefreshInterval="0s" initialTimeRange={{ pastDuration: '30m' }}>
+        <VariableProvider>
+          <DashboardProvider dashboardStoreApiRef={storeRef} initialState={{ dashboardResource: getTestDashboard() }}>
+            <Dashboard />
+          </DashboardProvider>
+        </VariableProvider>
+      </TimeRangeProviderBasic>
+    </DatasourceStoreProvider>
+  );
+
+  await userEvent.click(screen.getByRole('button', { name: 'expand group Disk Stats' }));
+  await userEvent.click(screen.getByRole('button', { name: 'toggle panel Filesystem Fullness view mode' }));
+
+  return storeRef;
+};
+
 describe('Dashboard', () => {
   it('should keep a viewed panel within the dashboard box when the dashboard is scrolled', () => {
     renderViewedPanel();
@@ -73,6 +95,34 @@ describe('Dashboard', () => {
     renderViewedPanel({ observedHeight: 1880 });
 
     expect(getViewedPanelHeight()).toBeLessThanOrEqual(WINDOW_HEIGHT);
+  });
+
+  it('should show only the viewed panel when the dashboard is reset after the panel was opened from its action', async () => {
+    const storeRef = await renderAndViewCollapsedPanel();
+
+    // Save, discard and a JSON edit also reset the variables first; this checks only the layout reset
+    act(() => storeRef.current?.setDashboard(getTestDashboard()));
+
+    expect(screen.getByText('Filesystem Fullness')).toBeVisible();
+    expect(screen.getByText('CPU')).not.toBeVisible();
+  });
+
+  it('should show all panels again when view mode is turned off after the dashboard is reset', async () => {
+    const storeRef = await renderAndViewCollapsedPanel();
+    act(() => storeRef.current?.setDashboard(getTestDashboard()));
+
+    await userEvent.click(screen.getByRole('button', { name: 'toggle panel Filesystem Fullness view mode' }));
+
+    expect(screen.getByText('CPU')).toBeVisible();
+  });
+
+  it('should open the collapsed group of a viewed panel without an expand animation when the dashboard is reset', async () => {
+    const storeRef = await renderAndViewCollapsedPanel();
+
+    act(() => storeRef.current?.setDashboard(getTestDashboard()));
+
+    const groupContent = screen.getByText('Filesystem Fullness').closest('.MuiCollapse-root');
+    expect(groupContent?.classList.contains('MuiCollapse-entered')).toBe(true);
   });
 });
 
