@@ -72,13 +72,13 @@ export function Row({
   const theme = useTheme();
   const viewPanelItemId = useViewPanelGroup();
 
-  const [isOpen, setIsOpen] = useState(!groupDefinition.isCollapsed);
-
   const hasViewPanel =
     viewPanelItemId?.panelGroupId === panelGroupId &&
     // Check for repeatVariable panels
     viewPanelItemId.repeatVariable?.[0] === repeatVariable?.[0] &&
     viewPanelItemId.repeatVariable?.[1] === repeatVariable?.[1];
+  // LOGZ.IO CHANGE:: Start open when the row has the viewed panel, so a remount does not collapse and expand it again
+  const [isOpen, setIsOpen] = useState(!groupDefinition.isCollapsed || hasViewPanel);
   const itemLayoutViewed = viewPanelItemId?.panelGroupItemLayoutId;
 
   // If there is a panel in view mode, we should hide the grid if the panel is not in the current group.

@@ -61,11 +61,12 @@ export function createViewPanelSlice(
 
     setViewPanel(panelGroupItemId?: PanelGroupItemId): void {
       set((state) => {
+        const panelRef = findPanelRefOfPanelGroupItemId(get().panelGroups, panelGroupItemId);
         state.viewPanel = {
-          panelRef: undefined,
+          // LOGZ.IO CHANGE:: Keep the panel ref so the viewed panel is found again after setDashboard regenerates the ids
+          panelRef,
           panelGroupItemId: panelGroupItemId,
         };
-        const panelRef = findPanelRefOfPanelGroupItemId(get().panelGroups, panelGroupItemId);
         if (setViewPanelRef) {
           setViewPanelRef(panelRef);
         }

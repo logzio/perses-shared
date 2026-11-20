@@ -133,3 +133,40 @@ export function hydrateVariableDefinitionStates(
     });
   return state;
 }
+
+// LOGZ.IO CHANGE START:: Keep loaded list options when the variable plugin is unchanged
+interface KeepUnchangedListOptionsArgs {
+  variableState: VariableStoreStateMap;
+  previousState: VariableStoreStateMap;
+  previousDefinitions: VariableDefinition[];
+  definitions: VariableDefinition[];
+}
+
+/**
+ * Copies the loaded options of each list variable whose plugin did not change into a freshly hydrated state.
+ * A list variable writes its options only when its options query returns new data, and an unchanged plugin
+ * gets its cached data back, so without this the options stay empty and "All" expands to nothing.
+ * A plugin that changed gets new query data, which replaces the options.
+ */
+export function keepUnchangedListOptions({
+  variableState,
+  previousState,
+  previousDefinitions,
+  definitions,
+}: KeepUnchangedListOptionsArgs): void {
+  for (const definition of definitions) {
+    if (definition.kind !== 'ListVariable') continue;
+
+    const { name } = definition.spec;
+    const previousDefinition = previousDefinitions.find((previous) => previous.spec.name === name);
+    if (previousDefinition?.kind !== 'ListVariable') continue;
+    if (JSON.stringify(previousDefinition.spec.plugin) !== JSON.stringify(definition.spec.plugin)) continue;
+
+    const previousOptions = previousState.get({ name })?.options;
+    const state = variableState.get({ name });
+    if (previousOptions && state) {
+      state.options = previousOptions;
+    }
+  }
+}
+// LOGZ.IO CHANGE END:: Keep loaded list options when the variable plugin is unchanged

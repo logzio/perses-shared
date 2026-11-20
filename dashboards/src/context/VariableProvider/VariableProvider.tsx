@@ -46,7 +46,7 @@ import {
   findVariableDefinitionByName,
   mergeVariableDefinitions,
 } from './utils';
-import { hydrateVariableDefinitionStates as hydrateVariableDefinitionStates } from './hydrationUtils';
+import { hydrateVariableDefinitionStates, keepUnchangedListOptions } from './hydrationUtils'; // LOGZ.IO CHANGE:: Keep loaded list options
 import { getInitalValuesFromQueryParameters, getURLQueryParamName, useVariableQueryParams } from './query-params';
 
 /**
@@ -384,14 +384,24 @@ function createVariableDefinitionStore({
         variableDefinitions: initialVariableDefinitions,
         externalVariableDefinitions: externalVariableDefinitions,
         setVariableDefinitions(definitions: VariableDefinition[]): void {
+          // LOGZ.IO CHANGE START:: Keep loaded list options when the variable plugin is unchanged
+          const previous = get();
+          const variableState = hydrateVariableDefinitionStates(
+            definitions,
+            initialParams,
+            externalVariableDefinitions
+          );
+          keepUnchangedListOptions({
+            variableState,
+            previousState: previous.variableState,
+            previousDefinitions: previous.variableDefinitions,
+            definitions,
+          });
+          // LOGZ.IO CHANGE END:: Keep loaded list options when the variable plugin is unchanged
           set(
             (state) => {
               state.variableDefinitions = definitions;
-              state.variableState = hydrateVariableDefinitionStates(
-                definitions,
-                initialParams,
-                externalVariableDefinitions
-              );
+              state.variableState = variableState; // LOGZ.IO CHANGE:: Keep loaded list options
             },
             false,
             '[Variables] setVariableDefinitions' // Used for action name in Redux devtools
